@@ -1,0 +1,169 @@
+<meta title="注意力与 Transformer" tagline="AI 学会「按需读取上下文」">
+
+<seg name="hook">
+  <p class="hook">1950 年图灵出过一道题：「我相信人类不会在 2000 年前造出能骗过人的机器。」今天的大模型骗过了我们。但拆开它的内部，你会看到一个奇怪的景象：它<strong>一个词都读不完</strong>就急着开口猜下一个字，而它「看见」的，只是一堆数字被另一堆数字加权平均。这个动作简单到令人失望——却是过去八年里 AI 最大的进展。</p>
+  <p class="demo__note">读完这一段你需要先弄懂 M05（神经网络怎么学）和 M06（为什么旧方法记不住长句子）。</p>
+</seg>
+
+<seg name="intuition">
+  <p>把每个词元想成一张<strong>便签</strong>。模型读到第 7 个字时，手里握着前 7 张便签。</p>
+  <p>注意力做的一件事，是给这 7 张便签<strong>分配注意力预算</strong>：这个字该多参考第 3 张、少参考第 5 张，各分多少。分配完，按这个比例把便签上的内容加权混合成一份新摘要，作为当前位置的新表示。</p>
+  <p>「该给谁多分一点」不是人规定的，是模型从数据里学出来的。同一个句子，处理「它」这个字时预算会流向它指代的名词；处理动词时预算会流向它的主语。</p>
+
+  <div class="callout callout--warn">
+    <p><strong>这个类比对下面两件事不成立，务必记住：</strong></p>
+    <ul>
+      <li><strong>便签不是被人读的。</strong>便签上的内容是 <span class="term" data-def="把离散对象（词元、图像块）映射成连续向量的结果；向量的远近表示语义相似度。" data-en="embedding">嵌入</span>，是 512 个左右的数字，没有任何一个位置对应「一个词」。</li>
+      <li><strong>预算不是一次分配的。</strong>真实模型每一层、每一个<span class="term" data-def="把注意力拆成多组并行计算，各自学一种关系类型（如指代、邻接、主语-谓语）。" data-en="attention head">头</span>都在独立重新分配预算。一个 32 层的模型对同一个字做了上百次不同的「读便签」。</li>
+    </ul>
+  </div>
+</seg>
+
+<seg name="mechanism">
+  <h4>先记住一个事实：注意力是一张「临时生成」的查找表</h4>
+  <p>普通<span class="term" data-def="神经网络里乘在输入上的固定系数，训练后不再随输入改变。" data-en="weight">权重</span>是训练好就固定的。注意力最反直觉的地方在于：<strong>它每次前向传播都重新算一遍自己该用多少权重</strong>。权重不再是「参数」，而是「由当前输入决定的函数值」。这就是它能按需读取上下文的原因。</p>
+
+  <ol class="steps">
+    <li data-step="1"><strong>每个词元生成三个向量。</strong>同一份输入经过三组不同的固定权重，分别投影出<span class="term" data-def="你想找什么：当前位置发出的查询。" data-en="query (Q)">查询 Q</span>、<span class="term" data-def="我能被什么找到：每个位置的可检索标签。" data-en="key (K)">键 K</span>、<span class="term" data-def="被找到之后实际交出的内容。" data-en="value (V)">值 V</span>。Q 与 K 是「匹配用的」，V 是「搬运用的」。</li>
+    <li data-step="2"><strong>两两点积，得到分数矩阵。</strong>第 i 个位置的 Q 和第 j 个位置的 K 做<span class="term" data-def="两个向量对应位置相乘再求和；方向越一致结果越大，因此衡量相似度。" data-en="dot product">点积</span>，得到一个 n×n 的分数表 <code>QKᵀ</code>（n 是词元数）。分数大 = 「i 想找的东西，j 身上有」。</li>
+    <li data-step="3"><strong>除以 √d，再按行做 softmax。</strong>把每行分数除以 <span class="math">√d</span>（d 是 K 向量的维度）后做 softmax，把一行分数变成「加起来等于 1」的权重。<span class="term" data-def="把一组任意实数压成正数且总和为 1 的分布：exp(xᵢ) / Σexp(xⱼ)。" data-en="softmax">softmax</span> 负责「放大的更大、压小的更小」，让模型敢把预算集中到一两个词上。除以 √d 是为了防止分数太大导致 softmax 饱和、梯度消失。</li>
+    <li data-step="4"><strong>用权重对 V 加权求和。</strong>输出 = 权重 × 各位置的 V 相加。每个词元的新表示，就是它「按相关性读来的」上下文的加权平均。</li>
+    <li data-step="5"><strong>套上因果掩码。</strong>训练目标是预测下一个词，所以位置 i 只允许看 ≤ i 的位置。做法是把 <code>i &lt; j</code> 的分数设成 <code>−∞</code>，softmax 后权重正好是 0。这也解释了为什么注意力必须是单向的。</li>
+    <li data-step="6"><strong>多头：把维度切薄、并行多算几次。</strong>不是算一次 512 维注意力，而是算 8 次 64 维，各自独立学，最后拼接再投影。于是一个头可以专门盯「前一个词」，一个盯「指代对象」，一个盯「句法主语」。</li>
+    <li data-step="7"><strong>残差与位置编码。</strong>注意力本身<strong>完全不知道顺序</strong>——把输入打乱，输出只是跟着打乱，结果一模一样。所以必须显式注入位置信息：早期是加一张「位置向量表」（绝对位置编码），如今主流是<span class="term" data-def="旋转位置编码：按位置把 Q/K 向量旋转一个与位置成正比的角度，使点积只依赖两个位置的差。" data-en="RoPE">RoPE</span>，用旋转角度让点积天然带上「相距多远」。同时每个子层的输出都加回它的输入（残差连接），否则梯度传不回来。</li>
+  </ol>
+
+  <div class="figure" data-fig="m07-qkv-1">
+    <div class="figure__inner">
+      <svg viewBox="0 0 640 210" class="dgm" role="img" aria-labelledby="f7qkv-t">
+        <title id="f7qkv-t">一次注意力计算的数据流：每个词元产生 Q/K/V，Q 与所有 K 点积，softmax 成权重，再用权重混合所有 V</title>
+        <desc>左侧三个词元方块，各自经三条箭头生成 Q K V；中部为 QKᵀ 分数与 softmax 权重；右侧为加权求和得到新表示。</desc>
+        <text x="10" y="16" class="t-sm faint">① 三个词元的嵌入</text>
+        <g data-step="1">
+          <rect class="box" x="10" y="28" width="52" height="26" rx="5"></rect><text x="36" y="45" class="t-sm" text-anchor="middle">猫</text>
+          <rect class="box" x="10" y="62" width="52" height="26" rx="5"></rect><text x="36" y="79" class="t-sm" text-anchor="middle">追</text>
+          <rect class="box" x="10" y="96" width="52" height="26" rx="5"></rect><text x="36" y="113" class="t-sm" text-anchor="middle">它</text>
+        </g>
+        <g data-step="1">
+          <text x="10" y="145" class="t-xs muted">× W_Q × W_K × W_V（固定权重，各 3 份）</text>
+        </g>
+        <line class="arrow" x1="62" y1="41" x2="108" y2="41"></line>
+        <line class="arrow" x1="62" y1="75" x2="108" y2="75"></line>
+        <line class="arrow" x1="62" y1="109" x2="108" y2="109"></line>
+
+        <text x="112" y="16" class="t-sm faint">② Q · K → 分数</text>
+        <g data-step="2">
+          <rect class="box box--a" x="112" y="28" width="52" height="26" rx="5"></rect><text x="138" y="45" class="t-sm" text-anchor="middle">Q<tspan baseline-shift="sub">猫</tspan></text>
+          <rect class="box box--a" x="112" y="62" width="52" height="26" rx="5"></rect><text x="138" y="79" class="t-sm" text-anchor="middle">Q<tspan baseline-shift="sub">追</tspan></text>
+          <rect class="box box--a" x="112" y="96" width="52" height="26" rx="5"></rect><text x="138" y="113" class="t-sm" text-anchor="middle">Q<tspan baseline-shift="sub">它</tspan></text>
+          <rect class="box box--w" x="176" y="28" width="40" height="26" rx="5"></rect><text x="196" y="45" class="t-sm" text-anchor="middle">K<tspan baseline-shift="sub">猫</tspan></text>
+          <rect class="box box--w" x="176" y="62" width="40" height="26" rx="5"></rect><text x="196" y="79" class="t-sm" text-anchor="middle">K<tspan baseline-shift="sub">追</tspan></text>
+          <rect class="box box--w" x="176" y="96" width="40" height="26" rx="5"></rect><text x="196" y="113" class="t-sm" text-anchor="middle">K<tspan baseline-shift="sub">它</tspan></text>
+        </g>
+        <line class="arrow" x1="218" y1="70" x2="256" y2="70"></line>
+
+        <text x="260" y="16" class="t-sm faint">③ 分数矩阵（行=Q，列=K）</text>
+        <g data-step="3">
+          <!-- 3x3 网格，下三角为因果掩码允许区 -->
+          <rect class="box" x="260" y="26" width="34" height="30" fill="var(--c-heat-2)"></rect>
+          <rect class="box" x="294" y="26" width="34" height="30" fill="var(--c-bg-sunken)"></rect>
+          <rect class="box" x="328" y="26" width="34" height="30" fill="var(--c-bg-sunken)"></rect>
+          <rect class="box" x="260" y="56" width="34" height="30" fill="var(--c-heat-1)"></rect>
+          <rect class="box" x="294" y="56" width="34" height="30" fill="var(--c-heat-3)"></rect>
+          <rect class="box" x="328" y="56" width="34" height="30" fill="var(--c-bg-sunken)"></rect>
+          <rect class="box" x="260" y="86" width="34" height="30" fill="var(--c-heat-1)"></rect>
+          <rect class="box" x="294" y="86" width="34" height="30" fill="var(--c-heat-0)"></rect>
+          <rect class="box" x="328" y="86" width="34" height="30" fill="var(--c-heat-3)"></rect>
+          <text x="277" y="45" class="t-xs" text-anchor="middle">1.0</text>
+          <text x="311" y="45" class="t-xs faint" text-anchor="middle">✕</text>
+          <text x="345" y="45" class="t-xs faint" text-anchor="middle">✕</text>
+          <text x="277" y="75" class="t-xs" text-anchor="middle">.2</text>
+          <text x="311" y="75" class="t-xs" text-anchor="middle">.8</text>
+          <text x="345" y="75" class="t-xs faint" text-anchor="middle">✕</text>
+          <text x="277" y="105" class="t-xs" text-anchor="middle">.3</text>
+          <text x="311" y="105" class="t-xs" text-anchor="middle">.1</text>
+          <text x="345" y="105" class="t-xs" text-anchor="middle">.6</text>
+          <text x="260" y="130" class="t-xs muted">✕ = 被因果掩码屏蔽（−∞ → 权重 0）</text>
+        </g>
+        <line class="arrow" x1="362" y1="70" x2="400" y2="70"></line>
+
+        <text x="404" y="16" class="t-sm faint">④ 加权混合 V</text>
+        <g data-step="4">
+          <rect class="box box--g" x="404" y="26" width="56" height="34" rx="5"></rect>
+          <text x="432" y="47" class="t-sm" text-anchor="middle">新表示</text>
+          <text x="404" y="76" class="t-xs muted">= 0.3·V<tspan baseline-shift="sub">猫</tspan> + 0.1·V<tspan baseline-shift="sub">追</tspan> + 0.6·V<tspan baseline-shift="sub">它</tspan></text>
+          <text x="404" y="94" class="t-xs muted">「它」把 6 成注意力给了自己所在的</text>
+          <text x="404" y="108" class="t-xs muted">局部，3 成回溯到「猫」—— 指代消解的痕迹</text>
+        </g>
+        <text x="10" y="178" class="t-sm muted">整张表随输入变化而重新生成；W_Q / W_K / W_V 才是训练出来的固定参数。</text>
+        <text x="10" y="196" class="t-xs faint">注意力的计算量与显存都随词元数平方增长（n×n 张表），这是长上下文昂贵的根源。</text>
+      </svg>
+    </div>
+    <figcaption>按行读：每个词元的 Q 与前面所有词元的 K 点积 → 归一化成一行的权重 → 用这行权重去混合所有 V。灰色 ✕ 是被因果掩码屏蔽的位置。左侧步骤条上的编号可点，会高亮图中对应环节。</figcaption>
+  </div>
+
+  <div class="math-block math">
+    Attention(Q, K, V) <span class="op">=</span> softmax<span class="bigg">(</span><span class="frac"><span class="num">QK<sup>⊤</sup></span><span class="den">√<span style="border-top:1px solid;display:inline-block">d<sub>k</sub></span></span></span><span class="bigg">)</span>V
+    <span class="reads">「把每个位置的查询，和所有位置的键比一遍相似度，除以维度开根号做缩放，归一化成权重，再用权重把所有值加权求和。」</span>
+  </div>
+  <p>其中 <code>Q ∈ [n × d<sub>k</sub>]</code>、<code>K ∈ [n × d<sub>k</sub>]</code>、<code>V ∈ [n × d<sub>v</sub>]</code>，n 是词元数。维度必须写清，因为「Q 的列数要等于 K 的列数，softmax 之后的行数要等于 V 的行数」是读者最容易被卡住的地方。</p>
+
+  <details class="math-detail">
+    <summary>展开：为什么要除以 √d，以及为什么 O(n²) 无法回避</summary>
+    <div class="math-detail__body prose">
+      <p><strong>关于 √d。</strong>假设 Q、K 各分量是均值 0、方差 1 的独立随机变量，那么它们点积（d<sub>k</sub> 项相加）的方差是 d<sub>k</sub>，标准差约 √d<sub>k</sub>。不缩放的话，d<sub>k</sub>=64 时分数会普遍落在 ±8 之外，softmax 会把几乎全部质量堆到最大那一项，梯度趋近 0，训练停滞。除以 √d<sub>k</sub> 把方差拉回 1。</p>
+      <p><strong>关于平方复杂度。</strong>注意力要显式建立「每对位置之间的关系」，n 个位置的两两组合就是 n²。词元从 4k 涨到 128k（32 倍），注意力计算与那张分数表的显存就涨 1024 倍。工业界的缓解方案（滑窗、分块、线性近似、以及把 K/V 缓存下来避免重复算）都是在绕这张表——但绕不开「每个词都要和上下文比一遍」这件事本身。</p>
+    </div>
+  </details>
+</seg>
+
+<seg name="demo">
+  <h4>它到底在看哪里</h4>
+  <p>下面这张矩阵就是第 ③ 步的产物。真实大模型的注意力矩阵有几百行几百列，这里用一个 9 词短句、4 个头演示同一件事。</p>
+</seg>
+
+<seg name="misconception">
+  <details class="myth">
+    <summary>「注意力权重就是模型思考的过程，看它看哪里就知道它在想什么。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>太多文章把热力图当「可解释性」卖，因为「模型看这个字是因为那个字」听起来正好回答了「为什么」。</p>
+      <p class="myth__truth">正确说法：注意力权重只告诉你「这一层这个头的输出被哪些位置的 V 影响了」，它是<strong>计算路径</strong>，不是<strong>理由</strong>。经过几十层混合与残差之后，最终输出与某个高权重位置之间的因果关系早已被反复改写；同一句话换个头、换个层，热力图会完全不同。它可以当线索，不能当解释。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「Transformer 能处理长文本，是因为它有一个能装下整篇文章的记忆模块。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>RNN 时代「隐藏状态 = 记忆」的说法太牢固，人们自然以为 Transformer 也有个更大的同类。</p>
+      <p class="myth__truth">正确说法：Transformer <strong>没有独立的记忆模块</strong>。它的「记忆」就是上下文本身 + 权重矩阵里的参数。所谓窗口长度，指的是这一次前向传播里同时摆着多少个词元；窗口外的内容不是「忘了」，而是<strong>根本没被计算</strong>。这也解释了为什么把同样的话换个顺序放进上下文，答案可能变化。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「多头注意力就是多个模型投票，取多数意见。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>「头」让人联想到「多个视角再综合」，投票是日常里最熟悉的综合方式。</p>
+      <p class="myth__truth">正确说法：头不是投票，而是<strong>把一次昂贵的全维度比较拆成几次便宜的窄维度比较</strong>，各学一种关系，最后把所有头的输出拼接起来再做一次线性投影——是一次求和，不是几次表决。没有任何环节在做「多数决」。实践中还有相当比例的注意力头接近休眠，删掉不影响性能。</p>
+    </div>
+  </details>
+</seg>
+
+<seg name="takeaway">
+  <blockquote class="takeaway__line">注意力不是理解，是每次前向都重新算一遍的加权平均。</blockquote>
+
+  <div class="quiz">
+    <p class="quiz__q">自测：把输入的 5 个词元顺序打乱，如果模型完全没有位置编码，注意力输出会怎样？</p>
+    <label class="quiz__opt"><input type="radio" name="q-m07" data-right="1"><span>输出跟着一起打乱，内容不变——注意力本身对顺序不敏感</span></label>
+    <label class="quiz__opt"><input type="radio" name="q-m07"><span>输出完全不变，因为注意力会重新排序</span></label>
+    <label class="quiz__opt"><input type="radio" name="q-m07"><span>无法计算，因为因果掩码要求顺序</span></label>
+    <div class="quiz__fb">
+      <p data-for="no"><strong>再想一步：</strong>因果掩码依赖的是「谁在前」，但掩码本身也是按位置索引施加的。关键在于注意力分数只由 Q 与 K 的点积决定，点积不知道「第 3 个」是什么意思。所以打乱输入只是把输出的行一起打乱——这正是第 ⑦ 步必须显式注入位置信息的原因。</p>
+      <p data-for="ok"><strong>对了。</strong>这正是机制拆解第 ⑦ 步的全部要点：注意力本身是<strong>排列不变</strong>的，顺序必须由位置编码额外提供。RoPE 之所以成为主流，就是因为它把顺序编码进旋转角度，让点积天然读出「相距多远」。带着这个结论去 M08：顺序信息也来自数据规模之外的东西。</p>
+    </div>
+    <p class="quiz__result" aria-live="polite"></p>
+  </div>
+
+  <ul class="nextlinks">
+    <li><a href="#m08">M08 预训练与规模定律：这套骨架放大一万倍会发生什么</a></li>
+    <li><a href="#m10">M10 解码与采样：算出分布之后，怎么挑一个字</a></li>
+    <li><a href="#m06">M06 序列建模的瓶颈：注意力是为了解决什么问题出现的</a></li>
+  </ul>
+</seg>

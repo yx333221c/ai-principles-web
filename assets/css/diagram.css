@@ -1,0 +1,113 @@
+/* ==========================================================================
+   diagram.css · 内联 SVG 图解的公共样式（DESIGN.md §5-3 §14 §13.1）
+   规则：图解一律用 currentColor / var(--c-*)，禁止硬编码颜色，
+        这样亮暗主题与 lightbox 放大都能自动跟随。
+   ========================================================================== */
+
+.dgm { width:100%; height:auto; display:block; margin-inline:auto; font-family:var(--f-sans) }
+.dgm text { fill:var(--c-fg); font-size:13px }
+.dgm .t-sm  { font-size:11px }
+.dgm .t-xs  { font-size:9.5px }
+.dgm .t-lg  { font-size:16px; font-weight:650 }
+.dgm .t-mono{ font-family:var(--f-mono); font-size:11.5px }
+.dgm .muted { fill:var(--c-fg-muted) }
+.dgm .faint { fill:var(--c-fg-faint) }
+.dgm .accent{ fill:var(--c-accent) }
+.dgm .warm  { fill:var(--c-warn) }
+.dgm .good  { fill:var(--c-ok) }
+.dgm .bad   { fill:var(--c-err) }
+.dgm .on-accent { fill:var(--c-accent-ink) }
+
+.dgm .box      { fill:var(--c-bg-elev); stroke:var(--c-line-strong); stroke-width:1.5 }
+.dgm .box--a   { stroke:var(--c-accent); fill:color-mix(in srgb,var(--c-accent) 8%,var(--c-bg-elev)) }
+.dgm .box--w   { stroke:var(--c-warn);  fill:color-mix(in srgb,var(--c-warn) 10%,var(--c-bg-elev)) }
+.dgm .box--g   { stroke:var(--c-ok);    fill:color-mix(in srgb,var(--c-ok) 10%,var(--c-bg-elev)) }
+.dgm .box--b   { stroke:var(--c-err);   fill:color-mix(in srgb,var(--c-err) 10%,var(--c-bg-elev)) }
+.dgm .box--sun { fill:var(--c-bg-sunken); stroke:var(--c-line) }
+
+.dgm .line   { stroke:var(--c-line-strong); stroke-width:1.5; fill:none }
+.dgm .line--a{ stroke:var(--c-accent); stroke-width:2; fill:none }
+.dgm .line--w{ stroke:var(--c-warn); stroke-width:2; fill:none }
+.dgm .line--dash{ stroke-dasharray:5 4 }
+.dgm .arrow  { stroke:var(--c-fg-muted); stroke-width:1.6; fill:none; marker-end:url(#arw) }
+.dgm .arrow--a { stroke:var(--c-accent); marker-end:url(#arw-a) }
+.dgm .grid-l { stroke:var(--c-line); stroke-width:1 }
+
+.dgm [data-hl] { transition:opacity var(--dur-micro) var(--ease) }
+.dgm .dim { opacity:.28 }
+
+/* 图解内的可点击步骤：与 .steps 编号联动 */
+.figure.is-focus [data-step]{ opacity:.35 }
+.figure.is-focus [data-step].is-current{ opacity:1 }
+
+/* 图内小图例 */
+.legend { display:flex; flex-wrap:wrap; gap:var(--s-3); margin-top:var(--s-2); font-size:var(--t--2); color:var(--c-fg-muted) }
+.legend i { display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:5px; verticalalign:middle }
+.legend .sw-a{ background:var(--c-accent) } .legend .sw-w{ background:var(--c-warn) }
+.legend .sw-g{ background:var(--c-ok) }     .legend .sw-b{ background:var(--c-err) }
+.legend .sw-l{ background:var(--c-line-strong) }
+
+/* 公式排版：手写 HTML 公式（CDN 不可达，见 README「与设计文档的偏差」） */
+.math { font-family:var(--f-serif); font-size:var(--t-1); line-height:2 }
+.math-block { display:block; margin:var(--s-4) 0; padding:var(--s-4); text-align:center;
+  background:var(--c-bg-code); border:1px solid var(--c-line); border-radius:var(--r-md);
+  overflow-x:auto }
+.frac { display:inline-grid; grid-template-rows:auto auto; vertical-align:middle;
+  margin:0 .25em; text-align:center; font-size:.92em }
+.frac > .num { border-bottom:1.4px solid var(--c-fg); padding:0 .3em .06em }
+.frac > .den { padding:.08em .3em 0 }
+.sub { font-size:.72em; vertical-align:-.28em }
+.sup { font-size:.72em; vertical-align:.42em }
+.op  { padding:0 .18em }
+.lim { font-size:.72em; vertical-align:-.35em }
+.bigg { font-size:1.5em; vertical-align:-.22em; padding:0 .06em }
+.vec { font-weight:700; font-style:normal }
+.reads { display:block; margin-top:var(--s-2); font-family:var(--f-sans); font-size:var(--t--1);
+  color:var(--c-fg-muted); text-align:left }
+.reads::before { content:"读作："; color:var(--c-fg-faint); font-weight:600 }
+details.math-detail { margin:var(--s-4) 0; border:1px solid var(--c-line); border-radius:var(--r-md); background:var(--c-bg-elev) }
+details.math-detail > summary { padding:var(--s-3) var(--s-4); cursor:pointer; font-size:var(--t--1);
+  font-weight:600; color:var(--c-accent); list-style:none }
+details.math-detail > summary::-webkit-details-marker{ display:none }
+details.math-detail > summary::before { content:"▸ "; }
+details.math-detail[open] > summary::before { content:"▾ "; }
+details.math-detail > .math-detail__body { padding:0 var(--s-4) var(--s-4); border-top:1px dashed var(--c-line) }
+
+/* 术语卡片 */
+.term-pop { position:fixed; z-index:60; max-width:280px; padding:var(--s-3) var(--s-4);
+  background:var(--c-bg-elev); border:1px solid var(--c-line-strong); border-radius:var(--r-md);
+  box-shadow:var(--shadow-2); font-size:var(--t--1); line-height:1.6; color:var(--c-fg) }
+.term-pop strong { display:block; font-family:var(--f-mono); font-size:var(--t--2);
+  color:var(--c-accent); margin-bottom:2px }
+.term-pop .term-pop__en { color:var(--c-fg-faint); font-size:var(--t--2) }
+
+/* 学习路径列表（带走一句里的延伸） */
+.nextlinks { list-style:none; padding:0; margin:var(--s-3) 0 0; display:flex; flex-wrap:wrap; gap:var(--s-2) }
+.nextlinks a { display:inline-flex; gap:6px; align-items:center; padding:6px 12px;
+  border:1px solid var(--c-line-strong); border-radius:var(--r-pill);
+  font-size:var(--t--1); text-decoration:none; color:var(--c-fg); background:var(--c-bg-elev) }
+.nextlinks a:hover { border-color:var(--c-accent); color:var(--c-accent) }
+.nextlinks a::before { content:"→"; color:var(--c-accent) }
+
+/* 表格（对比型内容） */
+.tbl { width:100%; border-collapse:collapse; margin:var(--s-4) 0; font-size:var(--t--1) }
+.tbl th,.tbl td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--c-line) }
+.tbl th { font-weight:650; color:var(--c-fg-muted); border-bottom-color:var(--c-line-strong) }
+.tbl tbody tr:hover { background:var(--c-bg-sunken) }
+.tbl--scroll { display:block; overflow-x:auto }
+
+/* 自测题 */
+.quiz { margin:var(--s-4) 0 }
+.quiz__q { font-weight:650; margin-bottom:var(--s-2) }
+.quiz__opt { display:flex; gap:var(--s-2); align-items:flex-start; padding:8px 10px;
+  border:1px solid var(--c-line); border-radius:var(--r-sm); margin-bottom:6px; cursor:pointer;
+  font-size:var(--t--1); transition:border-color var(--dur-micro) var(--ease) }
+.quiz__opt:hover { border-color:var(--c-accent) }
+.quiz__opt input { margin-top:3px; accent-color:var(--c-accent) }
+.quiz__fb { display:none; margin:-2px 0 var(--s-3); padding:var(--s-3); border-radius:var(--r-sm);
+  font-size:var(--t--1) }
+.quiz.is-graded .quiz__fb { display:block }
+.quiz__fb[data-for="ok"]  { background:color-mix(in srgb,var(--c-ok) 12%,transparent); }
+.quiz__fb[data-for="no"]  { background:color-mix(in srgb,var(--c-warn) 14%,transparent); }
+.quiz__opt.is-right { border-color:var(--c-ok); background:color-mix(in srgb,var(--c-ok) 10%,transparent) }
+.quiz__opt.is-wrong { border-color:var(--c-err) }

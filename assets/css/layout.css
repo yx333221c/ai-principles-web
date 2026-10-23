@@ -103,7 +103,11 @@
   margin-top:var(--s-6); padding-top:var(--s-4); border-top:1px dashed var(--c-line);
   max-width:var(--measure); font-size:var(--t--1) }
 
-.seg { padding:var(--s-5) 0; max-width:var(--measure) }
+/* 段落容器给宽（图解与演示需要），但正文行宽仍受 --measure 限制（§8.3） */
+.seg { padding:var(--s-5) 0; max-width:66rem }
+.seg > h3, .seg p, .seg ol, .seg ul, .seg blockquote, .seg .callout,
+.seg .myth, .seg .quiz, .seg .math-block, .seg .steps, .seg details,
+.seg .tbl, .seg > h4 { max-width:var(--measure) }
 .seg > h3 { font-size:var(--t-2); color:var(--c-fg); position:relative; padding-left:1.6em }
 .seg > h3::before { content:""; position:absolute; left:0; top:.55em; width:.85em; height:.85em;
   border-radius:var(--r-pill); background:var(--c-line-strong) }

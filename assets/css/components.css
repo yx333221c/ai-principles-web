@@ -210,3 +210,92 @@ details.math--fallback { border:1px dashed var(--c-line-strong); border-radius:v
 .noscript { margin:var(--s-4) var(--s-6); padding:var(--s-3) var(--s-4);
   border:1px solid var(--c-warn); border-radius:var(--r-sm);
   background:color-mix(in srgb,var(--c-warn) 10%,transparent); font-size:var(--t--1) }
+
+/* ==========================================================================
+   v0.2 追加：正文元素 / 搜索 / demo 读数 / 前置提示
+   ========================================================================== */
+
+/* ---------- 首页正文 ---------- */
+.hero__lede { max-width:44ch; font-size:var(--t-1); color:var(--c-fg-muted) }
+.hero__rules { list-style:none; padding:0; margin:var(--s-4) 0 var(--s-5); max-width:52ch }
+.hero__rules li { position:relative; padding-left:1.6em; margin-bottom:var(--s-2); font-size:var(--t--1); color:var(--c-fg-muted) }
+.hero__rules li strong { color:var(--c-fg) }
+.hero__rules li::before { content:"—"; position:absolute; left:0; color:var(--c-warn) }
+.btn--ghost { background:transparent; border-style:dashed }
+.modmap__lede { color:var(--c-fg-muted); max-width:var(--measure) }
+.modmap__groupno { font:700 var(--t--2)/1 var(--f-mono); color:var(--c-accent); margin-right:6px }
+.modmap__groupnote { font-size:var(--t--1); color:var(--c-fg-muted); max-width:var(--measure); margin:var(--s-2) 0 0 }
+
+/* ---------- 前置依赖提示 ---------- */
+.prereq-hint { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:var(--s-3) 0 0;
+  padding:6px 12px; border-radius:var(--r-pill); font-size:var(--t--2);
+  background:color-mix(in srgb,var(--c-warn) 12%,transparent); color:var(--c-fg-muted) }
+.prereq-hint a { font-weight:600 }
+
+/* ---------- 正文段落增强 ---------- */
+.seg p+p { margin-top:var(--s-3) }
+.seg .hook { font-size:var(--t-1); line-height:1.8 }
+.seg .hook::first-letter { font-size:2.2em; font-weight:700; float:left; line-height:.9; padding-right:6px;
+  color:var(--c-accent) }
+.module.is-done .module__no::after { content:" ✓ 已读"; color:var(--c-ok); font-size:var(--t--2); font-weight:600 }
+.takeaway__line { font-size:var(--t-1); font-weight:600; padding:var(--s-4);
+  border-left:4px solid var(--c-ok); background:var(--c-bg-elev); border-radius:0 var(--r-md) var(--r-md) 0;
+  box-shadow:var(--shadow-1) }
+.quiz__redo { margin-top:var(--s-2) }
+.quiz__result { font-size:var(--t--2); color:var(--c-fg-muted) }
+
+/* ---------- 图解内层（供 lightbox 缩放） ---------- */
+.figure__inner { transform-origin:0 0; transition:transform var(--dur-normal) var(--ease) }
+.figure { cursor:zoom-in }
+.figure:focus-visible { outline:3px solid var(--c-accent); outline-offset:3px }
+
+/* ---------- Demo：SVG 画布与读数 ---------- */
+.demo__canvas { display:block; padding:0; background:var(--c-bg-sunken) }
+.demo-svg { width:100%; height:auto; display:block; }
+.demo__ctrlgrid { display:flex; flex-wrap:wrap; gap:var(--s-4); flex:1 }
+.demo__readout { display:flex; flex-wrap:wrap; gap:var(--s-4); padding:var(--s-3) var(--s-4);
+  border-top:1px solid var(--c-line); background:var(--c-bg-sunken) }
+.demo__stat { display:flex; flex-direction:column; gap:1px; min-width:82px }
+.demo__stat em { font-style:normal; font-size:var(--t--2); color:var(--c-fg-faint) }
+.demo__stat b { font:600 var(--t-0)/1.3 var(--f-mono); color:var(--c-accent) }
+.demo__unavailable { color:var(--c-fg-faint); font-size:var(--t--1) }
+.demo__note { font-size:var(--t--2); color:var(--c-fg-muted) }
+.demo__legend { border-top:1px dashed var(--c-line) }
+.demo__legend strong { color:var(--c-fg) }
+.btn--sm { padding:6px 12px; font-size:var(--t--2) }
+.demo button[aria-pressed="true"] { background:var(--c-accent); color:var(--c-accent-ink); border-color:var(--c-accent) }
+/* demo 内 SVG 文本与图形 */
+.demo-svg text { fill:var(--c-fg); font-size:12px }
+.demo-svg .t-sm { font-size:10.5px } .demo-svg .t-xs { font-size:9px }
+.demo-svg .muted { fill:var(--c-fg-muted) } .demo-svg .faint { fill:var(--c-fg-faint) }
+.demo-svg .accent { fill:var(--c-accent) } .demo-svg .good { fill:var(--c-ok) }
+.demo-svg .bad { fill:var(--c-err) } .demo-svg .warm { fill:var(--c-warn) }
+.demo-svg .grid { stroke:var(--c-line); stroke-width:1; fill:none }
+.demo-svg .grid--dash { stroke-dasharray:3 3 }
+.demo-svg .box { fill:var(--c-bg-elev); stroke:var(--c-line-strong); stroke-width:1.2 }
+.demo-svg .curve { fill:none; stroke:var(--c-accent); stroke-width:2 }
+.demo-svg .curve--muted { stroke:var(--c-line-strong) }
+.demo-svg [data-cell] { cursor:pointer }
+.demo-svg .tok { cursor:default; transition:font-weight .1s }
+
+/* ---------- 搜索面板 ---------- */
+.searchdlg { width:min(640px,92vw); margin:12vh auto 0; padding:0; border:1px solid var(--c-line-strong);
+  border-radius:var(--r-lg); background:var(--c-bg); color:var(--c-fg); box-shadow:var(--shadow-2) }
+.searchdlg::backdrop { background:rgba(0,0,0,.45); backdrop-filter:blur(2px) }
+.searchdlg__box { padding:var(--s-4) }
+.searchdlg__box input[type=search] { width:100%; padding:12px 14px; font:inherit; font-size:var(--t-1);
+  background:var(--c-bg-elev); color:var(--c-fg); border:1px solid var(--c-line-strong);
+  border-radius:var(--r-md); outline:none }
+.searchdlg__box input[type=search]:focus { border-color:var(--c-accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--c-accent) 22%,transparent) }
+.searchdlg__results { list-style:none; margin:var(--s-3) 0 0; padding:0; max-height:46vh; overflow-y:auto }
+.searchdlg__item { display:grid; grid-template-columns:64px 1fr; gap:var(--s-2); padding:10px 12px;
+  border-radius:var(--r-sm); cursor:pointer; font-size:var(--t--1) }
+.searchdlg__item:nth-child(2n) { background:color-mix(in srgb,var(--c-bg-sunken) 60%,transparent) }
+.searchdlg__item.is-sel { background:color-mix(in srgb,var(--c-accent) 14%,transparent);
+  outline:2px solid var(--c-accent); outline-offset:-2px }
+.searchdlg__kind { font:600 var(--t--2)/1.6 var(--f-mono); color:var(--c-warn) }
+.searchdlg__title { grid-column:2; font-weight:650 }
+.searchdlg__text { grid-column:2; color:var(--c-fg-faint); font-size:var(--t--2) }
+.searchdlg__empty { padding:var(--s-4); color:var(--c-fg-faint); font-size:var(--t--1) }
+.searchdlg__hint { margin:var(--s-3) 0 0; font-size:var(--t--2); color:var(--c-fg-faint) }
+

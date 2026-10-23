@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI 原理图解 · 用可交互图解讲清 AI 底层原理</title>
+<meta name="description" content="13 个模块，从「压缩即智能」到智能体与安全评测，每个原理都配一个可以动手拨弄的图解。零依赖、开源、可离线。">
+<meta name="color-scheme" content="light dark">
+<meta property="og:title" content="AI 原理图解">
+<meta property="og:description" content="不讲新闻，不卖课，只讲「它到底怎么工作」。13 个模块 + 13 个可交互演示。">
+<meta property="og:type" content="website">
+<link rel="canonical" href="./">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%233b4cca' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23b06b2f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="./assets/css/base.css">
+<link rel="stylesheet" href="./assets/css/layout.css">
+<link rel="stylesheet" href="./assets/css/components.css">
+<link rel="stylesheet" href="./assets/css/diagram.css">
+<script src="./assets/js/app.js" defer></script>
+<!-- @DEMO_SCRIPTS -->
+<!-- 本文件由 build.js 从 templates/shell.html 生成，请勿直接编辑 index.html。
+     内容真相源：content/modules/*.html 与 assets/data/modules.json。
+     重建：node build.js   校验：node scripts/selfcheck.js -->
+</head>
+<body class="shell">
+<a class="skip" href="#main">跳到主要内容</a>
+
+<!-- 阅读进度条（DESIGN.md §9.2） -->
+<div class="readbar" aria-hidden="true"><div class="readbar__fill" id="readbar-fill"></div></div>
+
+<header class="siteheader">
+  <button class="iconbtn siteheader__burger" id="nav-toggle"
+          aria-expanded="false" aria-controls="sitenav" aria-label="打开学习地图">
+    <span class="iconbtn__glyph" aria-hidden="true">≡</span>
+  </button>
+
+  <a class="brand" href="#home">
+    <span class="brand__mark" aria-hidden="true">◍</span>
+    <span class="brand__text">
+      <strong>AI 原理图解</strong>
+      <em>Explainable AI Primer</em>
+    </span>
+  </a>
+
+  <nav class="topnav" aria-label="部分导航">
+    <ul>
+      <li><a href="#intuition">直觉地基</a></li>
+      <li><a href="#learning">学习机制</a></li>
+      <li><a href="#transformer">Transformer</a></li>
+      <li><a href="#training">训练涌现</a></li>
+      <li><a href="#inference">推理应用</a></li>
+      <li><a href="#safety">能力风险</a></li>
+    </ul>
+  </nav>
+
+  <div class="siteheader__actions">
+    <button class="iconbtn" id="search-open" aria-keyshortcuts="/" title="站内搜索（/）" aria-label="搜索">
+      <span class="iconbtn__glyph" aria-hidden="true">⌕</span>
+    </button>
+    <div class="themeswitch" role="group" aria-label="配色主题">
+      <button class="themeswitch__btn" data-theme-value="auto" aria-pressed="true">系统</button>
+      <button class="themeswitch__btn" data-theme-value="light" aria-pressed="false">亮</button>
+      <button class="themeswitch__btn" data-theme-value="dark" aria-pressed="false">暗</button>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+
+  <aside class="sidebar" id="sitenav" aria-label="学习地图">
+    <div class="sidebar__inner">
+      <p class="sidebar__heading">学习地图</p>
+      <nav class="maptree" id="maptree">
+<!-- @SIDEBAR -->
+      </nav>
+      <div class="sidebar__meta">
+        <span id="progress-count">0/<!-- @TOTAL_MODULES --> 已完成</span>
+        <button class="linkbtn" id="progress-reset">重置进度</button>
+      </div>
+      <p class="sidebar__note">构建于 <!-- @BUILD_TIME --><br>设计文档见 <a href="./DESIGN.md">DESIGN.md</a></p>
+    </div>
+  </aside>
+
+  <main class="main" id="main">
+
+    <!-- ===== 首页 Hero ===== -->
+    <section class="hero" id="home" aria-labelledby="hero-title">
+      <div class="hero__text">
+        <p class="hero__kicker">把 AI 拆开给你看</p>
+        <h1 id="hero-title">不讲新闻，不卖课，<br>只讲「它到底怎么工作」</h1>
+        <p class="hero__lede">一台把 1750 亿个数字拧成「会回答问题」的机器，中间并没有发生魔法。
+          本站用 13 个模块、13 个能动手拨弄的演示，把这条链路从头讲到尾：
+          从「压缩得越好就预测得越准」，一路推到「它为什么会一本正经地胡说八道」。</p>
+        <ul class="hero__rules">
+          <li><strong>不只给类比。</strong>每个类比后面必须紧跟机制，且写明类比在哪里失效。</li>
+          <li><strong>没有未定义的符号。</strong>每个记号第一次出现，就在同一屏给出读法和含义。</li>
+          <li><strong>不许有魔法数字。</strong>学习率、上下文长度、温度——凡有数字，就说清它从哪来、改了会怎样。</li>
+        </ul>
+        <div class="hero__actions">
+          <a class="btn btn--primary" href="#m01">从 M01 开始读</a>
+          <a class="btn" href="#m07">直接看 Transformer</a>
+          <a class="btn btn--ghost" href="#modmap">先扫一遍地图</a>
+        </div>
+      </div>
+      <svg class="hero__ring" viewBox="0 0 64 64" role="img" aria-labelledby="hero-ring-title">
+        <title id="hero-ring-title">学习进度</title>
+        <circle cx="32" cy="32" r="28" class="ring-bg"></circle>
+        <circle cx="32" cy="32" r="28" class="ring-fg" id="hero-ring"></circle>
+        <text x="32" y="37" class="ring-label">0%</text>
+      </svg>
+    </section>
+
+    <!-- ===== 模块索引 ===== -->
+    <section class="modmap" id="modmap" aria-labelledby="modmap-title">
+      <h2 id="modmap-title">13 个模块，一条主线</h2>
+      <p class="modmap__lede prose">顺序不是按主题美观排的，而是按依赖排的：前四个模块只用到初中数学，
+        之后每一块都建立在前一块之上。你可以顺序通读（约 5 小时），也可以直接跳进任何一个模块——
+        每个模块顶部会告诉你它需要先读懂哪几个。</p>
+<!-- @MODMAP -->
+    </section>
+
+    <!-- ===== 模块正文 ===== -->
+    <div class="modules" id="modules">
+<!-- @MODULES -->
+    </div>
+  </main>
+
+  <aside class="toc" id="toc" aria-label="当前模块段落">
+    <div class="toc__inner">
+      <p class="toc__heading">本模块段落</p>
+      <ul class="toc__list" id="toc-list"></ul>
+      <p class="toc__hint">快捷键：<kbd>t</kbd> 主题 · <kbd>j</kbd>/<kbd>k</kbd> 跳段 · <kbd>[</kbd>/<kbd>]</kbd> 换模块 · <kbd>/</kbd> 搜索</p>
+    </div>
+  </aside>
+</div>
+
+<footer class="sitefooter">
+  <div class="sitefooter__cols">
+    <section><h4>关于</h4><p>一个用可交互图解讲清 AI 底层原理的开源静态站点。无追踪、无后端、无框架。</p></section>
+    <section><h4>内容规范</h4><ul><li><a href="./DESIGN.md">设计文档</a></li><li><a href="./docs/writing-guide.md">写作规范</a></li><li><a href="./docs/glossary.md">术语表</a></li></ul></section>
+    <section><h4>工程</h4><ul><li><a href="./assets/data/modules.json">内容契约 modules.json</a></li><li><a href="./README.md">如何构建与自检</a></li></ul></section>
+    <section><h4>许可</h4><p>文字与图解 CC BY-SA 4.0，代码 MIT。引用请注明出处。</p></section>
+  </div>
+  <p class="sitefooter__status">13 个模块 · 13 个交互演示 · 单文件零依赖</p>
+</footer>
+
+<!-- 搜索面板（app.js 实现，纯前端标题+术语+带走句索引） -->
+<dialog class="searchdlg" id="search-dlg" aria-label="站内搜索">
+  <div class="searchdlg__box">
+    <label class="sr-only" for="search-input">搜索关键词</label>
+    <input id="search-input" type="search" placeholder="搜模块、术语或结论…" autocomplete="off" spellcheck="false">
+    <ul class="searchdlg__results" id="search-results" role="listbox" aria-label="搜索结果"></ul>
+    <p class="searchdlg__hint"><kbd>↑</kbd><kbd>↓</kbd> 选择 · <kbd>Enter</kbd> 打开 · <kbd>Esc</kbd> 关闭</p>
+  </div>
+</dialog>
+
+<!-- 图解放大视图 -->
+<dialog class="lightbox" id="lightbox" aria-label="图解放大视图">
+  <div class="lightbox__bar"><span class="lightbox__title">图解</span>
+    <button class="iconbtn" data-zoom="in" aria-label="放大">＋</button>
+    <button class="iconbtn" data-zoom="out" aria-label="缩小">－</button>
+    <button class="iconbtn" data-zoom="reset" aria-label="还原">⟲</button>
+    <button class="iconbtn" id="lightbox-close" aria-label="关闭">✕</button>
+  </div>
+  <div class="lightbox__stage" id="lightbox-stage"></div>
+</dialog>
+
+<noscript>
+  <p class="noscript">未启用 JavaScript：正文、公式与图解均可完整阅读；主题切换、段落高亮与交互演示控件不可用。</p>
+</noscript>
+</body>
+</html>
