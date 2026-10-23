@@ -583,10 +583,64 @@
        ?only=m07--demo   只显示该段落，其余区块隐藏（单段预览）
        ?mountall         立即挂载全部演示，跳过懒加载
      ======================================================================== */
+  function runProbe() {
+    const out = [];
+    doc.querySelectorAll('.demo[data-demo]').forEach(host => {
+      const key = host.dataset.demo;
+      const svg = host.querySelector('.demo-svg');
+      const f = [];
+      if (!host.classList.contains('is-live')) f.push('NOTLIVE');
+      if (!svg) { out.push(key + '{' + (f.join(',') || 'NOSVG') + '}'); return; }
+      if (!host.querySelector('.demo__field, .demo__controls select, .dk-toggle')) f.push('NOCTRL');
+      if (!host.querySelector('.demo__legend')) f.push('NOHINT');
+      if (!/重置/.test(host.textContent || '')) f.push('NORESET');
+      if (/尚未实现|演示加载失败/.test(host.textContent || '')) f.push('PLACEHOLDER');
+
+      const vb = (svg.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
+      if (vb.length !== 4) { f.push('NOVB'); out.push(key + '{' + f.join(',') + '}'); return; }
+      const [vx, vy, vw, vh] = vb, eps = 2;
+      const svgCTM = svg.getScreenCTM();
+      if (!svgCTM) { f.push('NOCtm'); out.push(key + '{' + f.join(',') + '}'); return; }
+      const inv = svgCTM.inverse();
+      let over = 0, worst = '';
+      svg.querySelectorAll('text').forEach(t => {
+        if (!t.textContent.trim()) return;
+        let b, ctm;
+        try { b = t.getBBox(); ctm = t.getScreenCTM(); } catch (e) { return; }
+        if (!ctm) return;
+        /* getBBox 是元素【局部】坐标；被 transform 的组里的文字必须映射回
+           svg 用户坐标，否则会被误判成越界。m = inv(svg)·elem 变换四角。 */
+        const m = inv.multiply(ctm);
+        /* 手写仿射变换：DOMMatrix.transformPoint 在部分上下文里不可用，
+           而 a/b/c/d/e/f 是规范保证有的属性。
+           (x,y) -> (a·x + c·y + e, b·x + d·y + f) */
+        const A = m.a, B = m.b, C = m.c, D = m.d, E = m.e, F = m.f;
+        const pts = [[b.x, b.y], [b.x + b.width, b.y], [b.x, b.y + b.height], [b.x + b.width, b.y + b.height]];
+        let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+        pts.forEach(([px, py]) => {
+          const qx = A * px + C * py + E, qy = B * px + D * py + F;
+          x0 = Math.min(x0, qx); y0 = Math.min(y0, qy);
+          x1 = Math.max(x1, qx); y1 = Math.max(y1, qy);
+        });
+        if (x1 > vx + vw + eps || y1 > vy + vh + eps || x0 < vx - eps || y0 < vy - eps) {
+          over++;
+          if (!worst) worst = t.textContent.trim().replace(/\s+/g, '').slice(0, 12) +
+            '@' + Math.round(x0) + ',' + Math.round(y0) + '~' + Math.round(x1) + ',' + Math.round(y1);
+        }
+      });
+      if (over) f.push('OVER' + over + '|' + worst);
+      out.push(key + '{' + f.join(',') + '}');
+    });
+    root.setAttribute('data-probe', out.join(' '));
+    doc.title = 'PROBE::' + out.join(' ');
+  }
+
   function initDebugQuery() {
     let q;
     try { q = new URLSearchParams(location.search); } catch (e) { return; }
     if (q.has('mountall')) doc.querySelectorAll('.demo[data-demo]').forEach(mountOne);
+    /* 探针要等一帧，让刚插入的 SVG 完成布局后 getBBox 才有真实尺寸 */
+    if (q.has('probe')) requestAnimationFrame(() => setTimeout(runProbe, 80));
     const only = q.get('only');
     if (!only) return;
     const t = doc.getElementById(only);

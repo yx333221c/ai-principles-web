@@ -187,7 +187,9 @@
         api.yTicks.push({ ln: ln, tx: tx });
       }
       api.tX = DK.el('text', { x: W / 2, y: H - 6, class: 't-xs faint', 'text-anchor': 'middle', text: '' });
-      api.tY = DK.el('text', { x: 12, y: pad.t - 8, class: 't-xs faint', text: '' });
+      /* 纵轴标题竖排贴在轴左侧：横排会和上方模式说明（y=49）以及刻度文字挤在一起 */
+      api.tY = DK.el('text', { class: 't-xs faint', 'text-anchor': 'middle',
+        transform: `translate(14 ${(pad.t + (H - pad.b)) / 2}) rotate(-90)`, text: '' });
       svg.appendChild(api.tX); svg.appendChild(api.tY);
 
       /* 地板线 L∞ */
@@ -271,8 +273,13 @@
       }
       api.tX.textContent = st.loglog ? '参数量 N（对数刻度，每格 ×10）'
         : '参数量 N（线性刻度：所有点挤在最左边，直线没了）';
+      /* 纵轴刻度必须走 PY：loglog 模式下 sc 的定义域是 log10(L)，
+         直接把线性损失值喂给 sc.py 会把刻度放到画布上方（负 y）。 */
       for (let i = 0; i < 5; i++) {
-        const lv = lo + (hi - lo) * i / 4, y = sc.py(lv), t = api.yTicks[i];
+        const lv = st.loglog
+          ? Math.pow(10, Math.log10(lo) + (Math.log10(hi) - Math.log10(lo)) * i / 4)
+          : lo + (hi - lo) * i / 4;
+        const y = PY(lv), t = api.yTicks[i];
         t.ln.setAttribute('y1', y); t.ln.setAttribute('y2', y);
         t.tx.setAttribute('y', y + 3.5); t.tx.textContent = lv.toFixed(2);
       }

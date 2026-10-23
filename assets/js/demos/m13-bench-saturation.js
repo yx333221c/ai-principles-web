@@ -188,7 +188,7 @@
         mk('line', { x1: AX0, y1: y, x2: AX1, y2: y, class: v === 0 ? 'grid' : 'grid grid--dash' });
         mk('text', { x: AX0 - 7, y: y + 3, class: 't-xs muted', 'text-anchor': 'end', text: v.toFixed(2) });
       });
-      mk('text', { x: 12, y: P1 - 6, class: 't-xs faint', text: '正确率' });
+      mk('text', { x: 6, y: P1 - 6, class: 't-xs faint', text: '正确率' });
       mk('line', { x1: AX0, y1: P1, x2: AX0, y2: P0, style: 'stroke:var(--c-line-strong);stroke-width:1' });
 
       /* ---------- 曲线（参考 θ+0.2 先画，主曲线压在上面） ---------- */
@@ -205,11 +205,11 @@
           rx: 2, opacity: 0.55 }));
       }
 
-      /* 污染覆盖条 + 标签 */
+      /* 污染覆盖条。数字标注**不进画布**：图内任何固定位置都可能与曲线或 θ
+         游标标签相撞，所以把「多少题被判必对、抬了多少分」写进底部说明行
+         （那一行本来就在解释红色，读者视线已经在那儿）。 */
       api.band = mk('rect', { x: AX0, y: P0 - 5, width: 0, height: 5, rx: 1,
         style: 'fill:var(--c-err)', opacity: 0 });
-      api.bandTx = mk('text', { x: AX0, y: P1 + 12, class: 't-xs',
-        style: 'fill:var(--c-err)', opacity: 0, text: '' });
 
       /* θ 与 θ+0.2 的竖直游标（贯穿上下两图） */
       api.th2 = mk('line', { y1: P1, y2: HB1, style: 'stroke:var(--c-fg-muted);stroke-width:1;stroke-dasharray:2 4' });
@@ -251,8 +251,10 @@
       }
 
       /* ---------- 底部两条说明（396 基线以下，整幅宽度可用） ---------- */
-      mk('text', { x: 8, y: 414, class: 't-xs', style: 'fill:var(--c-fg-faint)',
-        text: '红条 = 被判定「训练集里见过」的题：必对 ⇒ 区分度 0、方差 0，却照样把总分抬上去。' });
+      /* 第一条做成**动态**：污染的具体数字写在这里，而不是画在图里——图内任何
+         固定位置都可能与曲线或 θ 游标标签相撞。整行 684px / t-xs(9px) ≈ 76 个
+         全角字，最长状态约 56 个，安全。 */
+      api.cap1 = mk('text', { x: 8, y: 414, class: 't-xs', style: 'fill:var(--c-fg-faint)', text: '' });
       mk('text', { x: 8, y: 426, class: 't-xs', style: 'fill:var(--c-fg-faint)',
         text: '橙线 = θ 的落点（五成把握的难度位置）。它滑出卷子右端那一刻，就是基准饱和那一刻。' });
 
@@ -288,7 +290,9 @@
       api.nlHi = mk('text', { x: NLX1, y: NLY1 + 23, class: 't-xs', 'text-anchor': 'middle',
         style: 'fill:var(--c-fg-faint)', text: '' });
 
-      /* 热力条图例（色块 + 文字都在左半边，不越界） */
+      /* 热力条图例：色块 + 文字并排，文字在卡片底色上（默认正文色，两主题都可读），
+         不放进色块内部——heatFill 的浅档在亮主题接近白、深档在暗主题接近浅蓝白，
+         任何固定文字色都会在某一主题下失效，所以整张热力条都不嵌数字。 */
       api.lg = [];
       [['深 = 区分度高（五五开，信息最多）', 0.95],
        ['浅 = 区分度≈0（太易或太难，零信息）', 0.05]].forEach(function (it, i) {
@@ -345,17 +349,13 @@
       cursor(api.thTx, tx, 'θ=' + th.toFixed(2), tx > AX1 - 52);
       cursor(api.th2Tx, tx2, 'θ+0.2', tx2 > AX1 - 44);
 
-      /* 4) 污染覆盖条 */
+      /* 3) 污染覆盖条（数字进顶部状态行，见 draw 第 8 步） */
       if (dirty && C.seenN > 0) {
         const bx = X(DK.clamp(C.xCut, 0, XMAX));
         api.band.setAttribute('width', Math.max(1, bx - AX0).toFixed(1));
         api.band.setAttribute('opacity', 0.85);
-        api.bandTx.setAttribute('opacity', 1);
-        api.bandTx.setAttribute('x', Math.min(bx + 6, AX1 - 150).toFixed(1));
-        api.bandTx.textContent = '这批「见过」的题判为必对：' + C.seenN + ' / ' + N;
       } else {
         api.band.setAttribute('width', 0); api.band.setAttribute('opacity', 0);
-        api.bandTx.setAttribute('opacity', 0);
       }
 
       /* 5) 区分度柱 + 热力条 + 题目数直方图 */
@@ -363,8 +363,10 @@
       const hmax = Math.max(1, Math.max.apply(null, C.cnt));
       for (let b = 0; b < NB; b++) {
         const vd = C.cnt[b] ? C.vd[b] / C.cnt[b] : 0;
-        if (vd < 0.2) grey++;
-        if (vd >= 0.5) warm++;
+        if (C.cnt[b]) {
+          if (vd < 0.2) grey++;
+          if (vd >= 0.5) warm++;
+        }
         const vh = vd * PH / 4;
         api.varBars[b].setAttribute('y', (P0 - vh).toFixed(1));
         api.varBars[b].setAttribute('height', Math.max(vd > 0.02 ? 1 : 0, vh).toFixed(1));
@@ -377,8 +379,14 @@
         api.seenBars[b].setAttribute('y', (HB1 - sh).toFixed(1));
         api.seenBars[b].setAttribute('height', sh.toFixed(1));
         api.seenBars[b].setAttribute('opacity', (dirty && C.sn[b]) ? 0.8 : 0);
-        api.cells[b].setAttribute('fill', DK.heatFill(vd));
-        api.cells[b].setAttribute('opacity', st.heat ? 1 : 0.25);
+        /* 空箱（本基准没有落在这一段）不能画成「饱和」——用中性底纹区分开 */
+        if (!C.cnt[b]) {
+          api.cells[b].setAttribute('fill', 'var(--c-bg-sunken)');
+          api.cells[b].setAttribute('opacity', 1);
+        } else {
+          api.cells[b].setAttribute('fill', DK.heatFill(vd));
+          api.cells[b].setAttribute('opacity', st.heat ? 1 : 0.25);
+        }
       }
       api.histMaxTx.textContent = '×' + hmax;
       api.stripName.setAttribute('opacity', st.heat ? 1 : 0.4);
@@ -399,8 +407,11 @@
       api.rows.b.textContent = (C2.pm * 100).toFixed(1) + ' 分';
       api.rows.se.textContent = '±' + (C.se * 100).toFixed(2) + ' 分';
       api.rows.min.style.fill = okMin ? 'var(--c-fg)' : 'var(--c-err)';
+      /* 接近满分时斜率趋零，这个商会被溢出噪声主导：数值仍然正确，但停止解读 */
+      const minCap = (st.theta >= 3.95 && C.eff / N < 0.02) || C.slope < 1e-3;
       api.rows.min.textContent = isFinite(minD)
-        ? DK.fmt(minD, 2) + (isFinite(ratio) && ratio <= 99 ? '（θ 的 ' + (ratio * 100).toFixed(0) + '%）' : '')
+        ? DK.fmt(minD, 2) + (minCap ? '（溢出区，读数已无意义）'
+          : (isFinite(ratio) && ratio <= 99 ? '（θ 的 ' + (ratio * 100).toFixed(0) + '%）' : ''))
         : '∞';
       api.rows.win.style.fill = C.eff < 0.3 ? 'var(--c-err)' : 'var(--c-fg)';
       api.rows.win.textContent = C.winLo === null ? '无（全卷零信息）'
@@ -433,6 +444,13 @@
         + '｜' + warm + ' 段有效 / ' + grey + ' 段已灰'
         + (dirty ? '｜污染已开' : '')
         + (th > XHI ? '｜θ 已超出本基准量程' : '');
+      /* 底部第一行：污染开启时把具体数字写在这里（图内没有固定安全位置） */
+      api.cap1.style.fill = dirty ? 'var(--c-err)' : 'var(--c-fg-faint)';
+      api.cap1.textContent = dirty && C.seenN > 0
+        ? '红色 = 被判定「训练集里见过」的 ' + C.seenN + ' / ' + N + ' 题：必对 ⇒ 区分度 0、方差 0，'
+          + '却把总分抬高了 ' + infl.toFixed(1) + ' 分（= ' + (C.se > 0 ? (infl / (C.se * 100)).toFixed(1) : '∞')
+          + ' 个标准误），而 θ 一动没动。'
+        : '红色 = 被判定「训练集里见过」的题：必对 ⇒ 区分度 0、方差 0，却照样把总分抬上去。';
 
       if (api._ro) {
         api._ro.set('score', (C.pm * 100).toFixed(1) + ' 分');
@@ -448,7 +466,8 @@
     hint: '<strong>你能改什么：</strong>模型能力 θ ∈ [0, 4]（步长 0.05；θ 与题目难度<strong>同一单位</strong>——' +
       'θ=1.5 就是对「难度 1.5」的题有五成把握，橙线标出落点）；题目数量 N ∈ [20, 500]（这个基准一共几道题）；' +
       '被污染占比 ∈ [0, 80%]（其中多少题在训练语料里出现过，要与「训练集污染」一起打开）；' +
-      '两个开关：「训练集污染」「显示区分度热力条」。区分度 = 4p(1−p)：1 = 五五开（信息量最大），0 = 全员同答案（零信息）。<br>' +
+      '两个开关：「训练集污染」「显示区分度热力条」。区分度 = 4p(1−p)：1 = 五五开（信息量最大），0 = 全员同答案（零信息）；' +
+      '热力条里<strong>最左一格是中性的</strong>，因为这个基准的题目最易也只到难度 0.4，那一段根本没有题——「没有题」和「题没有信息」是两回事。<br>' +
       '<strong>拨动它你会看到（照这个顺序做四个实验）：</strong>' +
       '① 关掉污染，把 θ 从 1.5 一路拖到 4.0：总分从约 51 分涨到约 99 分，看起来一路进步；' +
       '但右栏「θ 相差 0.2 的两个模型差几个标准误」从 <em>2.0 跌到 0.4 以下</em>，' +

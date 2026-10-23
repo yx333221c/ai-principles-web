@@ -228,7 +228,10 @@ built.forEach(m => {
   const keyed = (src.match(/key:\s*(?:'[^']+'|"[^"]+"|[A-Za-z_$][\w$]*)/g) || []).length;
   if (ranges && keyed < ranges) bad(f + ' 有 ' + ranges + ' 个控件但只有 ' + keyed + ' 个挂了 key（reset 会失效）');
   else if (ranges) ok(f + ' ' + ranges + ' 个控件均绑定 state key');
-  if (/Math\.random/.test(src)) bad(f + ' 用了 Math.random（不可复现，须用 DK.rng(seed)）');
+  /* 扫 Math.random 前必须剥掉注释：m04 的注释里写着「不用 Math.random」，
+     不剥就会误报，而作者为了骗过检查器去改注释是更糟的做法。 */
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  if (/Math\.random/.test(code)) bad(f + ' 用了 Math.random（不可复现，须用 DK.rng(seed)）');
   if (/draw\s*\([^)]*\)\s*\{[\s\S]{0,400}?appendChild\(DK\.el\([^)]*rect/.test(src)) warn(f + ' draw 内可能新建 rect 堆积，检查是否复用节点');
 });
 

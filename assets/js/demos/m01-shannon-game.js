@@ -371,9 +371,10 @@
         svg.appendChild(DK.el('line', { x1: lx, y1: 338, x2: lx + 15, y2: 338, stroke: col, 'stroke-width': 2.4 }));
         svg.appendChild(DK.el('text', { x: lx + 19, y: 341, class: 't-xs muted', text: txt }));
       });
+      /* 起点 486 + 这段文字必须落在 viewBox 宽 720 以内，否则末尾会被裁掉 */
       svg.appendChild(DK.el('text', {
         x: 486, y: 341, class: 't-xs faint',
-        text: '1/3 bit 是教学简化；真实代价 −log₂ p 见机制段第 ② 步。'
+        text: '1/3 bit 为教学简化；真实代价 −log₂ p 见第 ② 步'
       }));
     },
 
