@@ -34,7 +34,7 @@
 
   <div class="figure" data-fig="m06-path-length-1">
     <div class="figure__inner">
-      <svg viewBox="0 0 640 258" class="dgm" role="img" aria-labelledby="f6pl-t">
+      <svg viewBox="0 0 640 262" class="dgm" role="img" aria-labelledby="f6pl-t">
         <title id="f6pl-t">上栏：RNN 把同一组权重在时间上重复 100 次，梯度回传要走 99 段；下栏：注意力让首尾两个位置直接相连，路径长度为 1</title>
         <desc>上栏是一排首尾相连的方块，方块之间是单向箭头；一条橙色折线从最右方块下方绕回最左方块，箭头指回第一个方块，标注 99 段。下栏同样一排方块但彼此不相连，一条蓝色弧线从最右方块顶部直接跨到最左方块顶部，标注 1 段。</desc>
 
@@ -44,13 +44,14 @@
           <rect class="box" x="70" y="24" width="44" height="26" rx="5"></rect><text x="92" y="41" class="t-sm" text-anchor="middle">h<tspan baseline-shift="sub">2</tspan></text>
           <rect class="box" x="130" y="24" width="44" height="26" rx="5"></rect><text x="152" y="41" class="t-sm" text-anchor="middle">h<tspan baseline-shift="sub">3</tspan></text>
           <rect class="box" x="190" y="24" width="44" height="26" rx="5"></rect><text x="212" y="41" class="t-sm" text-anchor="middle">h<tspan baseline-shift="sub">4</tspan></text>
-          <text x="252" y="42" class="t-lg muted">⋯</text>
+          <text x="258" y="42" class="t-lg muted">⋯</text>
           <rect class="box" x="286" y="24" width="52" height="26" rx="5"></rect><text x="312" y="41" class="t-sm" text-anchor="middle">h<tspan baseline-shift="sub">99</tspan></text>
           <rect class="box box--a" x="356" y="24" width="52" height="26" rx="5"></rect><text x="382" y="41" class="t-sm" text-anchor="middle">h<tspan baseline-shift="sub">100</tspan></text>
           <line class="arrow" x1="54" y1="37" x2="70" y2="37"></line>
           <line class="arrow" x1="114" y1="37" x2="130" y2="37"></line>
           <line class="arrow" x1="174" y1="37" x2="190" y2="37"></line>
-          <line class="arrow" x1="234" y1="37" x2="286" y2="37"></line>
+          <line class="arrow" x1="234" y1="37" x2="248" y2="37"></line>
+          <line class="arrow" x1="268" y1="37" x2="286" y2="37"></line>
           <line class="arrow" x1="338" y1="37" x2="356" y2="37"></line>
           <text x="424" y="37" class="t-xs muted">同一组 W<tspan baseline-shift="sub">h</tspan> 重复 100 次</text>
         </g>
@@ -66,26 +67,26 @@
           <text x="10" y="108" class="t-xs bad">✕ 第 t 步必须等第 t−1 步：整句串行，GPU 的并行单元大多在空转</text>
         </g>
 
-        <text x="10" y="132" class="t-sm faint">B · 注意力：任意两个位置直接相连</text>
+        <text x="10" y="128" class="t-sm faint">B · 注意力：任意两个位置直接相连</text>
         <g data-step="7">
-          <path class="line--a" d="M382 140 C 300 108 110 108 32 140"></path>
-          <polygon class="accent" points="32,144 27,134 37,134"></polygon>
-          <text x="152" y="122" class="t-sm accent">1 段直达 · 路径长度与距离无关</text>
-          <rect class="box" x="10" y="146" width="44" height="26" rx="5"></rect><text x="32" y="163" class="t-sm" text-anchor="middle">x<tspan baseline-shift="sub">1</tspan></text>
-          <rect class="box" x="70" y="146" width="44" height="26" rx="5"></rect><text x="92" y="163" class="t-sm" text-anchor="middle">x<tspan baseline-shift="sub">2</tspan></text>
-          <rect class="box" x="130" y="146" width="44" height="26" rx="5"></rect><text x="152" y="163" class="t-sm" text-anchor="middle">x<tspan baseline-shift="sub">3</tspan></text>
-          <rect class="box" x="190" y="146" width="44" height="26" rx="5"></rect><text x="212" y="163" class="t-sm" text-anchor="middle">x<tspan baseline-shift="sub">4</tspan></text>
-          <text x="252" y="164" class="t-lg muted">⋯</text>
-          <rect class="box" x="286" y="146" width="52" height="26" rx="5"></rect><text x="312" y="163" class="t-sm" text-anchor="middle">x<tspan baseline-shift="sub">99</tspan></text>
-          <rect class="box box--g" x="356" y="146" width="52" height="26" rx="5"></rect><text x="382" y="163" class="t-sm" text-anchor="middle">x<tspan baseline-shift="sub">100</tspan></text>
-          <text x="424" y="163" class="t-xs muted">100 个位置一次矩阵乘算完</text>
+          <path class="line--a" d="M382 148 C 300 130 110 130 32 148"></path>
+          <polygon class="accent" points="32,152 27,142 37,142"></polygon>
+          <rect class="box" x="10" y="156" width="44" height="26" rx="5"></rect><text x="32" y="173" class="t-sm" text-anchor="middle">x<tspan baseline-shift="sub">1</tspan></text>
+          <rect class="box" x="70" y="156" width="44" height="26" rx="5"></rect><text x="92" y="173" class="t-sm" text-anchor="middle">x<tspan baseline-shift="sub">2</tspan></text>
+          <rect class="box" x="130" y="156" width="44" height="26" rx="5"></rect><text x="152" y="173" class="t-sm" text-anchor="middle">x<tspan baseline-shift="sub">3</tspan></text>
+          <rect class="box" x="190" y="156" width="44" height="26" rx="5"></rect><text x="212" y="173" class="t-sm" text-anchor="middle">x<tspan baseline-shift="sub">4</tspan></text>
+          <text x="258" y="174" class="t-lg muted">⋯</text>
+          <rect class="box" x="286" y="156" width="52" height="26" rx="5"></rect><text x="312" y="173" class="t-sm" text-anchor="middle">x<tspan baseline-shift="sub">99</tspan></text>
+          <rect class="box box--g" x="356" y="156" width="52" height="26" rx="5"></rect><text x="382" y="173" class="t-sm" text-anchor="middle">x<tspan baseline-shift="sub">100</tspan></text>
+          <text x="424" y="166" class="t-xs accent">1 段直达 · 与距离无关</text>
+          <text x="424" y="180" class="t-xs muted">100 个位置一次算完</text>
         </g>
         <g data-step="7">
-          <text x="10" y="188" class="t-xs good">✓ 没有先后依赖：全部位置并行 · 但代价是一张 n×n 的关系表（M07 第 ② 步）</text>
+          <text x="10" y="204" class="t-xs good">✓ 没有先后依赖：全部位置并行 · 但代价是一张 n×n 的关系表（M07 第 ② 步）</text>
         </g>
-        <text x="10" y="212" class="t-xs muted">两栏唯一差别是「一次计算里，两个位置之间隔几跳」。跳数就是梯度连乘的次数。</text>
-        <text x="10" y="230" class="t-xs faint">已简化：省略偏置、激活函数的逐位置差异与层间残差通路；方框是每位置的状态，不是词。</text>
-        <text x="10" y="248" class="t-xs faint">真实模型里每个方框是 512 个左右的数，「一次矩阵乘」是 n×n×d 次乘加。</text>
+        <text x="10" y="224" class="t-xs muted">两栏唯一差别是「一次计算里，两个位置之间隔几跳」。跳数就是梯度连乘的次数。</text>
+        <text x="10" y="241" class="t-xs faint">已简化：省略偏置、逐位置的激活函数导数与层间残差通路；方框是每位置的状态，不是词。</text>
+        <text x="10" y="258" class="t-xs faint">真实模型里每个方框是 512 个左右的数；「一次算完」是 n×n×d 次乘加。</text>
       </svg>
     </div>
     <figcaption>从上栏左侧读到右侧是「前向」，橙色折线反着走回左侧是「回传」，它经过几段就要乘几次同一个矩阵。下栏只看那条蓝色弧线：无论跨多远，它只有一跳。左侧步骤条上的编号可点，会高亮对应环节。</figcaption>

@@ -250,9 +250,8 @@
         '权重 w₁ →', 34, 'clipB');
 
       svg.appendChild(DK.el('text', {
-        x: 12, y: 474, class: 't-xs faint',
-        text: '两条曲线都是本演示实时扫描出来的：A 让 x₁ 从 −3 扫到 3（其余不变），B 让 w₁ 从 −3 扫到 3（其余不变）。' +
-              'B 的纵轴会按当前曲线自动缩放。'
+        x: 12, y: 476, class: 't-xs faint',
+        text: '两条曲线由本演示实时扫描：A 让 x₁ 扫过 −3…+3（其余不变），B 让 w₁ 扫过 −3…+3（其余不变）；B 的纵轴按当前曲线自动缩放。'
       }));
     },
 
@@ -269,9 +268,11 @@
       NODE_DEF.forEach(function (n) {
         const nd = api.nodes[n.k];
         const shown = f >= n.fw;
-        nd.g.style.opacity = shown ? 1 : 0.26;
+        nd.g.style.opacity = shown ? 1 : 0.45;
         /* 值那一行 */
-        if (n.val === 'x1') nd.val.textContent = 'x₁ = ' + DK.fmt(s.x1, 2);
+        if (!shown && n.fw >= 2) {
+          nd.val.textContent = '（还没算到）';
+        } else if (n.val === 'x1') nd.val.textContent = 'x₁ = ' + DK.fmt(s.x1, 2);
         else if (n.val === 'w1' || n.val === 'w2' || n.val === 'w3') nd.val.textContent = n.k + ' = ' + DK.fmt(s[n.val], 2);
         else if (n.val === 'fix2') nd.val.textContent = 'x₂ = ' + DK.fmt(X2, 2);
         else if (n.val === 'fix3') nd.val.textContent = 'x₃ = ' + DK.fmt(X3, 2);
@@ -285,8 +286,7 @@
           nd.rect.style.fill = DK.heatFill(Math.abs(g) / gmax);
           nd.rect.style.stroke = 'var(--c-warn)';
         } else {
-          nd.grad.textContent = n.bw > 0 ? '（梯度还没回来）'
-            : (n.kind === 'in' || n.kind === 'fix' ? '' : '');
+          nd.grad.textContent = (n.bw > 0 && shown) ? '（梯度还没回来）' : '';
           nd.grad.setAttribute('class', 't-xs faint');
           nd.rect.style.fill = (n.kind === 'p' || n.kind === 'fix') ? 'var(--c-bg-sunken)' : '';
           nd.rect.style.stroke = '';
@@ -328,9 +328,9 @@
       ia.head.setAttribute('x1', xaOf(s.x1)); ia.head.setAttribute('x2', xaOf(s.x1));
       ia.dot.setAttribute('cx', xaOf(s.x1)); ia.dot.setAttribute('cy', mapA(c.y));
       ia.dot.style.opacity = f >= 5 ? 1 : 0.25;
-      ia.sub.textContent = 'y 值域：' + DK.fmt(ia.lo, 2) + ' … ' + DK.fmt(ia.hi, 2) +
-        '（虚线 = 目标 t=1）';
-      ia.scale.textContent = 'φ′ 跳变或趋 0 处就是折点（第 ③⑤ 步）';
+      ia.sub.textContent = 'y 值域：' + DK.fmt(isFinite(lo) ? lo : 0, 2) + ' … ' +
+        DK.fmt(isFinite(hi) ? hi : 0, 2) + '（虚线 = 目标 t=1）';
+      ia.scale.textContent = '折点 = φ′ 跳变或趋 0 的地方（第 ③⑤ 步）';
 
       /* --- B 面板：∂L/∂w₁ 随 w₁ 的形状（自动纵向缩放） --- */
       const PB = api.PB, ib = api.panels.B;
@@ -464,7 +464,7 @@
     g.appendChild(sub); g.appendChild(scale); g.appendChild(note2);
     svg.appendChild(g);
     api.panels[id] = { zero: zero, tline: tline, curve: curve, head: head, dot: dot,
-      ghost: ghost, sub: sub, scale: scale, note2: note2, lo: 0, hi: 1 };
+      ghost: ghost, sub: sub, scale: scale, note2: note2 };
   }
   /** 逐帧推进：只走 api.animate(fn)，因此尊重 prefers-reduced-motion（§6.3 降级） */
   function play(api, to) {

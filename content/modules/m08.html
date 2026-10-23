@@ -1,0 +1,234 @@
+<seg name="hook">
+  <p class="hook">同一批人、同一套代码，只是把算力放大了大约一百倍，模型突然会做多位数加法，会纠正自己上一句写错的话——这些事，在小一号的它身上练多少遍都学不会。多花的钱买到了什么？为什么偏偏是「突然」？</p>
+  <p class="demo__note">读完本模块你需要 M02（损失与困惑度）和 M07（Transformer 骨架）。M07 结尾那句「顺序信息也来自数据规模之外的东西」，这里正面回答。</p>
+</seg>
+
+<seg name="intuition">
+  <p>想象一架<strong>越往下越贵的梯子</strong>。几个小模型各自记下自己那一级的「猜得有多不准」，把这几格经验画在一张纸上，它们几乎落在同一条直线上。于是我们敢做一个大胆推断：照着直线往下爬，每想再降一格损失，资源就得<strong>乘一个固定的倍数</strong>。</p>
+  <p>这就是本模块的心智模型。<span class="term" data-def="损失随参数量、数据量、算力呈幂律下降的经验规律；形式稳定，故可外推。" data-en="scaling law">规模定律</span>（scaling law）说的不是「越大越强」，而是一句更冷静的话：<strong>每降一格平均损失都要付出成倍资源，而且这个倍率本身很稳定</strong>。稳定，才谈得上外推；能外推，才谈得上提前算出下一个模型该造多大。</p>
+  <p>钩子里那个「突然」，是另一件事：梯子量的是<strong>平均</strong>损失，而人注意到的是<strong>单项</strong>能力。两者什么时候一致、什么时候分道扬镳，正是机制段与争议段要拆开的内容。</p>
+
+  <div class="callout callout--warn">
+    <p><strong>这个「梯子」类比对下面三件事不成立，务必记住：</strong></p>
+    <ul>
+      <li><strong>梯子只对「平均损失」成立。</strong>损失是几万亿<span class="term" data-def="模型处理文本的最小单位，既不是词也不是字。" data-en="token">词元</span>上的平均分。某一项具体能力（多位数加法、某种法律题）可以整段平在原地甚至倒退，而总损失照常下降。「降一档损失 ≈ 升一档智能」在平均意义下勉强成立，在单项能力上不成立。</li>
+      <li><strong>「直线」只存在于双对数坐标纸上。</strong>换成普通坐标，同一个规律是条弯线。谁要是目测着弯线往外推，会高估或低估整整一个数量级——演示里关掉「双对数坐标」开关，你会亲眼看到这条线变形。</li>
+      <li><strong>外推的前提是「造梯子的方法」不变。</strong>只要换分词方式、换骨架（M07 那套注意力）、换训练配方，整条线就可能平移甚至改写，历史直线不再自动适用。规模定律外推的是「同一种做法的延续」，不是「一切未来」。</li>
+    </ul>
+  </div>
+</seg>
+
+<seg name="mechanism">
+  <h4>先把「损失」钉成一个可以跨规模比较的数</h4>
+  <p>规模定律的全部说服力，建立在两件很朴素的事上：打分标准只有一个；打分标准在 1 亿参数和 1000 亿参数之间不换。</p>
+
+  <ol class="steps">
+    <li data-step="1"><strong><span class="term" data-def="在海量无标注文本上反复做下一词预测，直到损失降到目标。" data-en="pretraining">预训练</span>的目标只有一个：读前文，猜下一个词元。</strong>模型输出的是概率分布，打分用的还是 M02 那个交叉熵损失。除了这件事，预训练不做任何别的。<span class="badge badge--simplify">已简化</span>（略过批数据处理、学习率调度与硬件细节。）</li>
+    <li data-step="1"><strong>因为打分标准从头到尾没变，不同规模的模型才能放进同一张图比较。</strong>损失是一个单一数字，规模是另一个数字，剩下要回答的只有一个问题：这两个数字怎么对应。</li>
+    <li data-step="2"><strong>经验答案是<span class="term" data-def="y ∝ x^(−α) 型关系：x 乘十，y 乘一个只依赖 α 的固定系数，与 x 的起点无关。" data-en="power law">幂律</span>：L ∝ N^(−α)。</strong>取对数就变成 log L = 常数 − α·log N——<strong>双对数坐标上的一条直线</strong>。直线的意思是「斜率不变」，斜率不变的意思是我们敢沿着它往右画。</li>
+    <li data-step="3"><strong>参数量 N 与数据量 D 各有一条自己的线，不能混为一谈。</strong>参数负责<strong>存</strong>住数据里的规律，数据负责<strong>提供</strong>规律；只放大一项，另一项就成了瓶颈——损失先快降、随后走平，钱花在等待一个填不满的容器上。</li>
+    <li data-step="4"><strong>Chinchilla（Hoffmann 等，2022）把两条线接进同一个算力预算，算出最优配比：给定算力，N 与 D 应近似等比同步放大，约 20 词元配 1 参数。</strong>而当时的主流模型严重「参数过大、数据不足」[2026-10]：1750 亿参数的 GPT-3 只喂了约 3000 亿词元，比值不到 2 [2026-10]。同团队按最优配比重训的 700 亿参数模型，用<strong>一半</strong>算力做到了更低的损失 [2026-10]。</li>
+    <li data-step="5"><strong>这条结论开出两条路：把模型做小、数据喂多，或把数据做大。</strong>训练只花一次钱，推理按词元天天花钱，小模型长期更便宜。后来者普遍越过 20:1 的配比——例如 70 亿参数喂 2 万亿词元（比值约 286）[2026-10]——说明把算力预算优先换成数据，在工程上被反复验证。</li>
+    <li data-step="6"><strong>可是损失这条线，解释不了所有现象。</strong>某些基准（多位数加法、给了<span class="term" data-def="让模型先写中间步骤再给答案的提示方式。" data-en="chain of thought">思维链</span>提示的推理）在小模型上接近乱猜，跨过某个规模后<strong>突然跳升</strong>。这就是 <span class="term" data-def="规模跨过某阈值后才出现的能力；是否真实存在尚在争议中。" data-en="emergent ability">涌现能力</span>（emergent ability）<span class="badge badge--debate">存在争议</span>。</li>
+    <li data-step="7"><strong>两派读的是同一批曲线。</strong>一派（Wei 等，2022）认为跳变是真实的能力相变；另一派（Schaeffer 等，「Are Emergent Abilities a Mirage?」，NeurIPS 2023 杰出论文）指出：把「整题全对才算对」换成连续的度量（如编辑距离——答案差几个字），同一批模型的曲线就变平滑 [2026-10]。跳变可能不是模型变了，是<strong>尺子</strong>变了。</li>
+  </ol>
+
+  <div class="math-block math">
+    L <span class="op">−</span> L<span class="sub">∞</span> <span class="op">∝</span> N<span class="sup"> (−α)</span>
+    <span class="reads">把损失减去一个下界，剩下的部分与「参数量的 −α 次方」成正比：N 乘十，这部分损失就乘 10^(−α)，不管你从 10⁸ 起步还是从 10¹⁰ 起步。</span>
+  </div>
+  <p>α 取多少？两组公开拟合给出的数字不同，而且<strong>不矛盾</strong>：Kaplan 等（2020）对原始损失拟合，α≈0.076；Hoffmann 等（2022）对「损失减下界」拟合，α≈0.34、β≈0.28 [2026-10]。差在「−L<span class="sub">∞</span>」这一笔上——下界减不减，指数会大变。这提醒我们：引用规模定律数字时，必须连拟合形式一起引用。</p>
+
+  <div class="math-block math">
+    L(N, D) <span class="op">=</span> L<span class="sub">∞</span> <span class="op">+</span> A<span class="op">·</span><span class="bigg">(</span><span class="frac"><span class="num">N</span><span class="den">N<span class="sub">0</span></span></span><span class="bigg">)</span><span class="sup"> (−α)</span> <span class="op">+</span> B<span class="op">·</span><span class="bigg">(</span><span class="frac"><span class="num">D</span><span class="den">D<span class="sub">0</span></span></span><span class="bigg">)</span><span class="sup"> (−β)</span>
+    <span class="reads">损失 = 一个不可约的地板，加上「参数那一项」与「数据那一项」两个各自按幂律衰减的部分。想让总损失降，两项得一起抬；只抬一项，另一项先饱和。</span>
+  </div>
+
+  <div class="math-block math">
+    C <span class="op">≈</span> 6 <span class="op">·</span> N <span class="op">·</span> D
+    <span class="reads">训练总算力约等于 6 乘以参数量再乘以词元数——6 是每个词元前向加反向的乘加次数（工程估算）。N 与 D 是同预算下可以互相换的筹码，这正是 Chinchilla 那道「给定 C 分配 N 和 D」的题能成立的原因。</span>
+    <span class="badge badge--simplify">已简化</span>
+  </div>
+
+  <div class="figure" data-fig="m08-scaling-law-1">
+    <div class="figure__inner">
+      <svg viewBox="0 0 640 250" class="dgm" role="img" aria-labelledby="f8sc-t">
+        <title id="f8sc-t">双对数坐标上的三条幂律直线：损失对参数量、数据量、算力各成一条直线，右侧虚线区是无实验点的外推区，底部是 L∞ 地板</title>
+        <desc>横轴为对数尺度（每格乘十），纵轴为对数尺度损失。三条直线从左上向右下延伸，到最后一个实测模型处变为虚线；右侧一片浅色的外推区；底部一条横向虚线为损失下界 L∞。</desc>
+        <!-- 坐标轴 -->
+        <g data-step="2">
+          <line class="line" x1="56" y1="206" x2="614" y2="206"></line>
+          <line class="line" x1="56" y1="24" x2="56" y2="206"></line>
+          <text x="60" y="222" class="t-xs muted">10⁷</text>
+          <text x="170" y="222" class="t-xs muted">10⁸</text>
+          <text x="280" y="222" class="t-xs muted">10⁹</text>
+          <text x="390" y="222" class="t-xs muted">10¹⁰</text>
+          <text x="500" y="222" class="t-xs muted">10¹¹</text>
+          <text x="330" y="240" class="t-xs faint" text-anchor="middle">规模（对数：每向右一格 ×10）</text>
+          <text x="14" y="40" class="t-xs faint" transform="rotate(90 14 40)">损失 L（对数）</text>
+        </g>
+        <!-- 外推区底衬 -->
+        <g data-step="5">
+          <rect x="420" y="24" width="194" height="182" fill="var(--c-bg-sunken)"></rect>
+          <line class="line" x1="420" y1="24" x2="420" y2="206" stroke-dasharray="4 5"></line>
+          <text x="517" y="38" class="t-xs faint" text-anchor="middle">外推区：这里一个实验点都没有</text>
+        </g>
+        <!-- 三条拟合直线 -->
+        <g data-step="2">
+          <line class="line--a" x1="80" y1="52" x2="420" y2="118"></line>
+          <text x="86" y="46" class="t-sm">L vs N（最缓）</text>
+          <line class="line" style="stroke:var(--c-ok)" x1="80" y1="60" x2="420" y2="150"></line>
+          <text x="150" y="72" class="t-sm muted">L vs D（更陡）</text>
+          <line class="line" style="stroke:var(--c-warn)" x1="80" y1="72" x2="420" y2="182"></line>
+          <text x="240" y="112" class="t-sm warm">L vs C（两者相乘，介于其间）</text>
+        </g>
+        <!-- 虚线延伸 -->
+        <g data-step="5">
+          <line class="line--a" x1="420" y1="118" x2="600" y2="149" stroke-dasharray="6 6"></line>
+          <line class="line" style="stroke:var(--c-ok)" x1="420" y1="150" x2="600" y2="195" stroke-dasharray="6 6"></line>
+          <text x="452" y="140" class="t-xs muted">沿直线预测「下一个模型」</text>
+          <text x="452" y="204" class="t-xs bad">数据项这条先撞上地板</text>
+        </g>
+        <!-- 地板线 -->
+        <g data-step="3">
+          <line class="line" style="stroke:var(--c-err)" x1="56" y1="214" x2="614" y2="214" stroke-dasharray="2 6"></line>
+        </g>
+        <text x="80" y="26" class="t-xs muted">最后一格实测</text>
+      </svg>
+    </div>
+    <figcaption>从左往右读：实线段是「有模型实测过」的范围，三条幂律在这里都是直线——这就是敢外推的全部依据；虚线段伸进浅色外推区，赌的是第 ② 步的前提继续成立。底部红虚线是 L∞：非地板项永远只是逼近它。L vs N 为什么最缓？因为只加参数、数据不变时，参数项的下降会被数据项托住（第 ③ 步）。把这张图和演示里的实线/虚线对照看：演示的虚线就是「按 20 词元/参数同步放大」那条。</figcaption>
+  </div>
+
+  <div class="figure" data-fig="m08-emergence-2">
+    <div class="figure__inner">
+      <svg viewBox="0 0 640 232" class="dgm" role="img" aria-labelledby="f8em-t">
+        <title id="f8em-t">同一个行为的两种度量：用「整题全对」计分，准确率随规模突然跳升；用「差了几个字」计分，曲线平滑下降</title>
+        <desc>左右两个面板画同一批模型同一任务。左面板纵轴为全对率，曲线在低位平走一段后急剧跳到高位；右面板纵轴为编辑距离，曲线近似一条直线平滑下降。两面板横轴都是模型规模（对数）。</desc>
+        <!-- 左面板：离散指标 -->
+        <g data-step="6">
+          <line class="line" x1="44" y1="188" x2="300" y2="188"></line>
+          <line class="line" x1="44" y1="28" x2="44" y2="188"></line>
+          <polyline class="line" style="stroke:var(--c-err);stroke-width:2.2"
+            points="52,180 120,178 176,174 208,160 226,110 240,58 258,42 300,36"></polyline>
+          <text x="48" y="20" class="t-sm">整题全对才算对（准确率）</text>
+          <text x="60" y="172" class="t-xs muted">≈ 乱猜</text>
+          <text x="244" y="98" class="t-xs bad">跨过某规模「突然」会了？</text>
+          <text x="172" y="206" class="t-xs faint" text-anchor="middle">模型规模（对数）→</text>
+          <circle cx="226" cy="110" r="3.5" fill="var(--c-err)"></circle>
+          <text x="118" y="222" class="t-xs faint">这一段的差距在乱猜附近，谁也看不出差别</text>
+        </g>
+        <!-- 分隔 -->
+        <line class="line" x1="320" y1="24" x2="320" y2="206" stroke-dasharray="3 6"></line>
+        <!-- 右面板：连续指标 -->
+        <g data-step="7">
+          <line class="line" x1="344" y1="188" x2="604" y2="188"></line>
+          <line class="line" x1="344" y1="28" x2="344" y2="188"></line>
+          <polyline class="line--a" points="352,168 400,152 452,136 508,120 560,104 596,96"></polyline>
+          <text x="348" y="20" class="t-sm">差几个字也算数（编辑距离）</text>
+          <text x="420" y="150" class="t-xs muted">同批模型 · 同行为 · 连续刻度</text>
+          <text x="474" y="206" class="t-xs faint" text-anchor="middle">模型规模（对数）→</text>
+          <text x="430" y="86" class="t-xs accent">没有跳变，只有斜率</text>
+          <circle cx="452" cy="136" r="3.5" fill="var(--c-accent)"></circle>
+          <line class="line" style="stroke:var(--c-accent)" x1="452" y1="136" x2="452" y2="188" stroke-dasharray="3 3"></line>
+          <text x="348" y="222" class="t-xs faint">左图那个「跳点」对应的规模，在这里只是直线上普通的一格</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption>两栏并排读：左、右是<strong>同一批模型的同一个行为</strong>，只换了尺子。左栏的跳变出现在「全对/全错」这种不连续计分处；右栏换成连续度量后近似直线。两派都承认这两张图都画得对——分歧在于该拿哪张图说话（下表）。右栏的平滑曲线仍贴着「乱猜」的高位时，左栏的模型连一题都做不对：对使用者来说，这既是平滑的，也是「突然」的。</figcaption>
+  </div>
+
+  <h4>争议：跳变是相变，还是尺子的产物？ <span class="badge badge--debate">存在争议</span></h4>
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th>「真实相变」派（Wei 等，2022）</th>
+        <th>「度量假象」派（Schaeffer 等，2023）</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>准确率在极长一段规模上贴地，随后急剧跳升；跳变点常落在拟合范围之外，却说不出损失曲线上有什么特殊。</td>
+        <td>把指标换成连续的（编辑距离、逐词元正确概率），同一批模型的「跳变」消失，变回可预测的平滑曲线 [2026-10]。</td>
+      </tr>
+      <tr>
+        <td>思维链提示似乎要跨过某规模才有效；若纯属计分假象，为何多个任务、多个团队都看到整齐的跳变。</td>
+        <td>不连续度量会把一小段损失差<strong>放大</strong>成巨大的分数差：模型一直在进步，是「全对才算分」的尺子到某个点才肯记分。</td>
+      </tr>
+      <tr>
+        <td>承认：部分「涌现」在换指标后确实消失，用「涌现」一词时必须说明用的什么指标。</td>
+        <td>承认：损失平滑不代表<strong>使用体验</strong>平滑——从「几乎全错」到「基本全对」的跨越对用户是真实的。</td>
+      </tr>
+      <tr>
+        <td class="muted">共识区（两派都接受）：损失的幂律曲线本身成立、可外推；争议只在「单项能力随规模的形状」这一层。</td>
+        <td class="muted">本站立场：不裁决。你该带走的是「问清楚指标是什么」这个动作，而不是任何一派的口号。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <details class="math-detail">
+    <summary>展开：为什么会有 L∞ 这个「地板」，以及为什么指数不能混用</summary>
+    <div class="math-detail__body prose">
+      <p><strong>地板的来源。</strong>交叉熵的下界是文本本身的真实条件熵（M02）：哪怕模型完美掌握了「下一个词元」的全部规律，人类写了什么仍受随机与多义支配，这部分意外压不掉。拟合里写作 L∞，工程上它决定了「把 N 与 D 同步乘十」能买到的收益上限。</p>
+      <p><strong>指数的可比性。</strong>Kaplan 2020 报 α_N≈0.076，Hoffmann 2022 报 α≈0.34 [2026-10]，看起来差四倍，其实量的不是同一个东西：前者对原始损失 L 拟合，后者对 L−L∞ 拟合。α 还依赖拟合用的规模区间与架构族，所以「拿别人的指数直接外推自己的模型」是这类曲线最常见的误用。演示里让你自己拖 α，就是为了建立「指数是拟合出来的参数，不是常数」的肌肉记忆。</p>
+      <p><strong>配比的敏感性。</strong>Chinchilla 的最优比值对损失曲面形状敏感，对 L∞ 的取值不敏感——这是它那个结论稳的原因；反过来，如果你先猜错了地板，推出的 N:D 就会偏。这个细节在论文正文里常被一句带过，这里补上。</p>
+    </div>
+  </details>
+</seg>
+
+<seg name="demo">
+  <h4>把直线拖到穿过这些点</h4>
+  <p>下面这个拟合器给你 8 个「历史运行」——它们是<strong>编造的示意样例</strong>，不是真实论文数据。你的任务：拖 α、β、A 把拟合线调到残差最小，然后沿直线外推，预测「下一个模型该造多大、损失会掉到多少」。请务必把「双对数坐标」开关关掉一次——同一条幂律立刻变弯，那是第 ② 步全部的意义；再打开「按 Chinchilla 配比联动」，看虚线为什么能比实线走得更低。</p>
+</seg>
+
+<seg name="misconception">
+  <details class="myth">
+    <summary>「参数越多就越聪明——把参数堆大，模型自然更强。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>参数量是最醒目的数字，发布会都拿它当标题；而「同预算下参数与数据要平衡」这件事没有数字可喊。</p>
+      <p class="myth__truth">正确说法：在<strong>给定算力预算</strong>下，参数与数据要近似同步放大（Chinchilla，2022）[2026-10]。只堆参数，数据先耗尽，参数项的收益骤减——机制段第 ③ 步的「容器与水源」就是这个饱和。GPT-3 按当时算例已是巨无霸，按最优配比却严重「参数过大、数据不足」，同预算下本可以训出损失更低的 700 亿参数模型。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「规模定律说明只要无限堆下去，终会堆出全知全能的模型。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>直线看上去像一个承诺——只要沿着它走，损失总能再降一点。媒体每年再说一次「下一代更强」，把「再降一点」听成了「无限下降」。</p>
+      <p class="myth__truth">正确说法：幂律是<strong>收益递减</strong>的规律：损失减半要乘 2^(1/α) 倍资源，越往下越贵；高质量公开语料有限，地板 L∞ 压不掉；而且它外推的只是平均损失——基准会饱和（M13 专门讲这件事），分布外的可靠性与单项能力并不随平均损失自动改善。「定律」给的是斜率，不是终点。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「涌现能力要么是玄学，要么是评测的 bug。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>争议两派的文章都被只读标题的人转发过；公众语境里「涌现」已经同时背上了神秘色彩和造假嫌疑两个包袱。</p>
+      <p class="myit__truth myth__truth">正确说法：把两件事分开。损失的幂律曲线是真实且可外推的——两派都不否认；争议只在<strong>单项能力曲线的形状</strong>：一部分跳变确实是「全对才算分」这类不连续度量放大的产物，换成连续度量就平滑。但「平滑」不等于「没有跨越」：从几乎全错到基本全对，对使用者是真实发生的事。一半是尺子造成的，也不是玄学，更不是 bug。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「20 词元配 1 参数是铁律，所有模型都该按这个比例训。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>Chinchilla 的结论太常被摘成一句话传播，数字被取整成了口号，而它的适用条件一般被摘掉。</p>
+      <p class="myth__truth">正确说法：20:1 是「只优化训练那一刻的每算力的损失」时的配比 [2026-10]。把<strong>推理成本</strong>算进总账，更优解就移向「小模型 + 超量数据」——后来主流开源模型的比值达到配比结论的数十倍到数百倍（70 亿参数喂约 2 万亿词元）[2026-10]。配比随你优化的目标移动，它不是物理常数。</p>
+    </div>
+  </details>
+</seg>
+
+<seg name="takeaway">
+  <blockquote class="takeaway__line">规模定律只保证平均损失沿直线下降，不保证任何单项能力。</blockquote>
+
+  <div class="quiz">
+    <p class="quiz__q">自测：给定一笔固定算力，团队在「1750 亿参数 × 0.3 万亿词元」和「700 亿参数 × 1.4 万亿词元」之间选。按 Chinchilla 的结论该怎么选？</p>
+    <label class="quiz__opt"><input type="radio" name="q-m08" data-right="1"><span>后者：参数与数据近似同步放大，同一预算能把损失压得更低</span></label>
+    <label class="quiz__opt"><input type="radio" name="q-m08"><span>前者：参数是能力的天花板，先尽量堆大再说</span></label>
+    <label class="quiz__opt"><input type="radio" name="q-m08"><span>一样：C≈6ND 已定，同一预算的损失必然相同</span></label>
+    <div class="quiz__fb">
+      <p data-for="no"><strong>再想一步：</strong>C≈6ND 只说预算是两者的<strong>乘积</strong>，没说怎么<strong>分配</strong>。乘积相同、比例悬殊时，先耗尽的那一项会先进入饱和段——另一项再怎么大也托着损失降不动。Chinchilla 的回答正是「分配本身有最优解」，而 2000 亿级别的模型喂不到两万亿词元，就是当年普遍踩的坑 [2026-10]。</p>
+      <p data-for="ok"><strong>对了。</strong>这就是验收标准的前半句：数据与参数应同步放大。顺手再带一句：这个比例并非天条——把推理成本算进去后，后来的模型普遍喂到配比的数十倍。带着「会接话的词元机器已经成型」这件事进 M09：损失最低 ≠ 有用，它只会续写，不会帮忙。</p>
+    </div>
+    <p class="quiz__result" aria-live="polite"></p>
+  </div>
+
+  <ul class="nextlinks">
+    <li><a href="#m09">M09 后训练与对齐：损失最低了，然后呢</a></li>
+    <li><a href="#m13">M13 安全、对齐与评测：尺子能造出跳变，也能造出饱和</a></li>
+    <li><a href="#m02">M02 概率、信息熵与损失：这里的 L 和 2^L 到底是什么</a></li>
+  </ul>
+</seg>

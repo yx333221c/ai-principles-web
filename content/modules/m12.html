@@ -1,0 +1,228 @@
+<meta title="智能体、工具与检索增强" tagline="让模型从「会说」变成「会做」">
+
+<seg name="hook">
+  <p class="hook">你问它今天几号，它自信地报出一个三年前的日子。不是它笨——它根本没有「现在」这个输入。可同一天，你先让它去查一份存档，再照着存档给建议，它居然做对了。多出来的这「查一下」，究竟改变了什么？</p>
+</seg>
+
+<seg name="intuition">
+  <p>想象一个<strong>只会写字的人</strong>被关在房间里。他能写出任何句子，唯独写不出一个动作：纸上写「我出门了」，门并不会开。</p>
+  <p>现在给他一部电话和一个笔记本。他本人依然只会写字——可整个房间<strong>开始能做事了</strong>：他先写一句话让别人去查，把查回来的数字抄进笔记本，再据此写第二句。他的能力一点没变，<strong>系统的行为</strong>变了。这就是<span class="term" data-def="能规划步骤、发起工具调用、读取观察结果并继续的模型系统。本站不用「代理」这个译名。" data-en="agent">智能体</span>。</p>
+  <p><span class="term" data-def="模型输出一段结构化文本（如 JSON），由外部程序解析并真的去执行，再把结果作为文本塞回上下文。" data-en="tool use / function calling">工具调用</span>就是那张写好的请求单；<span class="term" data-def="先检索资料、再让模型基于检索到的资料作答。" data-en="RAG">检索增强生成</span>（RAG）就是先翻笔记本、再作答。两者都不是模型新长出来的器官，而是它周围多出来的<strong>纸和电话</strong>。</p>
+
+  <div class="callout callout--warn">
+    <p><strong>这个「电话加笔记本」的类比对下面三件事不成立，务必记住：</strong></p>
+    <ul>
+      <li><strong>笔记本不是无限记忆。</strong>它能抄的字数有硬上限，抄满之后最早那几页会被<strong>整页撕掉</strong>——不是「模糊」，是根本没参与计算。这个上限就是 M10 第 ⑥⑦ 步的<span class="term" data-def="一次推理能同时看到的词元上限；超出部分不是被遗忘，而是根本没被计算。" data-en="context window">上下文窗口</span>。</li>
+      <li><strong>「要不要打电话」这个判断，本身也是靠写字完成的。</strong>他没有独立于文本的意图：想查什么，取决于此刻纸面上有哪些字。所以只要有人把一句话偷偷写进他正在读的那页纸上，它和资料<strong>用的是同一种墨水</strong>，没有任何标记说明「这句是命令、那句是证据」。</li>
+      <li><strong>电话那头的声音不会进到他的脑子里。</strong>读回来的资料只是<strong>这一次</strong>被用来选字，用完就散；它不会变成他的技能。挂掉电话、撕掉笔记本，他立刻回到原来那个只会写字的人。</li>
+    </ul>
+  </div>
+</seg>
+
+<seg name="mechanism">
+  <h4>先看清水位线：模型这一侧到底能做什么</h4>
+  <ol class="steps">
+    <li data-step="1"><strong>模型本身只有一个动作。</strong>给它一段文本，它输出下一个<span class="term" data-def="模型处理文本的最小单位，既不是词也不是字。" data-en="token">词元</span>的概率分布（M10）。就这一个。它不能执行、不能联网、不能读文件——「不能」不是被限制了，而是<strong>这套数学里压根没有「执行」这个算子</strong>。</li>
+    <li data-step="1"><strong>所谓工具调用，是模型输出了一段结构化文本。</strong>程序把这段文本（通常是 JSON）解析出来、真的去执行、再把结果<strong>作为文本</strong>追加到上下文末尾。整个过程中模型做的仍然只有写字，只是它写的东西<strong>恰好可被机器读</strong>。这就是「会说」变成「会做」的全部机制。</li>
+    <li data-step="2"><strong>把这件事重复若干轮，就是 ReAct 循环。</strong>Thought（要不要查、查什么）→ Action（写出的请求单）→ Observation（执行结果被塞回来的文本）→ 再 Thought……直到模型不再写请求单、而是直接写最终答案（Yao 等人，2022 [2026-10]）。关键点：<strong>每一步的 Observation 都变成新的输入文本</strong>，所以循环深度不是自由的，它被窗口长度约束——第 ⑥ 步会看到这个约束如何反噬。</li>
+    <li data-step="3"><strong>「记忆」分三层，而且存在三个不同的地方。</strong>短期 = 当前上下文窗口（窗口一滑就没了）；长期 = 外部存储加检索（向量库、数据库、文件），本质就是 M11 那套嵌入检索，取回来的仍然是文本；程序性 = 写进提示词（改输入）或者微调进权重（改参数）。三层里<strong>只有最后一层真正改变了模型</strong>。</li>
+    <li data-step="4"><strong>RAG 能压幻觉，靠的不是「让它学会」。</strong>它不改任何<span class="term" data-def="模型内部可训练的数值。" data-en="parameter">参数</span>，而是把「该说什么」的证据<strong>直接放进上下文</strong>。证据里的词与答案里的词在训练数据里共现过，于是这些证据词元会抬高相关候选的分数、压低其余候选——下一词分布被证据重新加权。这正是本站那条主线：M10 第 ③ 步说过<strong>温度改不了排序，但改输入可以</strong>。RAG 就是「改输入」的工程化版本：不换菜单，换菜。</li>
+    <li data-step="5"><strong>RAG 有三类失效，而且都不在模型这一侧。</strong>检索漏：该找到的没找到，因为相似度不等于相关性，问法和文档写法不一致就取不回来；检索脏：找到了相似但错误或过期的段落，模型会<strong>照着它错</strong>，因为它没有独立的事实通道；上下文挤：证据塞得太多太长，把「问题本身」挤到中段，而 M10 第 ⑦ 步已经说过——能看见不等于会去看。三类失效的共同点：<em>模型的推理一步没错，错在喂进去的文本</em>。</li>
+    <li data-step="6"><strong>长任务为什么必然「跑偏」：成功是连乘的。</strong>设每一步都正确的概率是 p，N 步全对的概率就是 p<sup>N</sup>。更要命的是错误不自我清除：<strong>第 2 步的错误 Observation 会留在上下文里</strong>，成为第 3、4、5 步的输入，于是后面每一步的 p 都在更差的输入上算——这叫误差累积与自我强化。步数是成本，不是能力。</li>
+  </ol>
+
+  <div class="callout callout--note">
+    <p><strong>这条连乘，你在本站已经见过一次。</strong>M06 第 ⑤ 步讲的是梯度：误差回传 99 段，每段乘一次同一个矩阵，于是 <code>0.9⁹⁹ ≈ 2.9×10⁻⁵</code>，开头那个词几乎收不到改正意见。这里讲的是成功率：任务走 20 步，每步乘一次 p，于是 10 步之后只剩六成。<strong>是同一件事的两次出现——凡是按步数连乘的量，都会指数地消失</strong>。区别只在方向：M06 里被乘没的是学习信号，这里被乘没的是任务成功率。</p>
+  </div>
+
+  <div class="math-block math">
+    P<span class="sub">全对</span> <span class="op">=</span> p<span class="sup">N</span>
+    <span class="reads">读作：每一步都对的概率 p，连乘 N 次。p=0.95 走 10 步约六成，p=0.90 走 10 步只剩三分之一。</span>
+  </div>
+  <p>这是一个<strong>一阶近似</strong> <span class="badge badge--simplify">已简化</span>：它假设各步错误率相同、彼此独立，且错了也不会被后面的步骤发现。真实系统里，「让模型回看自己写过的东西」确实能纠正一部分错误，所以实测衰减比 p<sup>N</sup> 慢一些；但「早期错误会污染后续输入」这条反向修正同样存在，两头并不能抵消成「多步一定更可靠」。下面演示里把这两点做成了可以对比的样子。</p>
+
+  <div class="figure" data-fig="m12-agent-loop-1">
+    <div class="figure__inner">
+      <div class="fig">
+        <div class="fig__head">一次工具调用里，「写字」与「执行」的分工（对应第 ②③ 步）</div>
+        <div class="fig__flow">
+          <div class="fig__box fig__box--a"><b>模型</b><span class="fig__sub">只会输出词元分布</span></div>
+          <span class="fig__arrow">→ 写</span>
+          <div class="fig__box"><b>一段结构化文本</b><span class="fig__sub">{"tool":"weather_api"}</span></div>
+          <span class="fig__arrow">→ 解析</span>
+          <div class="fig__box fig__box--w"><b>外部程序</b><span class="fig__sub">真正去执行</span></div>
+          <span class="fig__arrow">→ 得到</span>
+          <div class="fig__box fig__box--g"><b>结果文本</b><span class="fig__sub">{"aqi":156,…}</span></div>
+          <span class="fig__arrow">→ 追加</span>
+          <div class="fig__box fig__box--a"><b>同一个模型</b><span class="fig__sub">拿新文本再算一次</span></div>
+        </div>
+        <div class="fig__row fig__row--sub">
+          <span class="fig__tag">循环一轮</span>
+          <span class="fig__chain"><code>Thought</code><i>→</i><code>Action</code><i>→</i><code>Observation</code><i>→</i><code>Thought</code><i>→</i><code>…</code><i>→</i><code>Final Answer</code></span>
+        </div>
+        <div class="fig__grid" style="grid-template-columns:110px 1fr 1fr 1fr">
+          <div class="fig__lbl">谁在做什么</div><div class="fig__cell">模型：写字</div><div class="fig__cell">程序：执行</div><div class="fig__cell">世界：返回数据</div>
+          <div class="fig__lbl">改了什么</div><div class="fig__cell">改上下文</div><div class="fig__cell">改外部状态</div><div class="fig__cell">改上下文</div>
+          <div class="fig__lbl">会失败在</div><div class="fig__cell fig__cell--blocked">参数（学不会）</div><div class="fig__cell">解析与权限</div><div class="fig__cell fig__cell--blocked">检索质量</div>
+        </div>
+        <div class="fig__note">中间那一列是重点：<strong>模型从头到尾没有跨过那条线</strong>。它写的 JSON 不是「调用」，只是一段<strong>恰好可被解析的文本</strong>。</div>
+        <div class="fig__legend">
+          <span><i class="sw-a"></i>模型侧（只输出文本，M10）</span>
+          <span><i class="sw-w"></i>程序侧（真正有执行能力）</span>
+          <span><i class="sw-g"></i>外部世界返回的证据</span>
+        </div>
+      </div>
+    </div>
+    <figcaption>怎么看：沿流程条从左读到右，再回到最右那个方框——那是一条<strong>闭合的环</strong>，环上每一段都只搬运文字，没有一个箭头让模型「动一次手」。下方三行小表用来定位故障：出问题时先问「这是哪一列的责任」。</figcaption>
+  </div>
+
+  <div class="figure" data-fig="m12-decay-1">
+    <div class="figure__inner">
+      <svg viewBox="0 0 660 210" class="dgm" role="img" aria-labelledby="f12d-t">
+        <title id="f12d-t">三条曲线显示：10 步任务的全对概率随单步正确率急剧变化——p=0.99 约九成，p=0.95 约六成，p=0.90 约三分之一</title>
+        <desc>横轴是任务步数 N（1 到 20），纵轴是 N 步全部正确的概率 p^N。三条下降曲线分别是 p=0.99、p=0.95、p=0.90。一条水平虚线标在 50% 处，两条曲线在该线附近被标出「期望开始偏」的步数。</desc>
+        <defs>
+          <marker id="m12-arw" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L8 4 L0 8 z" fill="var(--c-fg-muted)"></path>
+          </marker>
+        </defs>
+        <text x="12" y="16" class="t-sm faint">A · N 步全对的概率 = p^N（纵轴：概率；横轴：步数）</text>
+        <line class="grid-l" x1="60" y1="100" x2="600" y2="100" stroke-dasharray="3 3"></line>
+        <text x="56" y="103" class="t-xs muted" text-anchor="end">50%</text>
+        <text x="56" y="33" class="t-xs muted" text-anchor="end">100%</text>
+        <text x="56" y="173" class="t-xs muted" text-anchor="end">0</text>
+        <line class="line" x1="60" y1="170" x2="606" y2="170" marker-end="url(#m12-arw)"></line>
+        <line class="line" x1="60" y1="170" x2="60" y2="26"></line>
+        <text x="330" y="192" class="t-xs muted" text-anchor="middle">步数 N：1 … 10 … 20</text>
+        <polyline fill="none" stroke="var(--c-line-strong)" stroke-dasharray="5 3" points="60,30 141,34 222,37 330,43 438,49 546,53 600,55"></polyline>
+        <polyline fill="none" stroke="var(--c-accent)" points="60,30 87,37 114,44 141,50 168,56 195,62 222,67 249,72 276,77 303,82 330,86 384,94 438,102 492,108 546,114 600,120"></polyline>
+        <polyline fill="none" stroke="var(--c-warn)" points="60,30 87,40 114,57 141,68 168,78 195,87 222,96 249,103 276,110 303,116 330,121 384,131 438,138 492,144 546,149 600,153"></polyline>
+        <text x="606" y="52" class="t-xs">p=0.99</text>
+        <text x="486" y="82" class="t-xs accent">p=0.95</text>
+        <text x="486" y="160" class="t-xs warm">p=0.90</text>
+        <circle cx="330" cy="86" r="3" fill="var(--c-accent)"></circle>
+        <text x="336" y="82" class="t-xs muted">10 步 · 60%</text>
+        <circle cx="330" cy="121" r="3" fill="var(--c-warn)"></circle>
+        <text x="336" y="132" class="t-xs muted">10 步 · 35%</text>
+        <line class="grid-l" x1="438" y1="100" x2="438" y2="170" stroke-dasharray="2 3"></line>
+        <text x="442" y="112" class="t-xs faint">0.95：约第 14 步跌破一半</text>
+        <line class="grid-l" x1="249" y1="100" x2="249" y2="170" stroke-dasharray="2 3"></line>
+        <text x="112" y="146" class="t-xs faint">0.90：约第 7 步</text>
+        <text x="12" y="206" class="t-xs faint">已简化：假设各步错误率相同且相互独立。真实系统里后面的步骤有机会发现并纠正前面的错，所以实测衰减比这条线慢，但不是不衰减。</text>
+      </svg>
+    </div>
+    <figcaption>怎么看：先看纵轴 50% 那条虚线，再看每条曲线<strong>在哪一步穿过它</strong>。p 只差 0.05，穿线位置从第 14 步挪到第 7 步——这条曲线就是「为什么步数是成本」的全部论证。演示里可以亲手把 p 拖来拖去看它换线。</figcaption>
+  </div>
+
+  <div class="figure" data-fig="m12-rag-hit-miss-2">
+    <div class="figure__inner">
+      <div class="fig">
+        <div class="fig__head">同一个问题、同一个模型，只换检索质量（对应第 ④⑤⑥ 步）</div>
+        <div class="fig__grid" style="grid-template-columns:96px repeat(3,1fr)">
+          <div class="fig__lbl"></div><div class="fig__tok fig__tok--out">命中</div><div class="fig__tok">漏检</div><div class="fig__tok fig__tok--k">脏命中</div>
+          <div class="fig__lbl">检索到的段落</div>
+          <div class="fig__code fig__code--g">「10-24 明日 AQI 156，中度污染」</div>
+          <div class="fig__code fig__code--sun">（空）或一条语义相似但无关的生活帖</div>
+          <div class="fig__code fig__code--b">「AQI 42，优」——三年前的同一页快照</div>
+          <div class="fig__lbl">进了上下文的是什么</div>
+          <div class="fig__code">今天的观测值</div>
+          <div class="fig__code">只有权重里的旧知识</div>
+          <div class="fig__code">一个过期但高分的数</div>
+          <div class="fig__lbl">下一词分布被怎样加权</div>
+          <div class="fig__code">「别晨跑」相关候选抬升</div>
+          <div class="fig__code">没有证据可抬，回到「最顺口的写法」</div>
+          <div class="fig__code">「空气优」相关候选被抬升</div>
+          <div class="fig__lbl">最终答案</div>
+          <div class="fig__code fig__code--g">建议 15:30 后再跑，或改室内</div>
+          <div class="fig__code fig__code--sun">「秋天适合晨跑」——自信、流畅、无依据</div>
+          <div class="fig__code fig__code--b">「明天 AQI 42，适合 6:30 晨跑」——错得更有底气</div>
+        </div>
+        <div class="fig__row">
+          <span class="fig__tag">失败发生在</span>
+          <span class="fig__pill fig__pill--g">检索成功</span>
+          <span class="fig__pill fig__pill--mute">检索器（相似度 ≠ 相关性）</span>
+          <span class="fig__pill fig__pill--b">语料新鲜度与去重</span>
+          <span class="fig__pill fig__pill--w">上下文长度（证据挤掉问题）</span>
+        </div>
+        <div class="fig__note">三列里<strong>模型一次都没有变</strong>：同一个参数、同一条提示词、同一个温度。变的只有塞进去的那几行字。</div>
+      </div>
+    </div>
+    <figcaption>怎么看：按列读，一列是一个完整因果链——检索到什么 → 上下文里多了什么 → 分布被怎样加权 → 答案长什么样。再看最底那一行：三种结局的故障点<strong>都不在模型内部</strong>。这正是演示里「检索质量」那个下拉框做的事。</figcaption>
+  </div>
+
+  <table class="tbl tbl--scroll">
+    <thead><tr><th>要解决的问题</th><th>该用检索增强生成（RAG）</th><th>该用微调</th><th>机制依据</th></tr></thead>
+    <tbody>
+      <tr><td>事实每天在变（价格、日程、天气）</td><td><strong>是</strong>，而且必须</td><td>否：今天训完明天就过期</td><td>第 ⑤ 步：改输入比重训便宜且可撤销</td></tr>
+      <tr><td>需要「该说什么」的可核查依据</td><td><strong>是</strong>：证据原文留在上下文里，可指回去</td><td>否：知识埋在参数里，无法逐条审计</td><td>第 ④ 步：记忆分层，长期层本就在外部</td></tr>
+      <tr><td>稳定的说话方式：格式、术语、语气、代码风格</td><td>勉强：靠示例塞进提示词，窗口很贵</td><td><strong>是</strong>：这类知识是分布性的，逐条检索拼不出来</td><td>第 ④ 步：程序性记忆可写进权重</td></tr>
+      <tr><td>私有的、能随时改的文档集</td><td><strong>是</strong>：删文档即撤回知识</td><td>风险高：改一次要重训，且难证明「忘了」</td><td>第 ⑤ 步 + M09：参数更新不可精确回滚</td></tr>
+      <tr><td>模型压根不会的动作（算准多位数、真的执行）</td><td>否：检索给不了能力</td><td>否：单靠数据也补不上表示层的缺陷（M11）</td><td>第 ① 步：交给外部工具，而不是继续逼表示层</td></tr>
+    </tbody>
+  </table>
+  <p><span class="badge badge--simplify">已简化</span> 表里「该用谁」是按机制归类的教学划分，不是工程清单。实践中两者常叠用（微调让模型<strong>更会用</strong>检索回来的段落），而且「知识编辑」这一支研究正试图把参数更新做得可精确回滚——结论尚未稳定，本站不写成定论。</p>
+
+  <details class="math-detail">
+    <summary>展开：为什么「把窗口做到无限大」不能取代检索</summary>
+    <div class="math-detail__body prose">
+      <p>三重理由，每条都指回前面的模块。<strong>其一，成本。</strong>M10 的键值缓存那条式子里，显存随序列长度<strong>线性</strong>增长，而注意力那张分数表随它<strong>平方</strong>增长；把 200 万字全文塞进去，先撑不住的是硬件，不是模型。<strong>其二，注意力稀释。</strong>softmax 每行权重之和恒等于 1，候选越多，每个词元平均分到的权重越小，中段内容容易被首尾挤掉——这正是 M10 第 ⑦ 步说「能看见不等于会去看」的原因，也是公开长文档评测里「答案放中间」正确率明显更低的那一项 [2026-10]。<strong>其三，排序仍然要有人做。</strong>全塞进去只是把「选哪些」这一步从检索器搬给了注意力，而注意力是排列不变的、没有事实优先级的（M07 第 ⑦ 步）。检索器的价值从来不是「省地方」，而是<strong>在进入模型之前先决定证据的排序与取舍</strong>。</p>
+    </div>
+  </details>
+</seg>
+
+<seg name="demo">
+  <p>下面是这条轨迹的逐帧回放：左边看「模型写了什么 → 程序执行了什么 → 什么被塞回来」，右边看单步正确率 p 怎样被连乘成任务成功率。先把「检索质量」切到脏命中，再把 p 从 0.95 拖到 0.90，两件事各看一遍。</p>
+</seg>
+
+<seg name="misconception">
+  <details class="myth">
+    <summary>「智能体会自己上网查资料。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>界面上确实是它「决定」了要查什么，查询语句也由它写成，看起来整件事都是它做的；而背后的执行代码从不露面。</p>
+      <p class="myth__truth">正确说法：查是<strong>外部程序</strong>在查，模型只是输出了一段格式正确的请求文本。最干净的证据是断网：拔掉网线，它照样会写出一张格式挑不出毛病的查询单，并且接着把并不存在的结果当真。这也说明「它想查」不等于「它知道自己在查什么」——请求单的内容和真实世界之间没有任何保证关系。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「RAG 就是给模型联网，或者给它装了记忆。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>产品文案把「知识库」画成一块硬盘插在大脑侧面，而效果上它确实「记住了」文档里的事——「有记忆」是最省力的解释。</p>
+      <p class="myth__truth">正确说法：RAG <strong>一个参数都没改</strong>，模型学到的东西严格为零。证据只是临时躺在上下文里，关掉检索立刻不会：同一个问题换个检索结果，答案就跟着变。所以正确预期不是「它记住了」，而是「这次它手边有这张纸」。要让知识跨过会话继续存在，只有两条路——把检索留在系统外，或者改权重（M09）。见机制第 ④⑤ 步。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「步骤越多、循环越深，智能体就越强。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>「多想几步」「分步推理」在人类语境里确实是优点，而且演示里前几步的效果肉眼可见地变好了：每一步都真的多拿到了一段证据。</p>
+      <p class="myth__truth">正确说法：见机制第 ⑦ 步与演示右图。全对概率是 p<sup>N</sup>，p=0.90 时 10 步只剩 35%；更糟的是早期错误会留在上下文里，成为后续每一步的输入，于是后面的 p 更低。所以「加步骤」买到的是<strong>每次调用</strong>的证据，付出的是<strong>整条链路</strong>的存活率——只有当新增步骤带来的边际正确率提升大于连乘损耗时才划算，而这个平衡点会随任务长度移动。工程上的解法不是无限步数，而是缩短链条、在关键步加验证、把可合并的步骤合并。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「检索到的段落越相似，就越可靠。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>相似度分数是可见的、还是 0 到 1 之间的数，天然被理解成「可信度」；向量库返回的 top-3 看起来也像三条互相印证的证据。</p>
+      <p class="myth__truth">正确说法：相似度衡量的是<strong>表示空间里的方向接近</strong>（M03、M11），它既不包含时间，也不包含来源独立性。「明天北京空气如何」和「去年北京空气真差」在嵌入空间里几乎重合，前者却会取回后者。更隐蔽的是同源重复：三条帖子如果来自同一份快照，它们的一致是<strong>假的一致</strong>——演示里「脏命中」那一档第 ④ 步专门展示这件事。工程上的对策是把时间戳、来源、去重当作检索器的显式约束，而不是指望分数自己排对。</p>
+    </div>
+  </details>
+</seg>
+
+<seg name="takeaway">
+  <blockquote class="takeaway__line">智能体没有新能力，只有新输入；每多一步，成功就乘一次折扣。</blockquote>
+
+  <div class="quiz">
+    <p class="quiz__q">自测：公司每周更新一次内部价格表，要让模型每次按最新价格回答。最贴合机制的做法是？</p>
+    <label class="quiz__opt"><input type="radio" name="q-m12" data-right="1"><span>把价格表做成可检索的外部存储，每次作答前检索当周那几条、塞进上下文</span></label>
+    <label class="quiz__opt"><input type="radio" name="q-m12"><span>每周用最新价格表微调一次模型，把价格记进参数里</span></label>
+    <label class="quiz__opt"><input type="radio" name="q-m12"><span>把采样温度调到 0，让它每次稳定复现记住的价格</span></label>
+    <div class="quiz__fb">
+      <p data-for="no"><strong>回到机制第 ④⑤ 步：</strong>「每周重训」把易变事实写进了<strong>最难回滚</strong>的那一层——参数，而且从训练完成到上线之间，价格已经变了；更麻烦的是你无法逐条审计它到底记成了什么。B 项错在这里。C 项犯了 M10 第 ③ 步那个老错：温度<strong>改不了排序</strong>，更不可能把一个从没进过上下文的数字变进分布里；T=0 只保证每次一样，不保证一样地新。正确答案的判断标准只有一句：这条知识多久变一次、要不要被指回原文。</p>
+      <p data-for="ok"><strong>对了。</strong>你用的正是那条边界：<strong>易变、需可核查的知识留在外部存储与检索，稳定、分布性的「怎么说」才写进权重</strong>（机制第 ④⑤ 步）。顺手做个推论练习：如果要求改成「让模型永远用公司那套内部术语说话」，答案就该翻向微调——术语是分布性的，逐条检索拼不出来。带着这个边界去 M13：一旦检索回来的文档里夹了别人的指令，上面这套分工立刻变成攻击面。</p>
+    </div>
+    <p class="quiz__result" aria-live="polite"></p>
+  </div>
+
+  <ul class="nextlinks">
+    <li><a href="#m13">M13 安全与评测：塞进上下文的话也可能是命令——提示注入</a></li>
+    <li><a href="#m10">M10 解码与上下文：为什么「改输入」能改排序而温度不能</a></li>
+    <li><a href="#m06">M06 序列建模的瓶颈：同一条连乘衰减，先在梯度上出现一次</a></li>
+  </ul>
+</seg>

@@ -1,16 +1,19 @@
 /* ==========================================================================
    m09-reward-kl.js · M09 演示：奖励与跑偏的拉锯（DESIGN.md §4 M09 / §6.3）
 
-   画的是机制段第 ⑤ 步的目标函数 J = r − β·κ。横轴 κ = 策略偏离参考模型的
-   KL 距离，纵轴 = 分数。同轴上三条量：
-     q(κ)        真实质量：小偏离有真实收益，偏离越大越塌缩（先升后降）
-     r(κ)        奖励模型给的分 = q(κ) + ε 倍「钻漏洞收益」（峰值被推到更大的 κ）
-     J(κ)=r−βκ   真正被优化的东西；圆点 = 它的最高点 = 训练会停下的地方
-   「被钻空子的量」= r(κ*) − q(κ*)，即优化压力把 ε 那道缺口撑开的部分。
+   画的是机制段第 ⑤ 步的目标函数 J = r − β·κ：
+     q(κ) = exp(−((κ−0.30)/0.60)²)                 真实质量：先微升（改进是真的）后塌缩
+     r(κ) = q(κ) + ε·1.5·exp(−((κ−1.15)/0.75)²)    奖励模型给的分：漏洞峰在 κ≈1.15
+     J(κ) = r(κ) − β·κ                              真正被优化的东西
+   圆点 = J 的最高点 = 训练会停下的地方。纵轴与 κ 都是无量纲的教学刻度。
 
-   诚实性声明（契约 §2.2 第 4 条）：画布顶部常驻一行「示意曲线…数值为编造」。
-   形状取自公开讨论的 reward hacking 现象，函数形式与参数都是教学构造，
-   不是任何真实模型的测量结果。
+   这三条式子是**构造出来的**，常数经过挑选，使得行为符合公开讨论的 reward
+   hacking 现象的定性形状：
+     · ε=0 时 r ≡ q，「被钻空子的量」恒为 0 —— 跑偏的根源是 RM 的近似误差；
+     · β 越小 κ* 越往右；ε=1 且 β≤0.2 时 κ* 落进塌缩区，r 还在涨而 q 已崩；
+     · β=2 时 κ*=0，模型几乎没被改动；
+     · κ*(β) 随 β 连续下降（β 步长 0.05 时最大跳变 0.038），不会来回跳。
+   诚实性声明常驻画布顶部（契约 §2.2 第 4 条）。
    ========================================================================== */
 (function (AIP) {
   'use strict';
@@ -20,31 +23,22 @@
   /* ---------------- 画布几何 ---------------- */
   const W = 700, H = 400;
   const PAD = { t: 96, r: 158, b: 42, l: 54 };
-  const KMAX = 2.0;      // 横轴上限（KL 距离，无量纲）
-  const YMAX = 1.5;      // 纵轴上限（分数，无量纲；整体平移不影响结论）
-  const sc = DK.scales(0, KMAX, 0, YMAX, PAD)(W, H);
+  const KMAX = 2.0;                    // 横轴上限：KL 距离
+  const YMAX = 1.85, YMIN = -0.4;      // 纵轴范围：留一点负值区给 J 掉出图外的趋势
+  const sc = DK.scales(0, KMAX, YMIN, YMAX, PAD)(W, H);
 
-  /* ---------------- 示意模型的常数（都有可讲出口的含义） ---------------- */
-  const QA = 1.6;        // 真实质量的幅度
-  const QC = 0.22;       // 收益上手有多快（κ 越小越主导）
-  const QD = 0.9;        // 偏离带来的塌缩速率
-  const EX = 0.9;        // 钻漏洞能刷出的分数上限（ε=1 时全额兑现）
-  const EK = 1.6;        // 钻漏洞所需的偏离：再远就无处可钻
-  const ES = 0.4;        // 漏洞窗口的宽度（平方项分母）
+  /* ---------------- 示意模型的常数 ---------------- */
+  const QK = 0.30, QW = 0.60;          // 真实质量峰的位置与宽度
+  const RH = 1.5, RK = 1.15, RW = 0.75; // 漏洞收益的幅度 / 中心 / 宽度
+  const THR = 0.6;                     // 塌缩阈：q 跌破峰值的 60%
+  const bump = (k, c, w) => Math.exp(-((k - c) * (k - c)) / (w * w));
 
-  /** 真实质量：不含任何「漏洞」成分 */
-  const quality = (k) => QA * (k / (k + QC)) * Math.exp(-QD * k);
-  /** 钻漏洞的虚高：在 κ≈EK 处最盛，与真实收益无关 */
-  const exploit = (k, eps) => eps * EX * Math.exp(-((k - EK) * (k - EK)) / ES);
-  /** 奖励模型给的分 = 真实收益 + 虚高；ε=0 时它与真实质量完全重合 */
-  const reward = (k, eps) => quality(k) + exploit(k, eps);
-  /** 被优化的目标 */
+  const quality = (k) => bump(k, QK, QW);
+  const reward = (k, eps) => quality(k) + eps * RH * bump(k, RK, RW);
   const objective = (k, eps, beta) => reward(k, eps) - beta * k;
 
-  const QMAX = argmaxOf((k) => quality(k), 0.001, KMAX).v;   // 质量峰值，用来定义塌缩阈
-
-  /** 网格取极值：区间固定 400 点，逐帧重算代价可忽略，也免去一维搜索的分支 */
-  function argmaxOf(fn, lo, hi) {
+  /** 网格取极值：区间固定，逐帧重算代价可忽略，也免去一维搜索的分支 */
+  function argmax(fn, lo, hi) {
     let bestK = lo, bestV = -Infinity;
     for (let i = 0; i <= 400; i++) {
       const k = lo + (hi - lo) * (i / 400);
@@ -53,35 +47,36 @@
     }
     return { k: bestK, v: bestV };
   }
-  /** 采样一条曲线成 polyline 点位串（同一批节点复用，只改 points） */
+  /** 采样一条曲线成 polyline 点位串（节点复用，只改 points） */
   function trace(fn) {
     const pts = [];
-    for (let i = 0; i <= 180; i++) {
-      const k = KMAX * (i / 180);
-      pts.push(sc.px(k).toFixed(1) + ',' + sc.py(DK.clamp(fn(k), 0, YMAX)).toFixed(1));
+    for (let i = 0; i <= 200; i++) {
+      const k = KMAX * (i / 200);
+      pts.push(sc.px(k).toFixed(1) + ',' + sc.py(DK.clamp(fn(k), YMIN, YMAX)).toFixed(1));
     }
     return pts.join(' ');
   }
-  /** 真实质量掉到峰值一半以下的起点 */
-  function collapseStart() {
-    for (let i = 0; i <= 400; i++) {
-      const k = KMAX * (i / 400);
-      if (quality(k) < QMAX * 0.5) return k;
+  /* 质量峰值与塌缩阈只依赖常数，与参数无关，算一次就够 */
+  const QPEAK = argmax(quality, 0, KMAX);
+  const COLLAPSE_K = (() => {
+    for (let i = 0; i <= 800; i++) {
+      const k = QPEAK.k + (KMAX - QPEAK.k) * (i / 800);
+      if (quality(k) < QPEAK.v * THR) return k;
     }
     return KMAX;
-  }
+  })();
 
-  /* 三条线靠虚线样式区分，颜色只有一档强调色（DESIGN.md §8.2） */
+  /* 三条线只有一档强调色，靠线型区分；图例的线型与曲线严格一致（§8.2 §13.1） */
   const CURVES = [
-    { key: 'r', label: 'r(κ) 奖励模型给的分', cls: 'curve curve--muted', dash: '6 3' },
-    { key: 'q', label: 'q(κ) 真实质量', cls: 'curve curve--muted', dash: '2 3' },
-    { key: 'j', label: 'J(κ)=r−β·κ 被优化的目标', cls: 'curve', dash: 'none' }
+    { key: 'r', label: 'r(κ) 奖励模型给的分', dash: '6 3' },
+    { key: 'q', label: 'q(κ) 真实质量', dash: '2 3' },
+    { key: 'j', label: 'J(κ) = r − β·κ（被优化的目标）', dash: '10 3 2 3' }
   ];
 
   DK.define('m09-reward-kl', {
     title: '奖励与跑偏的拉锯',
     viewBox: [W, H],
-    /* 初值即 reset 的归宿（契约 §2.2 第 5 条：状态只放 api.state） */
+    /* 初值即「重置」的归宿（契约 §2.2 第 5 条：状态只存 api.state） */
     state: { beta: 0.35, eps: 0.55, q: true, mc: false },
 
     controls(holder, api) {
@@ -100,7 +95,7 @@
         on(v) { api.state.q = v; api.draw(); }
       }));
       holder.appendChild(DK.toggle({
-        key: 'mc', label: '标注塌缩区域', value: api.state.mc,
+        key: 'mc', label: '标注塌缩（mode collapse）区域', value: api.state.mc,
         on(v) { api.state.mc = v; api.draw(); }
       }));
 
@@ -108,7 +103,7 @@
         ['kl', '最优 KL κ*', ''],
         ['r', '奖励分 r(κ*)', ''],
         ['q', '真实质量 q(κ*)', ''],
-        ['gap', '被钻空子的量', ''],
+        ['gap', '被钻空子的量 r−q', ''],
         ['zone', '工作点所在区域', '']
       ]);
       api._ro = ro;
@@ -116,64 +111,78 @@
     },
 
     build(svg, api) {
-      /* 常驻的诚实性声明：写在画面上，不只写在文档里 */
+      /* ---- 常驻的诚实性声明：写在画面上，不只写在文档里 ---- */
       svg.appendChild(DK.el('text', {
         x: 12, y: 18, class: 't-sm warm',
         text: '示意曲线：形状取自公开讨论的 reward hacking 现象，数值为编造，不是任何真实模型的测量结果'
       }));
       svg.appendChild(DK.el('text', {
         x: 12, y: 34, class: 't-xs faint',
-        text: 'κ = 策略偏离参考模型的 KL 距离（无量纲，κ=0 表示完全没被改动）· 纵轴 = 分数（无量纲，可整体平移）'
+        text: 'κ = 策略偏离参考模型的 KL 距离（无量纲，κ=0 即完全没被改动）· 分数为无量纲刻度，整体平移不改变结论'
       }));
       svg.appendChild(DK.el('text', {
         x: 12, y: 48, class: 't-xs faint',
-        text: 'ε = 奖励模型与真实人类偏好之间的缺口 · 被优化的是 J，不是 r，更不是 q —— 圆点是训练会停下的地方'
+        text: 'ε = 奖励模型与真实人类偏好之间的缺口 · 被优化的是 J，既不是 r 也不是 q —— 圆点是训练会停下的地方'
       }));
 
-      /* 坐标轴与网格 */
+      /* ---- 图例（横排，线型与曲线一致） ---- */
+      const lgX = [PAD.l, PAD.l + 190, PAD.l + 430];
+      CURVES.forEach((c, i) => {
+        const y = 68;
+        svg.appendChild(DK.el('line', {
+          class: i === 2 ? 'curve' : 'curve curve--muted', x1: lgX[i], y1: y, x2: lgX[i] + 24, y2: y,
+          'stroke-dasharray': c.dash, 'stroke-width': i === 2 ? 3 : 2
+        }));
+        svg.appendChild(DK.el('text', { x: lgX[i] + 30, y: y + 4, class: 't-xs muted', text: c.label }));
+      });
+
+      /* ---- 坐标轴 ---- */
       const xTicks = [];
       for (let v = 0; v <= KMAX + 1e-9; v += 0.25) xTicks.push(+v.toFixed(2));
       const gAx = DK.el('g');
       DK.axis(gAx, sc, {
         xTicks: xTicks, xFmt: v => v.toFixed(2),
-        yTicks: [0, 0.25, 0.5, 0.75, 1.0, 1.25], yFmt: v => v.toFixed(2),
+        yTicks: [0, 0.5, 1.0, 1.5], yFmt: v => v.toFixed(1),
         axisY: 0, xlabel: 'κ（策略偏离参考模型的 KL 距离）'
       });
-      /* demo-kit 的刻度线用 .grid-l（只在 .dgm 作用域里有定义），这里换成 demo 的 .grid */
+      /* demo-kit 的刻度线用了 .grid-l（只在 .dgm 作用域内有定义），这里换成 demo 的 .grid */
       gAx.querySelectorAll('.grid-l').forEach(n => n.setAttribute('class', 'grid'));
       svg.appendChild(gAx);
-      svg.appendChild(DK.el('line', { class: 'grid', x1: sc.px(0), y1: sc.py(0), x2: sc.px(KMAX), y2: sc.py(0) }));
-      svg.appendChild(DK.el('line', { class: 'grid', x1: sc.px(0), y1: sc.py(0), x2: sc.px(0), y2: sc.py(YMAX) }));
+      /* 零线与纵轴 */
+      svg.appendChild(DK.el('line', { class: 'grid', x1: sc.px(0), y1: sc.py(0), x2: sc.px(KMAX), y2: sc.py(0), 'stroke-width': 1.5 }));
+      svg.appendChild(DK.el('line', { class: 'grid', x1: sc.px(0), y1: sc.py(YMAX), x2: sc.px(0), y2: sc.py(YMIN) }));
+      svg.appendChild(DK.el('text', { x: sc.px(0) + 3, y: sc.py(0) + 11, class: 't-xs faint', text: '分数 0' }));
 
-      /* 三条曲线：build 里各建一次，draw 只改 points（契约 §2.2 第 6 条：不堆积节点） */
+      /* 图内一句说明：优化的是 J 的最高点 */
+      svg.appendChild(DK.el('text', {
+        x: sc.px(0) + 3, y: sc.py(YMAX) + 12, class: 't-xs muted',
+        text: '优化 = 沿 J（点划线）找最高点'
+      }));
+      svg.appendChild(DK.el('text', {
+        x: sc.px(0) + 3, y: sc.py(YMIN) - 4, class: 't-xs faint',
+        text: 'J 低于 −0.4 后截断显示（β=2 时曲线右端会一路沉到画外）'
+      }));
+
+      /* ---- 三条曲线：各建一次，draw 只改 points（契约 §2.2 第 6 条：不堆积节点） ---- */
       api.lines = {};
       const gC = DK.el('g');
-      CURVES.forEach(c => {
-        const p = DK.el('polyline', { class: c.cls, fill: 'none', 'stroke-dasharray': c.dash, points: '' });
+      CURVES.forEach((c, i) => {
+        const p = DK.el('polyline', {
+          class: i === 2 ? 'curve' : 'curve curve--muted',
+          fill: 'none', 'stroke-dasharray': c.dash, 'stroke-width': i === 2 ? 3 : 2, points: ''
+        });
         api.lines[c.key] = p;
         gC.appendChild(p);
       });
       svg.appendChild(gC);
 
-      /* 图例：线型与曲线一致，不靠颜色单独承载信息（§13.1） */
-      const lgX = sc.px(KMAX) + 14;
-      const gLg = DK.el('g');
-      CURVES.forEach((c, i) => {
-        const y = sc.py(YMAX) + 8 + i * 26;
-        gLg.appendChild(DK.el('line', {
-          class: c.cls, x1: lgX, y1: y, x2: lgX + 22, y2: y, 'stroke-dasharray': c.dash
-        }));
-        gLg.appendChild(DK.el('text', { x: lgX, y: y + 13, class: 't-xs muted', text: c.label }));
-      });
-      svg.appendChild(gLg);
-
-      /* 最优工作点：一个 <circle> + 一条垂线，随参数移动 */
+      /* ---- 最优工作点：一个 <circle> + 一条垂线，随参数移动 ---- */
       api.drop = DK.el('line', { class: 'grid grid--dash', x1: 0, y1: 0, x2: 0, y2: 0 });
       svg.appendChild(api.drop);
-      api.dot = DK.el('circle', { r: 5, fill: 'var(--c-accent)', stroke: 'var(--c-bg-elev)', 'stroke-width': 2 });
+      api.dot = DK.el('circle', { r: 5.5, fill: 'var(--c-accent)', stroke: 'var(--c-bg-elev)', 'stroke-width': 2 });
       svg.appendChild(api.dot);
 
-      /* 动态标注分组：每次 draw 先清空再画 */
+      /* ---- 动态标注分组：每次 draw 先清空再画 ---- */
       api.gNotes = DK.el('g');
       svg.appendChild(api.gNotes);
     },
@@ -182,6 +191,7 @@
       const s = api.state;
       const eps = DK.clamp(s.eps, 0, 1);
       const beta = DK.clamp(s.beta, 0, 2);
+      const g = api.gNotes;
 
       /* 曲线 */
       api.lines.r.setAttribute('points', trace(k => reward(k, eps)));
@@ -189,71 +199,79 @@
       api.lines.j.setAttribute('points', trace(k => objective(k, eps, beta)));
       api.lines.q.style.display = s.q ? '' : 'none';
       /* β=0 时 J 与 r 完全重合，把 r 让到背景上，免得读者以为只有一条线 */
-      api.lines.r.setAttribute('opacity', beta < 1e-6 ? .4 : 1);
+      api.lines.r.setAttribute('opacity', beta < 1e-6 ? .35 : 1);
 
       /* 工作点 */
-      const best = argmaxOf(k => objective(k, eps, beta), 0, KMAX);
+      const best = argmax(k => objective(k, eps, beta), 0, KMAX);
+      const rStar = reward(best.k, eps);
+      const qStar = quality(best.k);
+      const gap = rStar - qStar;
       const bx = sc.px(best.k), by = sc.py(best.v);
       api.dot.setAttribute('cx', bx); api.dot.setAttribute('cy', by);
       api.drop.setAttribute('x1', bx); api.drop.setAttribute('x2', bx);
       api.drop.setAttribute('y1', by); api.drop.setAttribute('y2', sc.py(0));
 
-      const rStar = reward(best.k, eps);
-      const qStar = quality(best.k);
-      const gap = rStar - qStar;
-
-      const g = api.gNotes;
       while (g.firstChild) g.removeChild(g.firstChild);
 
-      /* 塌缩区（放在最底层，先画） */
-      const mcK = collapseStart();
+      /* 塌缩区（先画，压在曲线下层） */
       if (s.mc) {
         g.appendChild(DK.el('rect', {
-          x: sc.px(mcK), y: sc.py(YMAX), width: sc.px(KMAX) - sc.px(mcK),
-          height: sc.py(0) - sc.py(YMAX), fill: 'var(--c-heat-1)', opacity: .45
+          x: sc.px(COLLAPSE_K), y: sc.py(YMAX), width: sc.px(KMAX) - sc.px(COLLAPSE_K),
+          height: sc.py(YMIN) - sc.py(YMAX), fill: 'var(--c-heat-1)', opacity: .5
         }));
         g.appendChild(DK.el('line', {
-          class: 'grid grid--dash', x1: sc.px(mcK), y1: sc.py(YMAX), x2: sc.px(mcK), y2: sc.py(0)
+          class: 'grid grid--dash', x1: sc.px(COLLAPSE_K), y1: sc.py(YMAX), x2: sc.px(COLLAPSE_K), y2: sc.py(0)
+        }));
+        const cx = (sc.px(COLLAPSE_K) + sc.px(KMAX)) / 2;
+        g.appendChild(DK.el('text', {
+          x: cx, y: sc.py(YMAX) + 26, class: 't-xs warm', 'text-anchor': 'middle',
+          text: '塌缩区 mode collapse'
         }));
         g.appendChild(DK.el('text', {
-          x: (sc.px(mcK) + sc.px(KMAX)) / 2, y: sc.py(YMAX) + 22, class: 't-xs warm',
-          'text-anchor': 'middle', text: '塌缩区：q 已跌破峰值的一半'
+          x: cx, y: sc.py(YMAX) + 38, class: 't-xs faint', 'text-anchor': 'middle',
+          text: 'q 跌破峰值的 60%（κ>' + DK.fmt(COLLAPSE_K, 2) + '）'
         }));
         g.appendChild(DK.el('text', {
-          x: (sc.px(mcK) + sc.px(KMAX)) / 2, y: sc.py(YMAX) + 34, class: 't-xs faint',
-          'text-anchor': 'middle', text: '回答变长、变自信，内容开始空洞'
+          x: cx, y: sc.py(YMAX) + 50, class: 't-xs faint', 'text-anchor': 'middle',
+          text: '策略挤到少数几种高分写法上'
         }));
       }
 
       /* r 的峰值位置：模型「最会刷分」的地方 */
-      const peak = argmaxOf(k => reward(k, eps), 0, KMAX);
+      const peak = argmax(k => reward(k, eps), 0, KMAX);
       g.appendChild(DK.el('line', {
-        class: 'grid grid--dash', x1: sc.px(peak.k), y1: sc.py(0),
-        x2: sc.px(peak.k), y2: sc.py(YMAX), opacity: .9
+        class: 'grid grid--dash', x1: sc.px(peak.k), y1: sc.py(0), x2: sc.px(peak.k), y2: sc.py(YMAX)
       }));
       g.appendChild(DK.el('text', {
-        x: DK.clamp(sc.px(peak.k) + 4, sc.px(0), sc.px(KMAX) - 60), y: sc.py(YMAX) + 12,
-        class: 't-xs faint', text: 'r 的峰值 κ=' + DK.fmt(peak.k, 2)
+        x: DK.clamp(sc.px(peak.k) - 3, PAD.l + 2, sc.px(KMAX) - 74), y: sc.py(0) - 5,
+        class: 't-xs faint', 'text-anchor': 'end', text: 'r 峰值 κ=' + DK.fmt(peak.k, 2)
       }));
 
-      /* 工作点标签 + 从工作点到 r/q 的落差段 */
-      const right = best.k > 1.05;
+      /* 工作点标签：靠近右边界时改成右锚点，避免画出图外 */
+      const flip = best.k > 1.25;
       g.appendChild(DK.el('text', {
-        x: right ? bx - 8 : bx + 9, y: Math.max(sc.py(YMAX) + 12, by - 14),
-        class: 't-xs accent', 'text-anchor': right ? 'end' : 'start',
+        x: flip ? bx - 9 : bx + 10, y: Math.max(sc.py(YMAX) + 12, by - 15),
+        class: 't-xs accent', 'text-anchor': flip ? 'end' : 'start',
         text: 'κ*=' + DK.fmt(best.k, 2) + ' · J*=' + DK.fmt(best.v, 2)
       }));
-      if (gap > 0.015) {
+      /* 从工作点竖直量到 r 与 q：这段落差就是被钻空子的量 */
+      if (gap > 0.02) {
         g.appendChild(DK.el('line', {
           x1: bx, y1: sc.py(rStar), x2: bx, y2: sc.py(qStar),
           stroke: 'var(--c-warn)', 'stroke-width': 2, 'stroke-dasharray': '3 2'
         }));
         g.appendChild(DK.el('text', {
-          x: right ? bx - 8 : bx + 9, y: sc.py((rStar + qStar) / 2) + 3,
-          class: 't-xs', fill: 'var(--c-warn)', 'text-anchor': right ? 'end' : 'start',
-          text: '被钻空子 r−q=' + DK.fmt(gap, 2)
+          x: flip ? bx - 9 : bx + 10, y: sc.py((rStar + qStar) / 2) + 3,
+          'text-anchor': flip ? 'end' : 'start', class: 't-xs', fill: 'var(--c-warn)',
+          text: 'r−q=' + DK.fmt(gap, 2)
         }));
       }
+      /* q 上的空心标记：让读者看得见「真实质量此刻在哪」 */
+      g.appendChild(DK.el('circle', {
+        cx: bx, cy: sc.py(qStar), r: 4, fill: 'none',
+        stroke: 'var(--c-line-strong)', 'stroke-width': 2,
+        style: s.q ? '' : 'display:none'
+      }));
 
       /* 读数 */
       if (api._ro) {
@@ -263,25 +281,25 @@
         api._ro.set('gap', DK.fmt(gap, 2));
         let zone;
         if (beta < 1e-6) zone = '无约束：停在 r 的峰值';
-        else if (best.k < 0.12) zone = '过保守：几乎没敢动';
-        else if (best.k > mcK) zone = '已落进塌缩区';
-        else zone = '折中：质量还在涨';
+        else if (best.k > COLLAPSE_K) zone = '塌缩区内：分数涨、质量崩';
+        else if (best.k < 0.05) zone = '过度保守：几乎没动';
+        else zone = '折中：q 仍在高位';
         api._ro.set('zone', zone);
       }
     },
 
-    hint: '<strong>你能改什么：</strong>β ∈ [0, 2.00]，KL 惩罚系数，即机制段公式 J = r − β·κ 里的那根缰绳；' +
-      '越大越保守（宁可分数低也要保住 SFT 模型的说话方式），越小越敢冒险刷分，β=0 等于不加约束。' +
-      'ε ∈ [0, 1.00]，奖励模型「可被钻空子的程度」，也就是它与真实人类偏好之间的缺口：0 = 打分完全可信，1 = 漏洞最深。' +
-      '两个开关：「显示真实质量曲线」画出与人类真正对齐的那条 q(κ)；「标注塌缩区域」把 q 跌破峰值一半的 κ 区间涂出来。<br>' +
-      '<strong>拨动它你会看到：</strong>① 圆点永远停在点划线 J 的最高处——被优化的既不是 r 也不是 q，读者得先接受这一点。' +
-      '② 把 β 从 2.00 拖到 0：κ* 一路右移，读数里 r(κ*) 还在涨、q(κ*) 掉头向下、被钻空子的量持续变大，这就是 reward hacking 的完整轨迹；' +
-      'β=0 时圆点直接坐在 r 的峰值 κ≈1.60，那里 q 早已跌破峰值一半。' +
-      '③ 把 ε 拖到 0：r 与 q 两条线完全重合，被钻空子的量恒等于 0——<strong>跑偏的根源是奖励模型的近似误差，不是优化本身</strong>。' +
-      '④ ε=0 且 β 也小时，κ* 落在 0.4 附近，正是 q 的峰值处：这就是「RM 足够准时，强化学习确实有用」的样子。' +
-      '⑤ β=2 时圆点退回 κ≈0.15 附近，分数几乎不涨，是「过度保守、等于没做后训练」的另一端。<br>' +
-      '<strong>对应机制段：</strong>第 ⑤ 步（J = r − β·D<sub>KL</sub> 这个目标函数，以及 β 的两难）、' +
-      '第 ⑦ 步（③：优化压力越大越会去找 RM 近似面之外的漏洞）、' +
+    hint: '<strong>你能改什么：</strong>β ∈ [0, 2.00]，KL 惩罚系数，就是机制段公式 J = r − β·D<sub>KL</sub> 里的那根缰绳；' +
+      '<strong>越大越保守</strong>（宁可分数低也要保住 SFT 模型的说话方式），<strong>越小越敢冒险刷分</strong>，β=0 等于不加约束。' +
+      'ε ∈ [0, 1.00]，奖励模型「可被钻空子的程度」，即它与真实人类偏好之间的缺口：0 = 打分完全可信，1 = 漏洞最深。' +
+      '两个开关：「显示真实质量曲线」画出与人类真正对齐的那条 q(κ)；「标注塌缩（mode collapse）区域」把 q 跌破峰值 60% 的 κ 区间涂出来。<br>' +
+      '<strong>拨动它你会看到：</strong>① 圆点永远停在点划线 J 的最高处——被优化的既不是 r 也不是 q，这是全图最该先接受的一件事。' +
+      '② 把 β 从 2.00 拖向 0：κ* 连续右移，r(κ*) 一路上涨、q(κ*) 掉头向下、「被钻空子的量」持续变大，这就是 reward hacking 的完整轨迹；' +
+      'ε=1、β≤0.2 时 κ*≈0.74–0.88，已经落进塌缩区，那里 q 只剩峰值的四到六成。' +
+      '③ 把 ε 拖到 0：r 与 q 两条线完全重合，无论 β 多小，「被钻空子的量」恒为 0.00——<strong>跑偏的根源是奖励模型的近似误差，不是优化本身</strong>。' +
+      '④ ε=0 且 β=0 时 κ*≈0.30，正落在 q 的峰值上：这就是「RM 足够准时，在线优化确实有用」的样子。' +
+      '⑤ β=2.00 时 κ*=0，分数几乎不涨，是「过度保守、等于没做后训练」的另一端；ε=0.55 时把 β 从 0.35 调到 0.70，κ* 只从 0.38 挪到 0.30，而 q 反而回到峰值——最优的缰绳不是越紧越好。<br>' +
+      '<strong>对应机制段：</strong>第 ⑤ 步（目标函数 J = r − β·D<sub>KL</sub> 与 β 的两难）、' +
+      '第 ⑦ 步（③：优化压力越大越会去找 RM 近似面之外的漏洞，表现为回答变长、变自信）、' +
       '以及直觉段那条失效边界（老师傅是学生教出来的，所以 ε>0 才谈得上刷分）。'
   });
 })(window.AIPrinciples);
