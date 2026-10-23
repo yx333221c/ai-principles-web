@@ -583,6 +583,75 @@
        ?only=m07--demo   只显示该段落，其余区块隐藏（单段预览）
        ?mountall         立即挂载全部演示，跳过懒加载
      ======================================================================== */
+  /* 对比度扫描：找出「有文字、有非透明背景、但两者对比不足」的元素。
+     这正是 .fig__cell--h3 在暗色主题下白字压浅底那一类缺陷的通用检测器。
+
+     颜色的坑：getComputedStyle 对 color-mix() 会返回 `color(srgb .109 .486 .353 / .12)`
+     这种新式写法，且带 alpha。按「前三个数字 ÷ 255」解析会得到完全错误的结果
+     （srgb 分量本来就是 0–1）。所以一律用 canvas 归一化成 rgb/rgba 再解析，
+     并把半透明的背景逐层合成到不透明的底层上。 */
+  function contrastSweep() {
+    const cvs = doc.createElement('canvas');
+    cvs.width = cvs.height = 1;
+    const cx = cvs.getContext('2d', { willReadFrequently: true });
+    if (!cx) return [];
+    /** 任意 CSS 颜色 → [r,g,b,a]（0–255 / 0–1）；无法解析返回 null */
+    function parse(c) {
+      if (!c) return null;
+      cx.fillStyle = '#010203';                 // 哨兵：赋值失败时 fillStyle 不变
+      cx.fillStyle = c;
+      const v = cx.fillStyle;
+      if (v === '#010203') return null;         // 浏览器没接受这个颜色
+      if (v.charAt(0) === '#') {
+        const h = v.slice(1);
+        if (h.length === 3) return [parseInt(h[0] + h[0], 16), parseInt(h[1] + h[1], 16), parseInt(h[2] + h[2], 16), 1];
+        return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16), 1];
+      }
+      const m = v.match(/rgba?\(([^)]+)\)/);
+      if (!m) return null;
+      const p = m[1].split(/[,\s/]+/).filter(s => s !== '').map(Number);
+      if (p.length < 3) return null;
+      return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1];
+    }
+    const lum = (c) => {
+      const s = c.slice(0, 3).map(v => { const x = v / 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); });
+      return 0.2126 * s[0] + 0.7152 * s[1] + 0.0722 * s[2];
+    };
+    /** 沿祖先链收集背景，遇到不透明层即止，再把半透明层逐层压上去 */
+    function bgOf(el) {
+      const stack = [];
+      for (let n = el; n && n.nodeType === 1; n = n.parentElement) {
+        const b = parse(getComputedStyle(n).backgroundColor);
+        if (!b) continue;
+        if (b[3] > 0.02) { stack.push(b); if (b[3] >= 0.999) break; }
+      }
+      if (!stack.length) return [255, 255, 255, 1];
+      let acc = stack[stack.length - 1].slice();      // 最外层（不透明底）
+      for (let i = stack.length - 2; i >= 0; i--) {
+        const s = stack[i];
+        acc = [0, 1, 2].map(k => s[k] * s[3] + acc[k] * (1 - s[3])).concat([1]);
+      }
+      return acc;
+    }
+    const hexOf = (c) => '#' + c.slice(0, 3).map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+    const hits = [];
+    doc.querySelectorAll('.fig__cell, .fig__pill, .fig__box, .fig__tok, .badge, .demo__stat b, .todo, .callout, .myth__body p, .takeaway__line, .quiz__opt, .modcard__tag, .demo__legend').forEach(el => {
+      const own = [...el.childNodes].filter(n => n.nodeType === 3 && n.textContent.trim());
+      if (!own.length) return;
+      const cs = getComputedStyle(el);
+      const fg = parse(cs.color), bg = bgOf(el);
+      if (!fg || !bg) return;
+      const lf = lum(fg), lb = lum(bg);
+      const ratio = (Math.max(lf, lb) + 0.05) / (Math.min(lf, lb) + 0.05);
+      const small = parseFloat(cs.fontSize) < 18.5;
+      if (ratio < (small ? 4.5 : 3)) {
+        hits.push(el.className.toString().split(' ')[0] + ':' + ratio.toFixed(2) +
+          hexOf(fg) + 'on' + hexOf(bg));
+      }
+    });
+    return hits;
+  }
+
   function runProbe() {
     const out = [];
     doc.querySelectorAll('.demo[data-demo]').forEach(host => {
@@ -631,6 +700,43 @@
       if (over) f.push('OVER' + over + '|' + worst);
       out.push(key + '{' + f.join(',') + '}');
     });
+
+    /* 页面级检查：横向溢出（移动端最常见故障）、主题是否真的生效、
+       正文对比度是否够（§13.1 要求正文 7:1） */
+    const de = doc.documentElement;
+    const pg = [];
+    const over = de.scrollWidth - de.clientWidth;
+    if (over > 2) {
+      /* 找出最宽的元凶，方便定位 */
+      let culprit = '', widest = 0;
+      doc.querySelectorAll('body *').forEach(el => {
+        const w = el.getBoundingClientRect().right;
+        if (w > widest) { widest = w; culprit = (el.tagName + '.' + (el.className || '')).toString().replace(/\s+/g, '-').slice(0, 40); }
+      });
+      pg.push('HSCROLL+' + Math.round(over) + '|' + culprit);
+    }
+    const cs = getComputedStyle(doc.body);
+    const bg = cs.backgroundColor, fg = cs.color;
+    const lum = (c) => {
+      const m = c.match(/(\d+(?:\.\d+)?)/g);
+      if (!m) return 0;
+      const [r, g, b] = m.slice(0, 3).map(v => {
+        const s = v / 255; return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+      });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const ratio = (Math.max(lum(bg), lum(fg)) + 0.05) / (Math.min(lum(bg), lum(fg)) + 0.05);
+    pg.push('THEME=' + (root.getAttribute('data-theme') || '?') + '/' + (ratio >= 7 ? 'AAA' : ratio >= 4.5 ? 'AA' : 'LOW' + ratio.toFixed(1)));
+    const tocShown = getComputedStyle(doc.getElementById('toc') || doc.body).display !== 'none';
+    const navShown = getComputedStyle(doc.getElementById('sitenav') || doc.body).display !== 'none';
+    pg.push('W=' + de.clientWidth + '/toc=' + (tocShown ? 'y' : 'n') + '/nav=' + (navShown ? 'y' : 'n'));
+    /* 对比度扫描：暗色主题下最容易出现「有背景色的格子用了同色系文字」 */
+    try {
+      const hits = contrastSweep();
+      if (hits.length) pg.push('CONTRAST' + hits.length + '|' + hits.slice(0, 3).join('/'));
+    } catch (e) { pg.push('CONTRASTERR'); }
+    out.push('PAGE{' + pg.join(',') + '}');
+
     root.setAttribute('data-probe', out.join(' '));
     doc.title = 'PROBE::' + out.join(' ');
   }
@@ -639,6 +745,10 @@
     let q;
     try { q = new URLSearchParams(location.search); } catch (e) { return; }
     if (q.has('mountall')) doc.querySelectorAll('.demo[data-demo]').forEach(mountOne);
+    /* ?theme=dark 强制切主题：无头浏览器每次都是全新 profile，
+       没法靠 localStorage 复现暗色，自动化验证需要一个显式开关 */
+    const th = q.get('theme');
+    if (th === 'dark' || th === 'light' || th === 'auto') applyTheme(th);
     /* 探针要等一帧，让刚插入的 SVG 完成布局后 getBBox 才有真实尺寸 */
     if (q.has('probe')) requestAnimationFrame(() => setTimeout(runProbe, 80));
     const only = q.get('only');

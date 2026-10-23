@@ -2,7 +2,7 @@
 
 > 用**可交互图解**讲清 AI 底层原理的开源静态站点。不讲新闻、不卖课、不堆术语，只回答「它到底是怎么工作的」。
 
-⚠️ **当前状态：v0.1 结构骨架。** 站点外壳、设计系统、13 个模块的区块结构与数据契约已全部就位，**正文内容与交互演示尚未填充**。设计与开发依据见 [DESIGN.md](./DESIGN.md)。
+**当前状态：v0.2 —— 13 个模块的正文与交互演示均已完成**，全部通过结构自检与无头浏览器渲染验证（桌面亮/暗 + 移动端三种视口）。内容状态标为 `reviewed`：过了硬性规则与渲染验证，但**尚未经领域专家逐篇复核**。设计依据见 [DESIGN.md](./DESIGN.md)，动手写内容前先看 [docs/authoring-contract.md](./docs/authoring-contract.md)。
 
 ## 这个站点想解决什么
 
@@ -10,41 +10,63 @@
 
 ## 本地打开
 
-纯静态、零依赖、零构建，任意方式皆可：
+纯静态、零外部依赖、无框架。`index.html` 是构建产物，可以直接双击打开，但建议起个本地服务：
 
 ```bash
-# 直接双击 index.html 也能看，但建议起个本地服务
-python -m http.server 8080       # 然后打开 http://localhost:8080
+node build.js                              # 内容由 content/modules/*.html 生成 index.html
+python -m http.server 8765 --bind 127.0.0.1
 ```
 
 | 文件 | 作用 |
 |---|---|
-| `index.html` | 站点全部区块：6 个部分 / 13 个模块 / 每模块六段式 |
-| `assets/css/base.css` | 设计令牌（颜色/字体/间距/动效）+ 亮暗双主题 |
-| `assets/css/layout.css` | 三栏外壳与响应式断点 |
-| `assets/css/components.css` | 组件样式（模块卡、demo 容器、误区卡…） |
-| `assets/js/app.js` | 主题切换 / 抽屉导航 / scroll-spy / 阅读进度 / 快捷键 / Demo 注册表 |
-| `assets/js/demos/` | 每模块一个演示（当前仅 `m05-microcalc.js` 契约空壳） |
-| `assets/data/modules.json` | 模块元数据：编号、前置依赖 DAG、演示键、状态（内容契约） |
-| `content/modules/` | 13 个模块的六段式写作草稿模板（全 TODO 占位） |
-| `docs/` | 写作规范与统一术语表 |
-| `scripts/selfcheck.js` | 结构自检：JS 语法 / JSON 契约 / HTML 区块数 / 锚点是否失效 / CSS 令牌是否齐全 |
+| `DESIGN.md` | 设计文档：信息架构、13 模块大纲、六段式模板、演示体系、视觉令牌、路线图 |
+| `build.js` | 构建器：`modules.json` + `content/modules/*.html` + `templates/shell.html` → `index.html` |
+| `templates/shell.html` | 站点外壳（**要改结构改这里，不要改 index.html**） |
+| `index.html` | 生成物，勿手改 |
+| `assets/css/base.css` | 设计令牌（颜色/字体/间距/动效）+ 亮/暗/跟随系统三态 |
+| `assets/css/layout.css` | 三栏外壳与四档响应式断点 |
+| `assets/css/components.css` | 组件样式（模块卡、演示容器、误区卡、图解、搜索…） |
+| `assets/css/diagram.css` | 内联 SVG 图解与手写公式的公共样式 |
+| `assets/js/app.js` | 主题 / 抽屉 / scroll-spy / 阅读进度 / 搜索 / 术语卡 / 自测题 / 步骤联动 / lightbox / 演示懒挂载 |
+| `assets/js/demo-kit.js` | 演示公共工具箱：统一生命周期、原生可达控件、可复现随机数、SVG 助手 |
+| `assets/js/demos/` | 13 个交互演示，每模块一个 |
+| `assets/data/modules.json` | 内容契约：编号、前置依赖 DAG、演示键、验收标准、状态 |
+| `content/modules/` | 13 个模块的六段式正文（含内联 SVG 图解） |
+| `docs/` | 作者契约、写作规范、术语表 |
+| `scripts/selfcheck.js` | 结构自检（零依赖） |
+| `scripts/verify-demos.js` | 无头浏览器渲染验证 |
 
-自检（零依赖，用 Node 直接跑）：
+## 两道验证
+
+改完内容/结构，两条都要绿：
 
 ```bash
-node scripts/selfcheck.js     # 全部通过输出 RESULT: all checks passed
+node build.js && node scripts/selfcheck.js
+python -m http.server 8765 --bind 127.0.0.1 &   # 另开一个终端
+node scripts/verify-demos.js
 ```
 
-检查项包括 13 个 `section.module`、78 个 `article.seg`（13×6）、无重复 id、**所有内部锚点都能解析到真实元素**、`data-demo` 均在 `modules.json` 中声明、CSS 引用的变量全部有定义。改结构后请重跑。
+**`selfcheck.js`（静态）**：六段是否齐全、hook 字数、类比有没有写失效边界（H3）、误区是否 ≥3 条且写了「为何会有」（H10）、公式是否都配了自然语言读法、有没有违禁营销词（H8）、图解是否硬编码颜色（暗色主题杀手）、带走一句是否 ≤40 字、自测题是否标了正确项并给了答错解释、有无重复 id 与失效锚点、CSS 变量是否都有定义、演示控件是否都绑了 state key（否则重置失效）、是否用了 `Math.random`（不可复现）。
+
+**`verify-demos.js`（真实浏览器）**：在**桌面亮色 / 桌面暗色 / 移动端**三种视口下各加载一次，检查每个演示是否真的挂载、画布/控件/读数/说明/重置是否齐备、**有没有文字越出 viewBox**（越界的字会被静默裁掉，肉眼很容易漏看）、页面是否横向溢出、正文对比度是否达 AA/AAA、console 有无未捕获异常。它靠 `app.js` 里的 `?probe=1` 探针在浏览器内测量（用 CTM 链把文字包围盒映射回 SVG 用户坐标）。
+
+## 与设计文档的偏差（已核对，均为有意为之）
+
+| DESIGN.md 原计划 | 实际做法 | 原因 |
+|---|---|---|
+| §10.2 用 KaTeX（CDN）渲染公式 | 手写 HTML 公式（`.frac` / `.sub` / `.sup` / `.bigg`） | 本机 CDN 与 GitHub 均不可达；且手写公式随主题变色、可被 lightbox 无损放大。代价是复杂排版（矩阵、分段函数）表现力有限 |
+| §6.4 D-M07 用真实小模型离线跑注意力权重 | 合成权重，并在画面顶部标注「示意数据（合成权重）」 | 无法下载模型权重。合成规则刻意复现三种真实存在的模式（局部性、句法主干、attention sink），但**不冒充真实输出** |
+| §11.1 内容以 `content/modules/*.md` 存放 | 改为 `*.html` 片段 | 本站内容以内联 SVG 图解与交互容器为主体，Markdown 反而要额外解析依赖 |
+| §12.3 v0.3 再上 GitHub Pages | 已可开启 | 纯静态无需构建 |
 
 ## 内容开发怎么写
 
 新增或修改正文前，**必读**：
 
-- [docs/writing-guide.md](./docs/writing-guide.md) —— 硬性规则、风格、图解与 Demo 文案规范
+- [docs/authoring-contract.md](./docs/authoring-contract.md) —— 操作契约：文件怎么写、有哪些类可用、演示 API、自检清单
+- [docs/writing-guide.md](./docs/writing-guide.md) —— 硬性规则 H1–H10、风格、图解与演示文案规范
 - [docs/glossary.md](./docs/glossary.md) —— 全站唯一中文译名
-- [DESIGN.md §5](./DESIGN.md) —— 六段式模板（钩子 / 直觉 / 机制 / 演示 / 误区 / 带走）
+- 黄金样板：[content/modules/m07.html](./content/modules/m07.html) + [assets/js/demos/m07-attn-map.js](./assets/js/demos/m07-attn-map.js)
 
 每个模块必须能被它的**验收标准**检验（见 `modules.json` 的 `acceptance` 字段），例：
 
@@ -52,15 +74,14 @@ node scripts/selfcheck.js     # 全部通过输出 RESULT: all checks passed
 
 ## 路线
 
-| 阶段 | 内容 |
-|---|---|
-| ✅ v0.1 | 设计文档 + 结构骨架 + 数据契约（当前） |
-| v0.2 | 样板模块：M07（旗舰注意力演示）+ M01（无公式对照） |
-| v0.3 | M02–M06、M08–M10；工程化（构建、CI、搜索）；GitHub Pages |
-| v0.4 | M11–M13、术语表、移动端与无障碍打磨 |
-| v1.0 | 交互式学习地图、英文版数据骨架 |
+| 阶段 | 内容 | 状态 |
+|---|---|---|
+| v0.1 | 设计文档 + 结构骨架 + 数据契约 | ✅ |
+| v0.2 | 13 个模块正文与演示全部完成；构建器、演示工具箱、两道验证；三视口渲染验证通过 | ✅ 当前 |
+| v0.3 | 领域专家逐篇复核（`reviewed` → `published`）；开启 GitHub Pages；矩阵/分段函数的公式排版补强 | ⬜ |
+| v1.0 | 交互式学习地图（DAG 可拖）、英文版数据骨架 | ⬜ |
 
-开发顺序的取舍见 [DESIGN.md §15](./DESIGN.md)：v0.2 先做难度最高的 M07，用它一次性证伪/证实六段式模板、Demo 挂载机制与图解换色体系，避免架构缺陷到后期才暴露。
+开发顺序的取舍见 [DESIGN.md §15](./DESIGN.md)：先做难度最高的 M07，用它一次性证伪/证实六段式模板、演示挂载机制与图解换色体系，避免架构缺陷到后期才暴露——这个决定后来确实抓出了若干只有旗舰演示才会触发的缺陷。
 
 ## 许可
 

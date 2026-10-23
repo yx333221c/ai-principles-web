@@ -28,19 +28,26 @@
   const DK = AIP && AIP.DK;
   if (!DK) return;
 
-  /* ================= 画布几何（纵向分行经浏览器 getBBox 实测校准） =========
-     中文字身（含 em box 行距）≈1.45×字号，所以 9px 文字必须 ≥13px 行距、
-     10.5px 文字必须 ≥16px 行距，否则两行会互相压字。
-       13/28/41 顶部三行说明 · 52–176 时间线五格 · 190 期望出错步标注
-       198 分割线 · 208 两块面板标题 · 224–388 左栏展开 / 224–368 右栏曲线
-       396–408 上下文窗口条 · 420/433 脚注 */
-  const W = 720, H = 440;
-  const X0 = 10, NW = 128, GAP = 10, NY = 52, NH = 124;   // 时间线五格 → 右边缘 690
+  /* ================= 画布几何（纵向间距由浏览器 getBBox 实测校准） ==========
+     中文字身（em box）≈1.45×字号：9px 文字行距 ≥14px、10.5px 文字行距 ≥16px，
+     否则相邻两行会互相压字。下面每个 Y 值都满足这条，且由 _tmp-m12-probe 验证。
+     行序：13/29/43 顶部说明 → 52–158 时间线五格 → 170 状态 → 192 出错步标注
+           → 202 分割线 → 216 面板标题 → 230–390 两栏内容 → 400 窗口条 → 424/437 脚注 */
+  const W = 720, H = 444;
+  const X0 = 10, NW = 128, GAP = 10, NY = 52, NH = 106;   // 时间线五格 → 右边缘 690
   const NX = (i) => X0 + i * (NW + GAP);                   // 10/148/286/424/562
+  const SEG_TOP = 18, SEG_STEP = 30, HL_DY = -4, HL_H = 29, LINE_OFF = 8, LINE_STEP = 14;
+  const Y = {
+    pill: 170, critA: 176, critB: 182, critLab: 196, div: 204, title: 218,
+    l1: 234, t0: 248, t1: 264, l2: 282, a0: 296, a1: 312, l3: 330,
+    o0: 344, o1: 360, n1: 376, n2: 390,
+    tick: 314, xlab: 328, cap1: 344, cap2: 358, cap3: 372,
+    win: 400, winLab: 409, foot1: 424, foot2: 437
+  };
   const LPX = 10;                                          // 左栏（x 10…372）
   const RPX = 386;                                         // 右栏（x 386…690）
-  const PL = { x: 414, x1: 684, y: 224, y1: 304 };         // 曲线绘图区
-  const WIN = { x: 78, w: 440, y: 396 };                   // 上下文窗口条
+  const PL = { x: 414, x1: 684, y: 226, y1: 302 };         // 曲线绘图区
+  const WIN = { x: 78, w: 360, y: 400 };                   // 上下文窗口条（右端 438，给读数留出空位）
   const NMAX = 20;                                         // 曲线横轴上限（步）
   const TRACK = 15;                                        // 本轨迹总步数
   const LIMIT = 1200;                                      // 示意窗口上限（词元）
@@ -174,12 +181,18 @@
     }
     return { bad: bad, meanFirst: sumFirst / trials };
   }
-  /* 词元数随步数增长：Observation 最长（机制段第 ③ 步的窗口约束；串回 M10 ⑥⑦） */
+  /* 词元数随步数增长：Observation 最长（机制段第 ③ 步的窗口约束；串回 M10 ⑥⑦）。
+     一轮 = T 34 + A 26 + O（命中 88 / 漏检 44 / 脏命中 120）。
+     打开「重复检索」时 O 再加 70（整段观测被重新抄一遍）：
+       命中  1 轮 148 → 218：5 轮 1060 → 1410（顶破上限）
+       脏命中 1 轮 180 → 250：5 轮 1220 → 1570（更早顶破）
+       漏检  1 轮 104 → 174：5 轮  840 → 1190（涨得最慢，仍不溢出）
+     这条对比就是「循环深度受窗口约束、而检索质量决定它有多快用满」的可视化。 */
   function tokensAt(f, q, loop) {
     let t = BASE_TOK;
     for (let k = 1; k <= f; k++) {
       const r = Math.ceil(k / 3), ph = k - 3 * (r - 1);
-      let add = ph === 1 ? 34 : ph === 2 ? 26 : (q === 1 ? 44 : q === 2 ? 76 : 88);
+      let add = ph === 1 ? 34 : ph === 2 ? 26 : (q === 1 ? 44 : q === 2 ? 120 : 88);
       if (ph === 3 && loop) add += 70;                    // 重复检索：整段观测又抄一遍
       t += add;
     }
@@ -248,15 +261,15 @@
       /* ---- 顶部：常驻诚实性声明（只占左半，右侧留给帧标签） ---- */
       svg.appendChild(DK.el('text', { x: 10, y: 13, class: 't-sm warm',
         text: '示意编排：这条轨迹是人工写好的样例，不是真实模型的运行记录。' }));
-      const h1 = DK.el('text', { x: 10, y: 24, class: 't-xs faint', text: '概率模型 p' });
+      const h1 = DK.el('text', { x: 10, y: 28, class: 't-xs faint', text: '概率模型 p' });
       h1.appendChild(DK.el('tspan', { 'baseline-shift': 'super', 'font-size': '7px', text: 'N' }));
       h1.appendChild(DK.el('tspan', { text: ' 为一阶近似；Observation 一律按文本回填，模型自身不执行任何东西。' }));
       svg.appendChild(h1);
-      svg.appendChild(DK.el('text', { x: 10, y: 35, class: 't-xs faint',
+      svg.appendChild(DK.el('text', { x: 10, y: 42, class: 't-xs faint',
         text: '任务：北京明天适合跑步吗？给我一条建议（系统时间 2026-10-23 21:00）' }));
       api._frameTag = DK.el('text', { x: 690, y: 13, class: 't-sm accent', 'text-anchor': 'end', text: '' });
-      api._phaseTag = DK.el('text', { x: 690, y: 25, class: 't-xs muted', 'text-anchor': 'end', text: '' });
-      api._roundTag = DK.el('text', { x: 690, y: 36, class: 't-xs faint', 'text-anchor': 'end', text: '' });
+      api._phaseTag = DK.el('text', { x: 690, y: 28, class: 't-xs muted', 'text-anchor': 'end', text: '' });
+      api._roundTag = DK.el('text', { x: 690, y: 42, class: 't-xs faint', 'text-anchor': 'end', text: '' });
       svg.appendChild(api._frameTag); svg.appendChild(api._phaseTag); svg.appendChild(api._roundTag);
 
       /* ---- 箭头定义（时间线共用） ---- */
@@ -281,20 +294,21 @@
         g.appendChild(title);
         /* 三段的高亮底色（先建好，draw 只改 opacity） */
         const hl = [0, 1, 2].map(k => {
-          const r = DK.el('rect', { x: nx + 2, y: NY + 17 + k * 25, width: NW - 4, height: 24, rx: 4,
-            fill: 'var(--c-accent)', opacity: 0 });
+          const r = DK.el('rect', { x: nx + 2, y: NY + SEG_TOP + k * SEG_STEP + HL_DY, width: NW - 4,
+            height: HL_H, rx: 4, fill: 'var(--c-accent)', opacity: 0 });
           g.appendChild(r); return r;
         });
         /* 每段两行文本：T 常规、A 等宽、O 随检索质量变色 */
         const mkLines = (k, cls, mono) => [0, 1].map(j => {
-          const t = DK.el('text', { x: nx + 6, y: NY + 28 + k * 25 + j * 11, class: cls, text: '' });
+          const t = DK.el('text', { x: nx + 6, y: NY + SEG_TOP + k * SEG_STEP + LINE_OFF + j * LINE_STEP,
+            class: cls, text: '' });
           if (mono) t.setAttribute('font-family', 'var(--f-mono)');
           g.appendChild(t); return t;
         });
         const tLines = mkLines(0, 't-xs muted', false);
         const aLines = mkLines(1, 't-xs accent', true);
         const oLines = mkLines(2, 't-xs', false);
-        const pill = DK.el('text', { x: nx + NW / 2, y: NY + 92, class: 't-xs faint',
+        const pill = DK.el('text', { x: nx + NW / 2, y: Y.pill, class: 't-xs faint',
           'text-anchor': 'middle', text: '' });
         g.appendChild(pill);
         /* 点一格 = 跳到它的 Observation（Tab 可达 + Enter） */
@@ -316,13 +330,13 @@
           stroke: 'var(--c-fg-muted)', 'stroke-width': 1.4, 'marker-end': 'url(#m12-arw)' }));
       }
       /* 期望出错步的时间线标记（一条竖线 + 一句标签，固定节点） */
-      api._critLine = DK.el('line', { y1: NY + NH + 3, y2: NY + NH + 9, stroke: 'var(--c-err)', 'stroke-width': 2 });
-      api._critLab = DK.el('text', { y: NY + NH + 19, class: 't-xs bad', 'text-anchor': 'middle', text: '' });
+      api._critLine = DK.el('line', { y1: Y.critA, y2: Y.critB, stroke: 'var(--c-err)', 'stroke-width': 2 });
+      api._critLab = DK.el('text', { y: Y.critLab, class: 't-xs bad', 'text-anchor': 'middle', text: '' });
       svg.appendChild(api._critLine); svg.appendChild(api._critLab);
 
-      /* ---- 左下：当前步展开（固定行槽，只改 textContent 与 opacity） ---- */
-      svg.appendChild(DK.el('line', { x1: LPX, y1: 174, x2: 690, y2: 174, class: 'grid' }));
-      api._LTitle = DK.el('text', { x: LPX, y: 169, class: 't-sm muted', text: '' });
+      /* ---- 左栏：当前步展开（固定行槽，只改 textContent 与 opacity） ---- */
+      svg.appendChild(DK.el('line', { x1: LPX, y1: Y.div, x2: 690, y2: Y.div, class: 'grid' }));
+      api._LTitle = DK.el('text', { x: LPX, y: Y.title, class: 't-sm muted', text: '' });
       svg.appendChild(api._LTitle);
       const lab = (y, txt) => svg.appendChild(DK.el('text', { x: LPX, y: y, class: 't-xs faint', text: txt }));
       const line = (y, cls, mono) => {
@@ -330,16 +344,16 @@
         if (mono) t.setAttribute('font-family', 'var(--f-mono)');
         svg.appendChild(t); return t;
       };
-      lab(190, '① Thought —— 模型写下的文本，此时还没有任何东西被执行');
-      api._lt = [line(202, 't-sm'), line(213, 't-sm')];
-      lab(231, '② Action —— 还是一段文本；把它解析并执行的是外部程序');
-      api._la = [line(243, 't-sm accent', true), line(254, 't-sm accent', true)];
-      lab(272, '③ Observation —— 执行结果转成文本，追加到上下文末尾');
-      api._lo = [line(284, 't-sm'), line(295, 't-sm')];
-      api._ln = [line(311, 't-xs warm'), line(322, 't-xs faint')];
+      lab(Y.l1, '① Thought —— 模型写下的文本，此时还没有任何东西被执行');
+      api._lt = [line(Y.t0, 't-sm'), line(Y.t1, 't-sm')];
+      lab(Y.l2, '② Action —— 还是一段文本；把它解析并执行的是外部程序');
+      api._la = [line(Y.a0, 't-sm accent', true), line(Y.a1, 't-sm accent', true)];
+      lab(Y.l3, '③ Observation —— 执行结果转成文本，追加到上下文末尾');
+      api._lo = [line(Y.o0, 't-sm'), line(Y.o1, 't-sm')];
+      api._ln = [line(Y.n1, 't-xs warm'), line(Y.n2, 't-xs faint')];
 
-      /* ---- 右下：p^N 连乘衰减 ---- */
-      const tt = DK.el('text', { x: RPX, y: 169, class: 't-sm muted', text: 'N 步之后仍然全对 = p' });
+      /* ---- 右栏：p^N 连乘衰减 ---- */
+      const tt = DK.el('text', { x: RPX, y: Y.title, class: 't-sm muted', text: 'N 步之后仍然全对 = p' });
       tt.appendChild(DK.el('tspan', { 'baseline-shift': 'super', 'font-size': '8px', text: 'N' }));
       svg.appendChild(tt);
       svg.appendChild(DK.el('line', { class: 'grid', x1: PL.x, y1: PL.y1, x2: PL.x1 + 2, y2: PL.y1 }));
@@ -350,10 +364,10 @@
           'text-anchor': 'end', text: v[1] }));
       });
       [1, 5, 10, 15, 20].forEach(n => {
-        svg.appendChild(DK.el('text', { x: px(n), y: PL.y1 + 10, class: 't-xs faint',
+        svg.appendChild(DK.el('text', { x: px(n), y: Y.tick, class: 't-xs faint',
           'text-anchor': 'middle', text: String(n) }));
       });
-      svg.appendChild(DK.el('text', { x: PL.x, y: PL.y1 + 21, class: 't-xs faint',
+      svg.appendChild(DK.el('text', { x: PL.x, y: Y.xlab, class: 't-xs faint',
         text: 'N = 任务步数（1 步 = 一轮 T→A→O）' }));
       /* 期望出错步之后的「跑偏区」底色：一个 rect，只改 x/width */
       api._zone = DK.el('rect', { y: PL.y - 2, height: PL.y1 - PL.y + 2, fill: 'var(--c-err)', opacity: 0.07 });
@@ -373,11 +387,11 @@
       api._lab95 = DK.el('text', { class: 't-xs muted', text: '' });
       api._lab90 = DK.el('text', { class: 't-xs muted', 'text-anchor': 'end', text: '' });
       svg.appendChild(api._lab95); svg.appendChild(api._lab90);
-      api._cap = [0, 1, 2].map(j => DK.el('text', { x: RPX, y: 316 + j * 11, class: 't-xs muted', text: '' }));
+      api._cap = [Y.cap1, Y.cap2, Y.cap3].map(y => DK.el('text', { x: RPX, y: y, class: 't-xs muted', text: '' }));
       api._cap.forEach(t => svg.appendChild(t));
 
       /* ---- 底部：上下文窗口条（随步数增长，串回 M10 第 ⑥⑦ 步） ---- */
-      svg.appendChild(DK.el('text', { x: LPX, y: WIN.y + 10, class: 't-xs faint', text: '上下文窗口' }));
+      svg.appendChild(DK.el('text', { x: LPX, y: Y.winLab, class: 't-xs faint', text: '上下文窗口' }));
       svg.appendChild(DK.el('rect', { x: WIN.x, y: WIN.y, width: WIN.w, height: 12, rx: 3, fill: 'var(--c-bg-sunken)' }));
       api._winSegs = [0, 1, 2, 3, 4, 5].map(() => {
         const r = DK.el('rect', { y: WIN.y, height: 12, fill: 'var(--c-accent)', opacity: 0 });
@@ -385,9 +399,9 @@
       });
       api._winMark = DK.el('line', { y1: WIN.y - 3, y2: WIN.y + 15, stroke: 'var(--c-warn)', 'stroke-width': 2 });
       svg.appendChild(api._winMark);
-      api._winLab = DK.el('text', { x: 690, y: WIN.y + 10, class: 't-xs muted', 'text-anchor': 'end', text: '' });
+      api._winLab = DK.el('text', { x: 690, y: Y.winLab, class: 't-xs muted', 'text-anchor': 'end', text: '' });
       svg.appendChild(api._winLab);
-      api._foot = [0, 1].map(j => DK.el('text', { x: LPX, y: 378 + j * 11, class: 't-xs faint', text: '' }));
+      api._foot = [Y.foot1, Y.foot2].map(y => DK.el('text', { x: LPX, y: y, class: 't-xs faint', text: '' }));
       api._foot.forEach(t => svg.appendChild(t));
     },
 
@@ -437,7 +451,7 @@
       api._critLine.setAttribute('x2', cx.toFixed(1));
       api._critLine.setAttribute('opacity', crit <= TRACK ? 1 : 0.35);
       api._critLab.textContent = '期望第 ' + crit + ' 步开始偏（1/(1−p)）' + (crit > TRACK ? ' · 已超出本轨迹 ' + TRACK + ' 步' : '');
-      api._critLab.setAttribute('x', DK.clamp(cx, 165, 525).toFixed(1));
+      api._critLab.setAttribute('x', DK.clamp(cx, 190, 500).toFixed(1));
 
       /* ---------------- 左下：当前步展开 ---------------- */
       const R = ROUNDS[rd];
@@ -518,7 +532,7 @@
       }
       api._winMark.setAttribute('x1', (WIN.x + Math.min(tok, LIMIT) * scale).toFixed(1));
       api._winMark.setAttribute('x2', (WIN.x + Math.min(tok, LIMIT) * scale).toFixed(1));
-      api._winLab.textContent = '已用 ' + tok + ' / ' + LIMIT + ' 词元' + (overflow ? '（溢出：最早几轮已被挤出）' : '');
+      api._winLab.textContent = '已用 ' + tok + ' / ' + LIMIT + ' 词元' + (overflow ? '（溢出：最早几轮被挤出）' : '');
       api._winLab.setAttribute('fill', overflow ? 'var(--c-err)' : 'var(--c-fg-muted)');
 
       /* ---------------- 底部脚注（左栏，不得伸到右面板下方） ---------------- */
@@ -569,7 +583,8 @@
       '③ 打开「一阶修正」：实线抬起而点划线（纯 p^N）不动——衰减会变慢，<strong>但不会变成不衰减</strong>，步数依然是成本。' +
       '④ 切「漏检」：Observation 变空，最终答案流畅自信，却没有任何今天的观测，这是 M10 第 ⑤ 步的幻觉；' +
       '切「脏命中」：Observation 有内容、格式正常、分数很高，只是过期，答案反而<strong>更有底气地错</strong>。' +
-      '⑤ 打开「重复检索」：窗口条在第 4 轮前后就顶到上限并标出溢出——<em>循环深度不是自由的，它受窗口长度约束</em>，' +
+      '⑤ 打开「重复检索」：窗口条一路涨到接近上限；在命中或脏命中档下它会顶破 1200 词元并标红「溢出」，' +
+      '漏检档因为每次取回的内容更短，反而涨得最慢——<em>循环深度不是自由的，它受窗口长度约束</em>，' +
       '而循环本身只会往窗口里加字。<br>' +
       '<strong>对应机制段：</strong>第 ②③ 步（工具调用 = 输出结构化文本、ReAct 循环与 Observation 回填）、' +
       '第 ④ 步（记忆三层：短期窗口 / 长期检索 / 程序性提示词）、' +

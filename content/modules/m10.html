@@ -40,7 +40,7 @@
     KV Cache 显存 <span class="op">≈</span> 2 <span class="op">×</span> 层数 <span class="op">×</span> KV 头数 <span class="op">×</span> 每头维度 <span class="op">×</span> 序列长 <span class="op">×</span> 字节数
     <span class="reads">读作：每个历史词元要在每一层留下「键」和「值」两份向量；乘上词元数与层数就是总占用——它随上下文线性增长，且无法用算力换掉。</span>
   </div>
-  <p><span class="badge badge--simplify">已简化</span> 口算一例：32 层、8 个 KV 头、每头 128 维、FP16（2 字节）的模型，每个词元占 2×32×8×128×2 ≈ 131 KB；128k 上下文的<strong>单条</strong>请求就是约 16 GB——在某些规模下比模型权重本身还大。数字取整便于心算 [2026-10]。</p>
+  <p><span class="badge badge--simplify">已简化</span> 口算一例：32 层、8 个 KV 头、每头 128 维、FP16（2 字节）的模型，每个词元占 2×32×8×128×2 = 131072 字节 = 恰好 128 KiB；128k 上下文就是 131072 × 131072 = 2³⁴ 字节 = <strong>16 GiB</strong>（按十进制算约 17.2 GB——这个单位差本身就是一种常见误读）。在某些规模下，单条请求的缓存比模型权重本身还大。这里假设了 8 个 KV 头的分组查询结构（GQA）；若每层每个头都存完整 KV，还要再翻几倍 [2026-10]。</p>
 
   <div class="figure" data-fig="m10-nucleus-1">
     <div class="figure__inner">

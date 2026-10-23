@@ -80,7 +80,7 @@
     <div class="figure__inner">
       <svg viewBox="0 0 660 210" class="dgm" role="img" aria-labelledby="f12d-t">
         <title id="f12d-t">三条曲线显示：10 步任务的全对概率随单步正确率急剧变化——p=0.99 约九成，p=0.95 约六成，p=0.90 约三分之一</title>
-        <desc>横轴是任务步数 N（1 到 20），纵轴是 N 步全部正确的概率 p^N。三条下降曲线分别是 p=0.99、p=0.95、p=0.90。一条水平虚线标在 50% 处，两条曲线在该线附近被标出「期望开始偏」的步数。</desc>
+        <desc>横轴是任务步数 N（1 到 20），纵轴是 N 步全部正确的概率 p^N。三条下降曲线分别是 p=0.99、p=0.95、p=0.90。一条水平虚线标在 50% 处，p=0.90 与 p=0.95 两条曲线分别在第 7 步与第 14 步穿过该线。</desc>
         <defs>
           <marker id="m12-arw" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
             <path d="M0 0 L8 4 L0 8 z" fill="var(--c-fg-muted)"></path>
@@ -94,20 +94,20 @@
         <line class="line" x1="60" y1="170" x2="606" y2="170" marker-end="url(#m12-arw)"></line>
         <line class="line" x1="60" y1="170" x2="60" y2="26"></line>
         <text x="330" y="192" class="t-xs muted" text-anchor="middle">步数 N：1 … 10 … 20</text>
-        <polyline fill="none" stroke="var(--c-line-strong)" stroke-dasharray="5 3" points="60,30 141,34 222,37 330,43 438,49 546,53 600,55"></polyline>
-        <polyline fill="none" stroke="var(--c-accent)" points="60,30 87,37 114,44 141,50 168,56 195,62 222,67 249,72 276,77 303,82 330,86 384,94 438,102 492,108 546,114 600,120"></polyline>
-        <polyline fill="none" stroke="var(--c-warn)" points="60,30 87,40 114,57 141,68 168,78 195,87 222,96 249,103 276,110 303,116 330,121 384,131 438,138 492,144 546,149 600,153"></polyline>
-        <text x="606" y="52" class="t-xs">p=0.99</text>
-        <text x="486" y="82" class="t-xs accent">p=0.95</text>
-        <text x="486" y="160" class="t-xs warm">p=0.90</text>
-        <circle cx="330" cy="86" r="3" fill="var(--c-accent)"></circle>
-        <text x="336" y="82" class="t-xs muted">10 步 · 60%</text>
-        <circle cx="330" cy="121" r="3" fill="var(--c-warn)"></circle>
-        <text x="336" y="132" class="t-xs muted">10 步 · 35%</text>
-        <line class="grid-l" x1="438" y1="100" x2="438" y2="170" stroke-dasharray="2 3"></line>
-        <text x="442" y="112" class="t-xs faint">0.95：约第 14 步跌破一半</text>
-        <line class="grid-l" x1="249" y1="100" x2="249" y2="170" stroke-dasharray="2 3"></line>
-        <text x="112" y="146" class="t-xs faint">0.90：约第 7 步</text>
+        <!-- 折线点按 x=60+(N−1)/19×540、y=170−p^N×140 逐点算出，与坐标轴严格一致 -->
+        <polyline fill="none" stroke="var(--c-line-strong)" stroke-dasharray="5 3" points="60,31 88,33 117,34 145,36 174,37 202,38 231,40 259,41 287,42 316,43 344,45 373,46 401,47 429,48 458,50 486,51 515,52 543,53 572,54 600,55"></polyline>
+        <polyline fill="none" stroke="var(--c-accent)" points="60,37 88,44 117,50 145,56 174,62 202,67 231,72 259,77 287,82 316,86 344,90 373,94 401,98 429,102 458,105 486,108 515,111 543,114 572,117 600,120"></polyline>
+        <polyline fill="none" stroke="var(--c-warn)" points="60,44 88,57 117,68 145,78 174,87 202,96 231,103 259,110 287,116 316,121 344,126 373,130 401,134 429,138 458,141 486,144 515,147 543,149 572,151 600,153"></polyline>
+        <text x="604" y="52" class="t-xs">p=0.99</text>
+        <text x="604" y="117" class="t-xs accent">p=0.95</text>
+        <text x="604" y="156" class="t-xs warm">p=0.90</text>
+        <circle cx="316" cy="86" r="3" fill="var(--c-accent)"></circle>
+        <text x="322" y="80" class="t-xs muted">10 步 60%</text>
+        <circle cx="316" cy="121" r="3" fill="var(--c-warn)"></circle>
+        <text x="322" y="115" class="t-xs muted">10 步 35%</text>
+        <line class="grid-l" x1="429" y1="100" x2="429" y2="128" stroke-dasharray="2 3"></line>
+        <line class="grid-l" x1="231" y1="100" x2="231" y2="128" stroke-dasharray="2 3"></line>
+        <text x="70" y="162" class="t-xs faint">短虚线处 = 曲线跌破一半：p=0.90 在第 7 步，p=0.95 在第 14 步。</text>
         <text x="12" y="206" class="t-xs faint">已简化：假设各步错误率相同且相互独立。真实系统里后面的步骤有机会发现并纠正前面的错，所以实测衰减比这条线慢，但不是不衰减。</text>
       </svg>
     </div>
@@ -117,7 +117,7 @@
   <div class="figure" data-fig="m12-rag-hit-miss-2">
     <div class="figure__inner">
       <div class="fig">
-        <div class="fig__head">同一个问题、同一个模型，只换检索质量（对应第 ④⑤⑥ 步）</div>
+        <div class="fig__head">同一个问题、同一个模型，只换检索质量（对应第 ④⑤ 步）</div>
         <div class="fig__grid" style="grid-template-columns:96px repeat(3,1fr)">
           <div class="fig__lbl"></div><div class="fig__tok fig__tok--out">命中</div><div class="fig__tok">漏检</div><div class="fig__tok fig__tok--k">脏命中</div>
           <div class="fig__lbl">检索到的段落</div>
@@ -200,7 +200,7 @@
     <summary>「检索到的段落越相似，就越可靠。」</summary>
     <div class="myth__body">
       <p><strong>为何会有这个误解：</strong>相似度分数是可见的、还是 0 到 1 之间的数，天然被理解成「可信度」；向量库返回的 top-3 看起来也像三条互相印证的证据。</p>
-      <p class="myth__truth">正确说法：相似度衡量的是<strong>表示空间里的方向接近</strong>（M03、M11），它既不包含时间，也不包含来源独立性。「明天北京空气如何」和「去年北京空气真差」在嵌入空间里几乎重合，前者却会取回后者。更隐蔽的是同源重复：三条帖子如果来自同一份快照，它们的一致是<strong>假的一致</strong>——演示里「脏命中」那一档第 ④ 步专门展示这件事。工程上的对策是把时间戳、来源、去重当作检索器的显式约束，而不是指望分数自己排对。</p>
+      <p class="myth__truth">正确说法：相似度衡量的是<strong>表示空间里的方向接近</strong>（M03、M11），它既不包含时间，也不包含来源独立性。「明天北京空气如何」和「去年北京空气真差」在嵌入空间里几乎重合，前者却会取回后者。更隐蔽的是同源重复：三条帖子如果来自同一份快照，它们的一致是<strong>假的一致</strong>——演示里「脏命中」那一档第 ④ 轮专门展示这件事。工程上的对策是把时间戳、来源、去重当作检索器的显式约束，而不是指望分数自己排对。</p>
     </div>
   </details>
 </seg>

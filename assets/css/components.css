@@ -47,11 +47,6 @@
 .badge--debate             { color:var(--c-err); border-color:color-mix(in srgb,var(--c-err) 45%,var(--c-line)) }
 .badge--debate::before     { content:"⚖ " }
 .badge--simplify::before   { content:"≈ " }
-.badge--prereq::before     { content:"← " }
-.badge--new                { color:var(--c-ok); border-color:color-mix(in srgb,var(--c-ok) 45%,var(--c-line)) }
-.badge--status             { font-family:var(--f-mono); text-transform:lowercase }
-.badge--status[data-status="published"] { color:var(--c-ok); border-color:var(--c-ok) }
-.badge--status[data-status="reviewed"]  { color:var(--c-warn); border-color:var(--c-warn) }
 
 /* ---------- 学习地图树（§7.4 / §9.1） ---------- */
 .maptree__part { border-radius:var(--r-sm) }
@@ -128,11 +123,11 @@
 /* ---------- 图解容器（§7.3 .figure） ---------- */
 .figure { margin:var(--s-5) 0; padding:var(--s-4); border:1px solid var(--c-line);
   border-radius:var(--r-md); background:var(--c-bg-elev) }
-.figure__slot { display:grid; place-items:center; min-height:180px;
-  border:2px dashed var(--c-line-strong); border-radius:var(--r-sm);
-  color:var(--c-fg-faint); font-size:var(--t--1); aspect-ratio:16/7 }  /* 预留宽高比避免 CLS（§12.1） */
 .figure figcaption { margin-top:var(--s-3); font-size:var(--t--1); color:var(--c-fg-muted) }
-.figure figcaption::before { content:"怎么看："; color:var(--c-fg-faint) }
+/* 曾经用 ::before 注入「怎么看：」，现改为写在 HTML 里：
+   ① 与写作规范 §5「图注必须以『怎么看：』开头」冲突，会造成重复；
+   ② 生成内容在复制、打印和部分读屏器里会丢失，而它是内容要求而非装饰。
+   selfcheck 现在断言每个 figcaption 自带该前缀。 */
 .figure svg { margin-inline:auto }
 .figure [data-zoomable] { cursor:zoom-in }
 
@@ -187,8 +182,6 @@ details.math--fallback { border:1px dashed var(--c-line-strong); border-radius:v
 
 .quiz { border:1px solid var(--c-line); border-radius:var(--r-md); padding:var(--s-4);
   background:var(--c-bg-elev) }
-.quiz__option { display:block; padding:6px var(--s-2); border-radius:var(--r-sm); font-size:var(--t--1) }
-.quiz__option:hover { background:var(--c-bg-sunken) }
 
 /* ---------- 骨架占位（本次交付专用，内容填充后整段删除） ---------- */
 .todo { display:block; padding:var(--s-3) var(--s-4); border-radius:var(--r-sm);
@@ -249,43 +242,34 @@ details.math--fallback { border:1px dashed var(--c-line-strong); border-radius:v
 .figure { cursor:zoom-in }
 .figure:focus-visible { outline:3px solid var(--c-accent); outline-offset:3px }
 /* 图解内的 HTML 叠加层（绝对定位，SVG 表达不了的排版用） */
-.figure--html { padding:0; overflow-x:auto }
-.figure--html .figure__inner { padding:var(--s-4); min-width:520px }
 .fig { display:flex; flex-direction:column; gap:var(--s-2); font-size:var(--t--1) }
 .fig__grid { display:grid; gap:var(--s-2) }
-.fig__cap { font-size:var(--t--2); color:var(--c-fg-faint); text-align:center }
-.fig__mid { display:grid; place-items:center; min-height:44px }
 .fig__lbl { font-size:var(--t--2); color:var(--c-fg-muted); text-align:center }
 .fig__head { font-size:var(--t--2); color:var(--c-fg-faint); text-align:center;
   border-bottom:1px solid var(--c-line); padding-bottom:2px }
 .fig__tok { display:grid; place-items:center; padding:6px 0; border:1px solid var(--c-line-strong);
   border-radius:var(--r-sm); background:var(--c-bg-elev); font-weight:600 }
-.fig__tok--q { border-color:var(--c-accent); color:var(--c-accent) }
 .fig__tok--k { border-color:var(--c-warn) }
-.fig__tok--v { border-color:var(--c-ok) }
 .fig__tok--out { border-color:var(--c-accent); background:color-mix(in srgb,var(--c-accent) 12%,var(--c-bg-elev)); font-weight:700 }
 .fig__note { font-size:var(--t--2); color:var(--c-fg-faint); text-align:center }
-.fig__op { font:600 var(--t-1)/1 var(--f-mono); color:var(--c-accent) }
-.fig__eq { text-align:center; font-family:var(--f-mono); font-size:var(--t--1) }
 .fig__code { font-family:var(--f-mono); font-size:var(--t--2); text-align:center;
   background:var(--c-bg-code); border-radius:4px; padding:3px 4px }
 .fig__code--g { background:color-mix(in srgb,var(--c-ok) 16%,transparent) }
 .fig__code--a { background:color-mix(in srgb,var(--c-accent) 16%,transparent) }
-.fig__code--w { background:color-mix(in srgb,var(--c-warn) 18%,transparent) }
 .fig__code--b { background:color-mix(in srgb,var(--c-err) 16%,transparent) }
 .fig__code--sun { background:var(--c-bg-sunken); color:var(--c-fg-muted) }
 .fig__mat { display:grid; gap:2px; background:var(--c-bg-sunken); padding:4px;
   border-radius:var(--r-sm); border:1px solid var(--c-line) }
 .fig__cell { display:grid; place-items:center; min-width:34px; min-height:26px; padding:2px 4px;
   font-family:var(--f-mono); font-size:var(--t--2); border-radius:3px }
-.fig__cell--mask { background:var(--c-bg-code); color:var(--c-fg-faint) }
 .fig__cell--blocked { background:repeating-linear-gradient(45deg,var(--c-line) 0 3px,transparent 3px 6px); color:var(--c-fg-faint) }
+/* h0–h2 继承正文色（两主题下均 ≥4.5:1）；h3 是最深/最浅的一档，
+   必须用随主题翻转的反色墨，写死 #fff 会让暗色主题白字压浅底。 */
 .fig__cell--h1 { background:var(--c-heat-1) } .fig__cell--h2 { background:var(--c-heat-2) }
-.fig__cell--h3 { background:var(--c-heat-3); color:#fff } .fig__cell--h0 { background:var(--c-heat-0) }
+.fig__cell--h3 { background:var(--c-heat-3); color:var(--c-on-heat-hi) } .fig__cell--h0 { background:var(--c-heat-0) }
 .fig__row { display:flex; align-items:center; gap:var(--s-2); flex-wrap:wrap;
   border:1px solid var(--c-line); border-radius:var(--r-sm); padding:var(--s-2) var(--s-3) }
-.fig__row--in { border-color:var(--c-accent) } .fig__row--out { border-color:var(--c-ok) }
-.fig__row--err { border-color:var(--c-err) } .fig__row--sub { border-style:dashed }
+.fig__row--sub { border-style:dashed }
 .fig__tag { font-size:var(--t--2); color:var(--c-fg-muted); min-width:76px }
 .fig__pill { font-size:var(--t--2); padding:2px 8px; border-radius:var(--r-pill);
   background:var(--c-bg-sunken); color:var(--c-fg-muted) }
@@ -305,8 +289,6 @@ details.math--fallback { border:1px dashed var(--c-line-strong); border-radius:v
 .fig__chain { display:flex; align-items:center; gap:6px; flex-wrap:wrap }
 .fig__chain code { font-size:var(--t--2) }
 .fig__chain i { font-style:normal; color:var(--c-accent); font-weight:700 }
-.fig__chain--back i { color:var(--c-warn) }
-.fig__chain--back { flex-direction:row-reverse }
 .fig__legend { display:flex; gap:var(--s-4); flex-wrap:wrap; font-size:var(--t--2);
   color:var(--c-fg-muted); justify-content:center }
 .fig__legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px }
@@ -314,15 +296,8 @@ details.math--fallback { border:1px dashed var(--c-line-strong); border-radius:v
 .fig__legend .sw-g{ background:var(--c-ok) } .fig__legend .sw-b{ background:var(--c-err) }
 .fig__legend .sw-l{ background:var(--c-line-strong) }
 .fig__legend .sw-h2{ background:var(--c-heat-2) }
-.fig__side { display:grid; gap:4px; font-size:var(--t--2); color:var(--c-fg-muted) }
-.fig__side b { color:var(--c-fg) }
-.fig__note--l { text-align:left }
-.fig__mono { font-family:var(--f-mono); font-size:var(--t--2) }
-.fig__sep { border-left:1px dashed var(--c-line-strong); align-self:stretch }
 .fig__sub { font-size:var(--t--2); color:var(--c-fg-muted) }
 .fig__bar { height:10px; border-radius:3px; background:var(--c-accent) }
-.fig__bar--w { background:var(--c-warn) } .fig__bar--g { background:var(--c-ok) }
-.fig__bar--b { background:var(--c-err) }
 .fig__barwrap { flex:1; min-width:120px; background:var(--c-bg-sunken); border-radius:3px; height:10px }
 
 /* ---------- Demo：SVG 画布与读数 ---------- */

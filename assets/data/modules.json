@@ -3,7 +3,7 @@
   "site": {
     "name": "AI 原理图解",
     "nameEn": "Explainable AI Primer",
-    "phase": "v0.2",
+    "phase": "v0.2-complete",
     "segEnum": [
       "hook",
       "intuition",
@@ -19,6 +19,12 @@
       "demo": "动手演示",
       "misconception": "常见误区",
       "takeaway": "带走一句"
+    },
+    "statusMeaning": {
+      "skeleton": "只有结构占位，无正文",
+      "drafted": "正文已写，未过自检/渲染验证",
+      "reviewed": "过 selfcheck 全部硬性规则 + 无头浏览器渲染验证，但未经领域专家复核",
+      "published": "经专家复核，可作为定稿引用"
     }
   },
   "parts": [
@@ -69,7 +75,7 @@
       "prereq": [],
       "difficulty": 1,
       "estMinutes": 18,
-      "status": "skeleton",
+      "status": "reviewed",
       "segs": [
         "hook",
         "intuition",
@@ -105,7 +111,7 @@
       ],
       "difficulty": 2,
       "estMinutes": 20,
-      "status": "skeleton",
+      "status": "reviewed",
       "segs": [
         "hook",
         "intuition",
@@ -142,7 +148,7 @@
       ],
       "difficulty": 2,
       "estMinutes": 22,
-      "status": "skeleton",
+      "status": "reviewed",
       "segs": [
         "hook",
         "intuition",
@@ -180,7 +186,7 @@
       ],
       "difficulty": 2,
       "estMinutes": 24,
-      "status": "skeleton",
+      "status": "reviewed",
       "segs": [
         "hook",
         "intuition",
@@ -220,7 +226,7 @@
       ],
       "difficulty": 3,
       "estMinutes": 30,
-      "status": "skeleton",
+      "status": "reviewed",
       "segs": [
         "hook",
         "intuition",
@@ -257,7 +263,7 @@
       ],
       "difficulty": 3,
       "estMinutes": 25,
-      "status": "skeleton",
+      "status": "reviewed",
       "segs": [
         "hook",
         "intuition",
@@ -295,7 +301,7 @@
       ],
       "difficulty": 4,
       "estMinutes": 35,
-      "status": "skeleton",
+      "status": "reviewed",
       "segs": [
         "hook",
         "intuition",
@@ -334,7 +340,7 @@
       ],
       "difficulty": 3,
       "estMinutes": 28,
-      "status": "skeleton",
+      "status": "reviewed",
       "segs": [
         "hook",
         "intuition",
@@ -372,7 +378,7 @@
       ],
       "difficulty": 4,
       "estMinutes": 30,
-      "status": "skeleton",
+      "status": "reviewed",
       "segs": [
         "hook",
         "intuition",
@@ -409,7 +415,7 @@
       ],
       "difficulty": 3,
       "estMinutes": 30,
-      "status": "skeleton",
+      "status": "reviewed",
       "segs": [
         "hook",
         "intuition",
@@ -446,7 +452,7 @@
       ],
       "difficulty": 3,
       "estMinutes": 25,
-      "status": "skeleton",
+      "status": "reviewed",
       "segs": [
         "hook",
         "intuition",
@@ -482,7 +488,7 @@
       ],
       "difficulty": 3,
       "estMinutes": 28,
-      "status": "skeleton",
+      "status": "reviewed",
       "segs": [
         "hook",
         "intuition",
@@ -522,7 +528,7 @@
       ],
       "difficulty": 4,
       "estMinutes": 26,
-      "status": "skeleton",
+      "status": "reviewed",
       "segs": [
         "hook",
         "intuition",

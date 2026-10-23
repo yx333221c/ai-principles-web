@@ -73,6 +73,21 @@ details.math-detail > summary::before { content:"▸ "; }
 details.math-detail[open] > summary::before { content:"▾ "; }
 details.math-detail > .math-detail__body { padding:0 var(--s-4) var(--s-4); border-top:1px dashed var(--c-line) }
 
+/* 术语标记：必须给出「可交互」的视觉可供性，否则读者不知道哪些词能查释义。
+   base.css 只给 abbr[title] 加了虚线下划线，而本站内容用的是 <span class="term">。
+   强调色只用于「可交互」与「当前状态」两件事（§8.2 色彩纪律）。 */
+.term {
+  color:var(--c-accent);
+  text-decoration:underline dotted var(--c-accent);
+  text-decoration-thickness:1.5px;
+  text-underline-offset:3px;
+  cursor:help;
+  transition:text-decoration-style var(--dur-micro) var(--ease)
+}
+.term:hover, .term:focus-visible { text-decoration-style:solid; text-decoration-thickness:2px }
+/* 触屏没有 hover：直接给实心下划线，避免「看起来不能点」 */
+@media (hover:none) { .term { text-decoration-style:solid } }
+
 /* 术语卡片 */
 .term-pop { position:fixed; z-index:60; max-width:280px; padding:var(--s-3) var(--s-4);
   background:var(--c-bg-elev); border:1px solid var(--c-line-strong); border-radius:var(--r-md);

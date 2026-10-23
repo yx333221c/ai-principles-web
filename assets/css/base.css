@@ -8,7 +8,9 @@
   /* ---- 原始色板：墨 + 靛 + 铜，避开廉价科技蓝 ---- */
   --c-raw-ink-900:#0d1117; --c-raw-ink-700:#1f2530; --c-raw-ink-500:#3a4556;
   --c-raw-paper-0:#fbfaf7; --c-raw-paper-1:#f2f0ea; --c-raw-paper-2:#e5e2d9;
-  --c-raw-indigo-600:#3b4cca; --c-raw-indigo-400:#6b79ff; --c-raw-copper:#b06b2f;
+  /* copper 从 #b06b2f 压深为 #925927：原值在白底上只有 4.21:1，
+     不够做小字号文字（徽章）；新值 5.71:1，且作边框/色块仍清晰可辨。 */
+  --c-raw-indigo-600:#3b4cca; --c-raw-indigo-400:#6b79ff; --c-raw-copper:#925927;
   --c-raw-jade:#1c7c5a; --c-raw-alert:#b3261e;
 
   /* ---- 语义层（亮主题默认） ---- */
@@ -18,7 +20,9 @@
   --c-bg-code:#f4f2ec;
   --c-fg:var(--c-raw-ink-900);
   --c-fg-muted:var(--c-raw-ink-500);
-  --c-fg-faint:#6b7686;
+  /* faint 从 #6b7686 压深为 #5e6775：原值在白底上 4.60、在纸底上只有 4.41，
+     低于小字号 4.5 的线；新值 ≥5.0，且与 muted 的明度差仍足以区分层次。 */
+  --c-fg-faint:#5e6775;
   --c-line:var(--c-raw-paper-2);
   --c-line-strong:#cfc9bb;
   --c-accent:var(--c-raw-indigo-600);
@@ -29,6 +33,9 @@
 
   /* 热力图色阶：单色相明度渐变，禁彩虹（§8.2） */
   --c-heat-0:#eef1ff; --c-heat-1:#b9c2ff; --c-heat-2:#6b79ff; --c-heat-3:#2a35a8;
+  /* heat-3 是最深的一档，上面必须放反色墨（亮色主题用白）。
+     不能直接写 #fff：暗色主题的 heat-3 是浅色，白字会不可读（见暗色块）。 */
+  --c-on-heat-hi:#ffffff;
 
   /* ---- 排版 ---- */
   --f-sans:system-ui,-apple-system,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
@@ -60,13 +67,18 @@
   --c-bg-code:#11161d;
   --c-fg:#e6e9ef;
   --c-fg-muted:#9aa5b4;
-  --c-fg-faint:#6f7b8c;
+  /* faint 从 #6f7b8c 提亮为 #808b9a：原值在卡片底 #151b24 上只有 4.03:1；
+     新值 5.01:1，与 muted 仍有明度差，层次不糊。 */
+  --c-fg-faint:#808b9a;
   --c-line:#28303c;
   --c-line-strong:#3a4556;
   --c-accent:var(--c-raw-indigo-400);
   --c-accent-ink:#0a0e14;
   --c-warn:#d9954a; --c-ok:#4bbd92; --c-err:#e4796f;
-  --c-heat-0:#171d33; --c-heat-1:#2c3a78; --c-heat-2:#5566d6; --c-heat-3:#aab4ff;
+  /* heat-2 从 #5566d6 调暗为 #515d9f：原值与浅色墨只有 4.06:1，
+     低于小字号要求的 4.5；#515d9f 给到 5.05:1，且明度阶梯仍单调。 */
+  --c-heat-0:#171d33; --c-heat-1:#2c3a78; --c-heat-2:#515d9f; --c-heat-3:#aab4ff;
+  --c-on-heat-hi:#0a0e14;
   --shadow-1:0 1px 2px rgba(0,0,0,.4);
   --shadow-2:0 4px 12px rgba(0,0,0,.5),0 16px 40px rgba(0,0,0,.45);
 }
@@ -76,11 +88,12 @@
   html[data-theme="auto"] {
     --c-bg:var(--c-raw-ink-900);
     --c-bg-elev:#151b24; --c-bg-sunken:#0a0e14; --c-bg-code:#11161d;
-    --c-fg:#e6e9ef; --c-fg-muted:#9aa5b4; --c-fg-faint:#6f7b8c;
+    --c-fg:#e6e9ef; --c-fg-muted:#9aa5b4; --c-fg-faint:#808b9a;
     --c-line:#28303c; --c-line-strong:#3a4556;
     --c-accent:var(--c-raw-indigo-400); --c-accent-ink:#0a0e14;
     --c-warn:#d9954a; --c-ok:#4bbd92; --c-err:#e4796f;
-    --c-heat-0:#171d33; --c-heat-1:#2c3a78; --c-heat-2:#5566d6; --c-heat-3:#aab4ff;
+    --c-heat-0:#171d33; --c-heat-1:#2c3a78; --c-heat-2:#515d9f; --c-heat-3:#aab4ff;
+    --c-on-heat-hi:#0a0e14;
     --shadow-1:0 1px 2px rgba(0,0,0,.4);
     --shadow-2:0 4px 12px rgba(0,0,0,.5),0 16px 40px rgba(0,0,0,.45);
   }

@@ -103,7 +103,22 @@ CDN 在本机不可达，公式一律手写 HTML（结构见 m07）：
 
 SVG 里的下标用 `<tspan baseline-shift="sub">`（**不是** `<tsml>`，那不是 SVG 标签）。
 
-`fig__*` 常用件：`fig__grid`（网格）、`fig__mat` + `fig__cell`（矩阵，配 `--h0..--h3` 热力档、`--blocked` 斜纹屏蔽）、`fig__flow` + `fig__box` + `fig__arrow`（流程）、`fig__chain`（链式，配 `--back` 反向）、`fig__pill`（状态标签）、`fig__row`（一行说明）、`fig__bar`/`fig__barwrap`（条形）、`fig__legend`（图例）、`fig__note`（注释）。
+`fig__*` 可用类（与 `assets/css/components.css` 逐字对应，selfcheck 会双向核对：
+用了未定义的类 → 报错；定义了但没人用也没在这里列出 → 提示死代码）：
+
+| 用途 | 类 |
+|---|---|
+| 骨架 | `fig__grid`（网格容器，配 `style="grid-template-columns:…"`）、`fig__flow`（横向流程）、`fig__mat`（矩阵） |
+| 文字块 | `fig__head`（图内标题）、`fig__lbl`（行标签）、`fig__note`（脚注）、`fig__sub`（次级小字）、`fig__tag`（行首标签） |
+| 节点 | `fig__box` + `--a/--w/--g/--b/--sun`、`fig__tok` + `--k/--out`、`fig__pill` + `--a/--w/--g/--b/--mute` |
+| 单元格 | `fig__cell` + `--h0/--h1/--h2/--h3`（热力四档）、`--blocked`（斜纹=屏蔽） |
+| 代码样 | `fig__code` + `--a/--g/--b/--sun` |
+| 行 | `fig__row` + `--sub` |
+| 连接 | `fig__arrow`、`fig__chain` |
+| 条形 | `fig__bar`、`fig__barwrap` |
+| 图例 | `fig__legend`（内含 `.sw-a/.sw-w/.sw-g/.sw-b/.sw-l/.sw-h2`） |
+
+需要表里没有的形状时，优先用已有类组合；确实需要新类，**同时**加到 CSS 与本表，否则 selfcheck 会报死代码。
 
 ## 2. 演示写法
 

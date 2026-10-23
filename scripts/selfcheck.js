@@ -87,7 +87,6 @@ built.forEach(m => {
   (steps >= 3 ? ok(m.id + ' 机制 ' + steps + ' 步') : bad(m.id + ' 机制段步骤 ' + steps + ' < 3'));
   const figs = (mech.match(/class="figure/g) || []).length;
   (figs >= 1 ? ok(m.id + ' 图解 ' + figs + ' 张') : bad(m.id + ' 机制段无图解（§5-3）'));
-  [...mech.matchAll(/<div class="figure[^"]*"([^>]*)>([\s\S]*?)<\/div>\s*<figcaption>/g)];
   const figBlocks = [...mech.matchAll(/<div class="figure"[^>]*>([\s\S]*?)<\/figcaption>/g)].map(x => x[0]);
   figBlocks.forEach((b, i) => {
     const svg = /<svg[\s\S]*<\/svg>/.test(b);
@@ -101,6 +100,18 @@ built.forEach(m => {
     const hard = [...b.matchAll(/(?:fill|stroke|color|background)\s*[:=]\s*["']?(#[0-9a-fA-F]{3,8}|rgba?\()/g)];
     if (hard.length) bad(m.id + ' 图解#' + (i + 1) + ' 硬编码颜色 ' + hard.length + ' 处（暗色主题会瞎）');
   });
+
+  /* 图注前缀：写作规范 §5 要求「怎么看：」开头。
+     它必须写在 HTML 里而不是靠 CSS ::before 注入——生成内容在复制、
+     打印与部分读屏器里会丢失。CSS 侧的注入已移除，这里守住约定。 */
+  const caps = [...src.matchAll(/<figcaption>([\s\S]*?)<\/figcaption>/g)];
+  const noPre = caps.filter(x => !/^\s*怎么看[：:]/.test(x[1]));
+  const dbl = caps.filter(x => /^\s*怎么看[：:]\s*怎么看/.test(x[1]));
+  if (caps.length) {
+    if (noPre.length) bad(m.id + ' ' + noPre.length + '/' + caps.length + ' 个图注缺「怎么看：」前缀（§5）');
+    else if (dbl.length) bad(m.id + ' ' + dbl.length + ' 个图注前缀重复');
+    else ok(m.id + ' 图注 ' + caps.length + ' 个均以「怎么看：」开头');
+  }
 
   /* H10：误区 ≥3 */
   const my = segOf(src, 'misconception');
@@ -194,19 +205,45 @@ const base = rd('assets/css/base.css');
 base.includes('[data-theme="dark"]') ? ok('暗色主题') : bad('缺暗色主题');
 base.includes('prefers-reduced-motion') ? ok('reduced-motion 降级') : bad('缺 reduced-motion');
 base.includes('prefers-color-scheme') ? ok('auto 主题') : bad('缺 auto 主题');
+/* 暗色令牌被定义了两遍（手动选暗色 / 跟随系统）。实践中改一处很容易漏另一处，
+   导致「跟随系统」的用户拿到旧配色。这里断言两个分支的每个变量取值都相同。 */
+(function () {
+  const grab = (re) => {
+    const m = base.match(re);
+    if (!m) return null;
+    const map = {};
+    [...m[1].matchAll(/(--[\w-]+)\s*:\s*([^;}]+)/g)].forEach(x => { map[x[1]] = x[2].trim(); });
+    return map;
+  };
+  const forced = grab(/\[data-theme="dark"\]\s*\{([\s\S]*?)\n\}/);
+  const auto = grab(/@media\s*\(prefers-color-scheme:\s*dark\)\s*\{\s*html\[data-theme="auto"\]\s*\{([\s\S]*?)\n\s*\}/);
+  if (!forced || !auto) { bad('找不到两个暗色块，无法比对（base.css 结构变了？）'); return; }
+  const keys = new Set([...Object.keys(forced), ...Object.keys(auto)]);
+  const diff = [...keys].filter(k => forced[k] !== auto[k]);
+  diff.length
+    ? bad('两个暗色分支不一致：' + diff.map(k => `${k}=${forced[k]} vs ${auto[k]}`).join('  '))
+    : ok(`两个暗色分支一致（${keys.size} 个变量）`);
+})();
 const cssAll = (['layout', 'components', 'diagram'].map(n => rd('assets/css/' + n + '.css')).join('\n') + base)
   .replace(/\/\*[\s\S]*?\*\//g, '');   // 注释里的 var(--c-*) 示例不算引用
 const usedTok = [...new Set([...cssAll.matchAll(/var\((--[a-z0-9-]+)/g)].map(m => m[1]))];
 const undef = usedTok.filter(u => !base.includes(u + ':'));
 undef.length ? bad('未定义令牌: ' + undef.join(',')) : ok('全部 ' + usedTok.length + ' 个被引用令牌均有定义');
-/* 反向：CSS 定义了但没人用的类 */
+/* 反向：CSS 定义了但既没人用、文档也没承诺的类 = 真死代码。
+   注意两个例外，否则会把该留的东西误判为死代码：
+   ① docs/authoring-contract.md §1.4 把 fig__* 列为作者可选的词汇表，
+      现在没人用是合法的，删了反而让文档指向不存在的类；
+   ② build.js 会在段落缺失时输出 .todo 兜底节点。 */
 const hHtml = has('index.html') ? rd('index.html') : '';
 const contentAll = built.map(m => rd('content/modules/' + m.id + '.html')).join('\n');
 const demoAll = built.map(m => 'assets/js/demos/' + m.demo.id + '.js').filter(has).map(rd).join('\n');
-const scope = hHtml + contentAll + demoAll + rd('assets/js/app.js') + rd('templates/shell.html') + rd('assets/js/demo-kit.js');
+const scope = hHtml + contentAll + demoAll + rd('assets/js/app.js') + rd('assets/js/demo-kit.js')
+  + rd('templates/shell.html') + rd('build.js');
+const documented = has('docs/authoring-contract.md') ? rd('docs/authoring-contract.md') : '';
 const cls = [...new Set([...rd('assets/css/components.css').matchAll(/^\.([a-z][a-z0-9_-]*)/gmi)].map(m => m[1]))];
-const unusedCls = cls.filter(x => !scope.includes(x));
-if (unusedCls.length) warn('CSS 定义但无人用的类（' + unusedCls.length + '）: ' + unusedCls.slice(0, 12).join(', ') + (unusedCls.length > 12 ? ' …' : ''));
+const unusedCls = cls.filter(x => !scope.includes(x) && !documented.includes(x));
+if (unusedCls.length) warn('CSS 死代码（未使用且文档未承诺，' + unusedCls.length + '）: ' + unusedCls.join(', '));
+else ok('components.css 无死代码（已用类 + 契约声明的可选词汇除外）');
 
 console.log('== 7. 演示契约 ==');
 built.forEach(m => {
@@ -234,6 +271,57 @@ built.forEach(m => {
   if (/Math\.random/.test(code)) bad(f + ' 用了 Math.random（不可复现，须用 DK.rng(seed)）');
   if (/draw\s*\([^)]*\)\s*\{[\s\S]{0,400}?appendChild\(DK\.el\([^)]*rect/.test(src)) warn(f + ' draw 内可能新建 rect 堆积，检查是否复用节点');
 });
+
+console.log('== 8. 类名闭合（引用了但 CSS 未定义 = 静默失效）==');
+/* 这条检查刚抓到一个真实缺陷：.term 被 12 个模块用于术语悬浮卡，
+   但 CSS 里从未定义它，导致读者看不出哪些词可查释义。
+   纯结构容器（本来就无需样式）用白名单显式承认，避免逼作者加装饰性 CSS。 */
+(function () {
+  const cssAll4 = ['base', 'layout', 'components', 'diagram'].map(n => rd('assets/css/' + n + '.css')).join('\n');
+  const defined = new Set([...cssAll4.matchAll(/\.([a-z][a-z0-9_-]*)/gi)].map(m => m[1]));
+  const files = ['index.html', 'templates/shell.html', 'assets/js/app.js', 'assets/js/demo-kit.js', 'build.js']
+    .concat(built.map(m => 'content/modules/' + m.id + '.html'))
+    .concat(built.map(m => 'assets/js/demos/' + m.demo.id + '.js'))
+    .filter(has);
+  /* 有意不带样式的结构容器：仅用于分组/语义，视觉由父级负责 */
+  const UNSTYLED_OK = new Set(['hero__text', 'maptree', 'module__pager-next', 'module__pager-prev',
+    'modules', 'seg', 'shell', 'layout', 'main']);
+  const used = new Map();
+  for (const f of files) {
+    const s = rd(f);
+    /* add 必须定义在循环内：它闭包捕获 f，否则记录的文件名是错的 */
+    const add = (c) => { if (!c) return; if (!used.has(c)) used.set(c, []); used.get(c).push(f); };
+    let m;
+    const re1 = /class="([^"]*)"/g; while ((m = re1.exec(s))) m[1].split(/\s+/).forEach(add);
+    const re2 = /class:\s*'([^']+)'/g; while ((m = re2.exec(s))) m[1].split(/\s+/).forEach(add);
+    const re3 = /classList\.(?:add|toggle|remove|contains)\(\s*'([^']+)'/g; while ((m = re3.exec(s))) add(m[1]);
+    const re4 = /className\s*=\s*'([^']+)'/g; while ((m = re4.exec(s))) m[1].split(/\s+/).forEach(add);
+  }
+  const OWN = /^(fig|figure|badge|demo|quiz|callout|myth|modcard|maptree|seg|module|searchdlg|term|math|steps|hero|toc|btn|iconbtn|themeswitch|prereq|readbar|dgm|lightbox|todo|skip|noscript|legend|tbl|nextlinks|takeaway)/;
+  /* 排除模板字符串截出的噪声：真实类名只含字母数字与 -_，
+     带引号/反引号/大括号/$ 的一定是拼接残片 */
+  const NOISE = /["'`$(){}\\\/]/;
+  const miss = [...used.keys()].filter(c => OWN.test(c) && !defined.has(c) && !UNSTYLED_OK.has(c) && !NOISE.test(c));
+  if (miss.length) bad('引用了但 CSS 未定义的类: ' + miss.map(c => `${c}(${new Set(used.get(c)).size}处)`).join(' '));
+  else ok(`自有类名全部有定义或已白名单承认（${used.size} 个引用 / ${defined.size} 个定义）`);
+
+  /* 反向第二半：契约里承诺给作者用的 fig__ 类，必须真的存在于 CSS。
+     文档写了不存在的类，比没写更糟 —— 作者会照着用然后静默无样式。 */
+  if (has('docs/authoring-contract.md')) {
+    const cdoc = rd('docs/authoring-contract.md');
+    const claimed = new Set();
+    /* 形如 `fig__code` + `--a/--g/--b/--sun` 与 `fig__cell--h1` 两种写法 */
+    let cm;
+    const rA = /`(fig__[a-z0-9-]+)`(?:\s*\+\s*`(--[a-z0-9\/-]+)`)?/g;
+    while ((cm = rA.exec(cdoc))) {
+      claimed.add(cm[1]);
+      if (cm[2]) cm[2].split('/').forEach(v => claimed.add(cm[1] + v.replace(/^-+/, '--').replace(/^(?!-)/, '--')));
+    }
+    const ghost = [...claimed].filter(c => c.startsWith('fig__') && !defined.has(c));
+    if (ghost.length) bad('契约承诺了 CSS 里不存在的类: ' + ghost.join(', '));
+    else ok(`契约承诺的 ${claimed.size} 个类均已在 CSS 定义`);
+  }
+})();
 
 console.log('\n' + (fail
   ? 'RESULT: ' + fail + ' 个必须修的问题' + (warnCnt ? '，' + warnCnt + ' 个提示' : '')

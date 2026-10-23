@@ -1,4 +1,4 @@
-# 依赖与构建产物（本站 v0.1 无构建，保留条目以备 v0.3 引入 Astro/Pagefind）
+# 依赖与构建产物（本站用 build.js 生成 index.html，产物入库以便 Pages 直托管）
 node_modules/
 dist/
 .cache/
@@ -17,6 +17,9 @@ desktop.ini
 *.log
 tmp/
 .tmp-*/
+tmp-*
+_tmp-*
+*.tmp
 
 # 本地内容实验（不发布）
 content/drafts/
