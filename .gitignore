@@ -1,0 +1,30 @@
+# 依赖与构建产物（本站 v0.1 无构建，保留条目以备 v0.3 引入 Astro/Pagefind）
+node_modules/
+dist/
+.cache/
+.parcel-cache/
+
+# 编辑器 / 系统
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*~
+
+# 日志与临时
+*.log
+tmp/
+.tmp-*/
+
+# 本地内容实验（不发布）
+content/drafts/
+assets/data/attn/_raw/
+
+# 密钥与本地配置（永不提交）
+.env
+.env.*
+*.pem
+*.key
+config.local.*

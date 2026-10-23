@@ -1,0 +1,174 @@
+{
+  "version": 1,
+  "site": {
+    "name": "AI 原理图解",
+    "nameEn": "Explainable AI Primer",
+    "phase": "v0.1-skeleton",
+    "segEnum": ["hook", "intuition", "mechanism", "demo", "misconception", "takeaway"],
+    "segLabels": {
+      "hook": "开场钩子",
+      "intuition": "直觉与类比",
+      "mechanism": "机制拆解",
+      "demo": "动手演示",
+      "misconception": "常见误区",
+      "takeaway": "带走一句"
+    }
+  },
+  "parts": [
+    { "id": "intuition",   "order": 1, "title": "直觉地基" },
+    { "id": "learning",    "order": 2, "title": "学习机制" },
+    { "id": "transformer", "order": 3, "title": "Transformer" },
+    { "id": "training",    "order": 4, "title": "训练与涌现" },
+    { "id": "inference",   "order": 5, "title": "推理与应用" },
+    { "id": "safety",      "order": 6, "title": "能力与风险" }
+  ],
+  "modules": [
+    {
+      "id": "m01", "num": 1, "part": "intuition",
+      "title": "模式与压缩",
+      "tagline": "AI 不是「理解」，而是「预测下一个」",
+      "prereq": [],
+      "difficulty": 1, "estMinutes": 18, "status": "skeleton",
+      "segs": ["hook", "intuition", "mechanism", "demo", "misconception", "takeaway"],
+      "demo": { "id": "m01-shannon-game", "type": "param", "params": ["sequenceLen", "modelClass"] },
+      "figures": ["m01-shannon-game-1"],
+      "acceptance": "用自己的话说清「模型能力 ≈ 对数据的压缩质量」，并解释为什么随机噪声压不动"
+    },
+    {
+      "id": "m02", "num": 2, "part": "intuition",
+      "title": "概率、信息熵与损失",
+      "tagline": "一切学习都始于「猜得不准」",
+      "prereq": ["m01"],
+      "difficulty": 2, "estMinutes": 20, "status": "skeleton",
+      "segs": ["hook", "intuition", "mechanism", "demo", "misconception", "takeaway"],
+      "demo": { "id": "m02-entropy-bars", "type": "param", "params": ["p1", "p2", "p3"] },
+      "figures": ["m02-entropy-bars-1"],
+      "acceptance": "手算 3 类问题的交叉熵；解释困惑度 perp=8 意味着什么"
+    },
+    {
+      "id": "m03", "num": 3, "part": "intuition",
+      "title": "线性代数即几何",
+      "tagline": "向量是「意义的坐标」",
+      "prereq": ["m01"],
+      "difficulty": 2, "estMinutes": 22, "status": "skeleton",
+      "segs": ["hook", "intuition", "mechanism", "demo", "misconception", "takeaway"],
+      "demo": { "id": "m03-vector-field", "type": "param", "params": ["matrixA", "matrixB", "angle"] },
+      "figures": ["m03-vector-field-1"],
+      "acceptance": "用二维示意讲清点积=相似度、矩阵=空间变换、特征向量=不变方向"
+    },
+    {
+      "id": "m04", "num": 4, "part": "intuition",
+      "title": "微积分与优化",
+      "tagline": "下山：梯度是怎么「指路」的",
+      "prereq": ["m02", "m03"],
+      "difficulty": 2, "estMinutes": 24, "status": "skeleton",
+      "segs": ["hook", "intuition", "mechanism", "demo", "misconception", "takeaway"],
+      "demo": { "id": "m04-loss-terrain", "type": "param", "params": ["lr", "momentum", "optimizer"] },
+      "figures": ["m04-loss-terrain-1"],
+      "acceptance": "解释 SGD/动量/Adam 各自解决了什么问题，而非记公式"
+    },
+    {
+      "id": "m05", "num": 5, "part": "learning",
+      "title": "神经网络与反向传播",
+      "tagline": "一堆线性变换 + 一个「非线性开关」",
+      "prereq": ["m01", "m02", "m03", "m04"],
+      "difficulty": 3, "estMinutes": 30, "status": "skeleton",
+      "segs": ["hook", "intuition", "mechanism", "demo", "misconception", "takeaway"],
+      "demo": { "id": "m05-microcalc", "type": "flagship-step", "params": ["weight", "activation"], "frames": true },
+      "figures": ["m05-compute-graph-1"],
+      "acceptance": "在浏览器里手搭 2 层网络训练拟合一个圆；解释计算图中梯度如何回流"
+    },
+    {
+      "id": "m06", "num": 6, "part": "learning",
+      "title": "CNN、RNN 与序列建模的瓶颈",
+      "tagline": "Transformer 之前的世界",
+      "prereq": ["m05"],
+      "difficulty": 3, "estMinutes": 25, "status": "skeleton",
+      "segs": ["hook", "intuition", "mechanism", "demo", "misconception", "takeaway"],
+      "demo": { "id": "m06-rnn-vanish", "type": "param", "params": ["steps", "weightScale"] },
+      "figures": ["m06-receptive-field-1"],
+      "acceptance": "对比 CNN 局部感受野/RNN 时间展开的显存与串行瓶颈；说出「路径长度」为何决定梯度衰减"
+    },
+    {
+      "id": "m07", "num": 7, "part": "transformer",
+      "title": "注意力与 Transformer",
+      "tagline": "AI 学会「按需读取上下文」",
+      "prereq": ["m03", "m05", "m06"],
+      "difficulty": 4, "estMinutes": 35, "status": "skeleton",
+      "segs": ["hook", "intuition", "mechanism", "demo", "misconception", "takeaway"],
+      "demo": { "id": "m07-attn-map", "type": "flagship", "params": ["head", "layer", "scaleMode", "sentence"] },
+      "figures": ["m07-transformer-flow-1", "m07-qkv-flow-2"],
+      "acceptance": "白板画出 Transformer 数据流；解释 O(n²) 复杂度从哪来；说出 RoPE 与绝对位置编码的差异"
+    },
+    {
+      "id": "m08", "num": 8, "part": "training",
+      "title": "预训练与 Scaling Law",
+      "tagline": "智能从规模里涌现",
+      "prereq": ["m07"],
+      "difficulty": 3, "estMinutes": 28, "status": "skeleton",
+      "segs": ["hook", "intuition", "mechanism", "demo", "misconception", "takeaway"],
+      "demo": { "id": "m08-scaling-curve", "type": "param", "params": ["paramsB", "tokensB", "fitLine"] },
+      "figures": ["m08-scaling-law-1"],
+      "debate": "涌现能力是真实现象还是评测指标的不连续假象（两派并列）",
+      "acceptance": "复述 Chinchilla 结论（数据与参数应同步放大）；解释为何「更大不一定更聪明」的错觉"
+    },
+    {
+      "id": "m09", "num": 9, "part": "training",
+      "title": "后训练与对齐",
+      "tagline": "会接话 ≠ 会帮忙",
+      "prereq": ["m08"],
+      "difficulty": 4, "estMinutes": 30, "status": "skeleton",
+      "segs": ["hook", "intuition", "mechanism", "demo", "misconception", "takeaway"],
+      "demo": { "id": "m09-reward-kl", "type": "param", "params": ["klCoef", "rewardScale"] },
+      "figures": ["m09-rlhf-flow-1"],
+      "acceptance": "说出预训练模型为何不能直接用；解释 SFT→RM→PPO 闭环；比较 DPO/RLHF 权衡"
+    },
+    {
+      "id": "m10", "num": 10, "part": "inference",
+      "title": "解码、采样与上下文",
+      "tagline": "模型的「性格」藏在采样里",
+      "prereq": ["m02", "m07"],
+      "difficulty": 3, "estMinutes": 30, "status": "skeleton",
+      "segs": ["hook", "intuition", "mechanism", "demo", "misconception", "takeaway"],
+      "demo": { "id": "m10-temp-lab", "type": "flagship", "params": ["temperature", "topP", "samples"] },
+      "figures": ["m10-kv-cache-1"],
+      "acceptance": "解释为何代码要 temp=0 而创意写作要高 temp；说出 128k 上下文「大海捞针」失效的两种原因"
+    },
+    {
+      "id": "m11", "num": 11, "part": "inference",
+      "title": "多模态",
+      "tagline": "把图像翻译成模型能读的 token",
+      "prereq": ["m07"],
+      "difficulty": 3, "estMinutes": 25, "status": "skeleton",
+      "segs": ["hook", "intuition", "mechanism", "demo", "misconception", "takeaway"],
+      "demo": { "id": "m11-clip-space", "type": "param", "params": ["patchSize", "temperature"] },
+      "figures": ["m11-vit-patch-1"],
+      "acceptance": "解释「图文对齐」如何被训练出来；说出多模态模型的典型失效模式（细粒度计数、OCR）"
+    },
+    {
+      "id": "m12", "num": 12, "part": "inference",
+      "title": "智能体、工具与检索增强",
+      "tagline": "让模型从「会说」变成「会做」",
+      "prereq": ["m10"],
+      "difficulty": 3, "estMinutes": 28, "status": "skeleton",
+      "segs": ["hook", "intuition", "mechanism", "demo", "misconception", "takeaway"],
+      "demo": { "id": "m12-agent-timeline", "type": "flagship-step", "params": ["speed", "frame"], "frames": true },
+      "figures": ["m12-agent-loop-1", "m12-rag-hit-miss-2"],
+      "acceptance": "画出 plan→act→observe 循环；比较 RAG 与微调的适用边界；解释长任务为何会「跑偏」"
+    },
+    {
+      "id": "m13", "num": 13, "part": "safety",
+      "title": "安全、对齐与评测",
+      "tagline": "我们如何知道它有多强",
+      "prereq": ["m09", "m10", "m12"],
+      "difficulty": 4, "estMinutes": 26, "status": "skeleton",
+      "segs": ["hook", "intuition", "mechanism", "demo", "misconception", "takeaway"],
+      "demo": { "id": "m13-bench-saturation", "type": "param", "params": ["bench", "year"] },
+      "figures": ["m13-capability-alignment-1", "m13-prompt-injection-2"],
+      "debate": "能力评估与对齐评估的边界；基准数据的污染问题",
+      "acceptance": "说出 3 种评测失效模式；解释「能力与对齐是两个正交轴」；看懂红队报告的结构"
+    }
+  ],
+  "order": ["m01", "m02", "m03", "m04", "m05", "m06", "m07", "m08", "m09", "m10", "m11", "m12", "m13"],
+  "statusEnum": ["skeleton", "drafted", "reviewed", "published"]
+}

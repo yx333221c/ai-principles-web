@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI 原理图解 · Explainable AI Primer（结构骨架 v0.1）</title>
+<meta name="description" content="用可交互图解讲清 AI 底层原理的开源站点。当前为 v0.1 结构骨架，正文内容待填充。">
+<meta name="color-scheme" content="light dark">
+<meta property="og:title" content="AI 原理图解">
+<meta property="og:description" content="13 个模块，从模式识别到智能体，全部以「可动手拨弄」的方式讲解原理。">
+<meta property="og:type" content="website">
+<link rel="canonical" href="./">
+<link rel="stylesheet" href="./assets/css/base.css">
+<link rel="stylesheet" href="./assets/css/layout.css">
+<link rel="stylesheet" href="./assets/css/components.css">
+<script src="./assets/js/app.js" defer></script>
+<!-- 演示模块：每个 demo 自注册到 window.AIPrinciples（DESIGN.md §6.3）；defer 保持文档顺序，app.js 先执行 -->
+<script src="./assets/js/demos/m05-microcalc.js" defer></script>
+<!-- TODO(v0.2): 按模块补充 m01-shannon-game.js … m13-bench-saturation.js -->
+<!--
+  ============================================================================
+  本文件是 v0.1「基础结构」骨架：所有区块、层级、锚点、data-* 契约均已就位，
+  正文内容刻意留空（见 .todo 占位）。设计依据见 DESIGN.md，
+  每个占位处的 TODO 注释都标注了对应章节号。
+  填充内容时：只替换 .todo 节点，不要改动 id / data-* / class 结构。
+  ============================================================================
+-->
+</head>
+<body class="shell">
+<a class="skip" href="#main">跳到主要内容</a>
+
+<!-- 阅读进度条（DESIGN.md §9.2） -->
+<div class="readbar" aria-hidden="true"><div class="readbar__fill" id="readbar-fill"></div></div>
+
+<header class="siteheader">
+  <button class="iconbtn siteheader__burger" id="nav-toggle"
+          aria-expanded="false" aria-controls="sitenav" aria-label="打开学习地图">
+    <span class="iconbtn__glyph" aria-hidden="true">≡</span>
+  </button>
+
+  <a class="brand" href="#home">
+    <span class="brand__mark" aria-hidden="true">◍</span>
+    <span class="brand__text">
+      <strong>AI 原理图解</strong>
+      <em>Explainable AI Primer</em>
+    </span>
+  </a>
+
+  <nav class="topnav" aria-label="部分导航">
+    <ul>
+      <li><a href="#intuition">直觉地基</a></li>
+      <li><a href="#learning">学习机制</a></li>
+      <li><a href="#transformer">Transformer</a></li>
+      <li><a href="#training">训练涌现</a></li>
+      <li><a href="#inference">推理应用</a></li>
+      <li><a href="#safety">能力风险</a></li>
+    </ul>
+  </nav>
+
+  <div class="siteheader__actions">
+    <button class="iconbtn" id="search-open" aria-keyshortcuts="/" disabled
+            title="站内搜索将在 v0.3 提供">
+      <span class="iconbtn__glyph" aria-hidden="true">⌕</span>
+    </button>
+    <!-- 三段主题切换：跟随系统 / 亮 / 暗（DESIGN.md §8.2） -->
+    <div class="themeswitch" role="group" aria-label="配色主题">
+      <button class="themeswitch__btn" data-theme-value="auto" aria-pressed="true">系统</button>
+      <button class="themeswitch__btn" data-theme-value="light" aria-pressed="false">亮</button>
+      <button class="themeswitch__btn" data-theme-value="dark" aria-pressed="false">暗</button>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- 左栏：学习地图（DESIGN.md §3、§9.1） -->
+  <aside class="sidebar" id="sitenav" aria-label="学习地图">
+    <div class="sidebar__inner">
+      <p class="sidebar__heading">学习地图</p>
+
+      <nav class="maptree" id="maptree">
+        <!-- 每个 Part 一个 details；模块项由 app.js 依据 data-* 提供「已读」勾选 -->
+        <details class="maptree__part" data-part="intuition" open>
+          <summary><span class="maptree__partno">01</span> 直觉地基</summary>
+          <ul class="maptree__mods">
+            <li><a href="#m01" data-mod="m01"><i>01</i>模式与压缩</a></li>
+            <li><a href="#m02" data-mod="m02"><i>02</i>概率、熵与损失</a></li>
+            <li><a href="#m03" data-mod="m03"><i>03</i>线性代数即几何</a></li>
+            <li><a href="#m04" data-mod="m04"><i>04</i>微积分与优化</a></li>
+          </ul>
+        </details>
+
+        <details class="maptree__part" data-part="learning">
+          <summary><span class="maptree__partno">02</span> 学习机制</summary>
+          <ul class="maptree__mods">
+            <li><a href="#m05" data-mod="m05"><i>05</i>神经网络与反向传播</a></li>
+            <li><a href="#m06" data-mod="m06"><i>06</i>CNN/RNN 与序列瓶颈</a></li>
+          </ul>
+        </details>
+
+        <details class="maptree__part" data-part="transformer">
+          <summary><span class="maptree__partno">03</span> Transformer</summary>
+          <ul class="maptree__mods">
+            <li><a href="#m07" data-mod="m07"><i>07</i>注意力与 Transformer</a></li>
+          </ul>
+        </details>
+
+        <details class="maptree__part" data-part="training">
+          <summary><span class="maptree__partno">04</span> 训练与涌现</summary>
+          <ul class="maptree__mods">
+            <li><a href="#m08" data-mod="m08"><i>08</i>预训练与 Scaling Law</a></li>
+            <li><a href="#m09" data-mod="m09"><i>09</i>后训练与对齐</a></li>
+          </ul>
+        </details>
+
+        <details class="maptree__part" data-part="inference">
+          <summary><span class="maptree__partno">05</span> 推理与应用</summary>
+          <ul class="maptree__mods">
+            <li><a href="#m10" data-mod="m10"><i>10</i>解码、采样与上下文</a></li>
+            <li><a href="#m11" data-mod="m11"><i>11</i>多模态</a></li>
+            <li><a href="#m12" data-mod="m12"><i>12</i>智能体与工具</a></li>
+          </ul>
+        </details>
+
+        <details class="maptree__part" data-part="safety">
+          <summary><span class="maptree__partno">06</span> 能力与风险</summary>
+          <ul class="maptree__mods">
+            <li><a href="#m13" data-mod="m13"><i>13</i>安全、对齐与评测</a></li>
+          </ul>
+        </details>
+      </nav>
+
+      <div class="sidebar__meta">
+        <!-- 进度由 app.js 从 localStorage 计算（DESIGN.md §9.1） -->
+        <span id="progress-count">0/13 已完成</span>
+        <button class="linkbtn" id="progress-reset">重置进度</button>
+      </div>
+
+      <p class="sidebar__note">v0.1 骨架 · 正文待填充<br>设计文档见 <a href="./DESIGN.md">DESIGN.md</a></p>
+    </div>
+  </aside>
+
+  <main class="main" id="main">
+
+    <!-- ===== 首页 Hero（DESIGN.md §7.4） ===== -->
+    <section class="hero" id="home" aria-labelledby="hero-title">
+      <p class="hero__kicker">一个把 AI 拆开给你看的站点</p>
+      <h1 id="hero-title">不讲新闻，不卖课，<br>只讲「它到底怎么工作」</h1>
+      <!-- TODO(§1.3): 一句话主张 ≤40 字 + 三条内容红线摘要 -->
+      <p class="todo">正文待填：主张段落与设计红线摘要（DESIGN.md §1.2–1.3）</p>
+      <div class="hero__actions">
+        <a class="btn btn--primary" href="#m01">从 M01 开始</a>
+        <a class="btn" href="#modmap">先看地图</a>
+      </div>
+      <svg class="hero__ring" viewBox="0 0 64 64" role="img" aria-label="学习进度环形示意">
+        <circle cx="32" cy="32" r="28" class="ring-bg"></circle>
+        <circle cx="32" cy="32" r="28" class="ring-fg" id="hero-ring"></circle>
+        <text x="32" y="37" class="ring-label">0%</text>
+      </svg>
+    </section>
+
+    <!-- ===== 模块索引卡（DESIGN.md §7.3 .modcard） ===== -->
+    <section class="modmap" id="modmap" aria-labelledby="modmap-title">
+      <h2 id="modmap-title">13 个模块</h2>
+      <!-- TODO(§4): 卡片副标题即「一句话定位」，此处仅结构 + 元数据占位 -->
+      <p class="todo">正文待填：卡片描述句取自 DESIGN.md §4 表格「一句话定位」列</p>
+
+      <div class="modmap__group" id="intuition" data-part="intuition">
+        <h3>01 直觉地基</h3>
+        <ul class="modgrid">
+          <li><article class="modcard" data-mod="m01" data-status="skeleton">
+            <header><span class="modcard__no">M01</span><span class="badge badge--lvl">难度 1</span></header>
+            <h4>模式与压缩</h4>
+            <p class="modcard__tag">AI 不是「理解」，而是「预测下一个」</p>
+            <p class="modcard__meta">~18 分钟 · 前置：无</p>
+            <label class="modcard__done"><input type="checkbox" data-done="m01"><span>已读</span></label>
+          </article></li>
+          <li><article class="modcard" data-mod="m02" data-status="skeleton">
+            <header><span class="modcard__no">M02</span><span class="badge badge--lvl">难度 2</span></header>
+            <h4>概率、信息熵与损失</h4>
+            <p class="modcard__tag">一切学习都始于「猜得不准」</p>
+            <p class="modcard__meta">~20 分钟 · 前置：M01</p>
+            <label class="modcard__done"><input type="checkbox" data-done="m02"><span>已读</span></label>
+          </article></li>
+          <li><article class="modcard" data-mod="m03" data-status="skeleton">
+            <header><span class="modcard__no">M03</span><span class="badge badge--lvl">难度 2</span></header>
+            <h4>线性代数即几何</h4>
+            <p class="modcard__tag">向量是「意义的坐标」</p>
+            <p class="modcard__meta">~22 分钟 · 前置：M01</p>
+            <label class="modcard__done"><input type="checkbox" data-done="m03"><span>已读</span></label>
+          </article></li>
+          <li><article class="modcard" data-mod="m04" data-status="skeleton">
+            <header><span class="modcard__no">M04</span><span class="badge badge--lvl">难度 2</span></header>
+            <h4>微积分与优化</h4>
+            <p class="modcard__tag">下山：梯度是怎么「指路」的</p>
+            <p class="modcard__meta">~24 分钟 · 前置：M02 M03</p>
+            <label class="modcard__done"><input type="checkbox" data-done="m04"><span>已读</span></label>
+          </article></li>
+        </ul>
+      </div>
+
+      <div class="modmap__group" id="learning" data-part="learning">
+        <h3>02 学习机制</h3>
+        <ul class="modgrid">
+          <li><article class="modcard" data-mod="m05" data-status="skeleton">
+            <header><span class="modcard__no">M05</span><span class="badge badge--lvl">难度 3</span><span class="badge badge--demo">含旗舰 Demo</span></header>
+            <h4>神经网络与反向传播</h4>
+            <p class="modcard__tag">一堆线性变换 + 一个「非线性开关」</p>
+            <p class="modcard__meta">~30 分钟 · 前置：M01–M04</p>
+            <label class="modcard__done"><input type="checkbox" data-done="m05"><span>已读</span></label>
+          </article></li>
+          <li><article class="modcard" data-mod="m06" data-status="skeleton">
+            <header><span class="modcard__no">M06</span><span class="badge badge--lvl">难度 3</span></header>
+            <h4>CNN、RNN 与序列建模的瓶颈</h4>
+            <p class="modcard__tag">Transformer 之前的世界</p>
+            <p class="modcard__meta">~25 分钟 · 前置：M05</p>
+            <label class="modcard__done"><input type="checkbox" data-done="m06"><span>已读</span></label>
+          </article></li>
+        </ul>
+      </div>
+
+      <div class="modmap__group" id="transformer" data-part="transformer">
+        <h3>03 Transformer</h3>
+        <ul class="modgrid">
+          <li><article class="modcard" data-mod="m07" data-status="skeleton">
+            <header><span class="modcard__no">M07</span><span class="badge badge--lvl">难度 4</span><span class="badge badge--demo">含旗舰 Demo</span><span class="badge badge--math">公式密集</span></header>
+            <h4>注意力与 Transformer</h4>
+            <p class="modcard__tag">AI 学会「按需读取上下文」</p>
+            <p class="modcard__meta">~35 分钟 · 前置：M03 M05 M06</p>
+            <label class="modcard__done"><input type="checkbox" data-done="m07"><span>已读</span></label>
+          </article></li>
+        </ul>
+      </div>
+
+      <div class="modmap__group" id="training" data-part="training">
+        <h3>04 训练与涌现</h3>
+        <ul class="modgrid">
+          <li><article class="modcard" data-mod="m08" data-status="skeleton">
+            <header><span class="modcard__no">M08</span><span class="badge badge--lvl">难度 3</span><span class="badge badge--debate">存在争议</span></header>
+            <h4>预训练与 Scaling Law</h4>
+            <p class="modcard__tag">智能从规模里涌现</p>
+            <p class="modcard__meta">~28 分钟 · 前置：M07</p>
+            <label class="modcard__done"><input type="checkbox" data-done="m08"><span>已读</span></label>
+          </article></li>
+          <li><article class="modcard" data-mod="m09" data-status="skeleton">
+            <header><span class="modcard__no">M09</span><span class="badge badge--lvl">难度 4</span></header>
+            <h4>后训练与对齐</h4>
+            <p class="modcard__tag">会接话 ≠ 会帮忙</p>
+            <p class="modcard__meta">~30 分钟 · 前置：M08</p>
+            <label class="modcard__done"><input type="checkbox" data-done="m09"><span>已读</span></label>
+          </article></li>
+        </ul>
+      </div>
+
+      <div class="modmap__group" id="inference" data-part="inference">
+        <h3>05 推理与应用</h3>
+        <ul class="modgrid">
+          <li><article class="modcard" data-mod="m10" data-status="skeleton">
+            <header><span class="modcard__no">M10</span><span class="badge badge--lvl">难度 3</span><span class="badge badge--demo">含旗舰 Demo</span></header>
+            <h4>解码、采样与上下文</h4>
+            <p class="modcard__tag">模型的「性格」藏在采样里</p>
+            <p class="modcard__meta">~30 分钟 · 前置：M02 M07</p>
+            <label class="modcard__done"><input type="checkbox" data-done="m10"><span>已读</span></label>
+          </article></li>
+          <li><article class="modcard" data-mod="m11" data-status="skeleton">
+            <header><span class="modcard__no">M11</span><span class="badge badge--lvl">难度 3</span></header>
+            <h4>多模态</h4>
+            <p class="modcard__tag">把图像翻译成模型能读的 token</p>
+            <p class="modcard__meta">~25 分钟 · 前置：M07</p>
+            <label class="modcard__done"><input type="checkbox" data-done="m11"><span>已读</span></label>
+          </article></li>
+          <li><article class="modcard" data-mod="m12" data-status="skeleton">
+            <header><span class="modcard__no">M12</span><span class="badge badge--lvl">难度 3</span></header>
+            <h4>智能体、工具与检索增强</h4>
+            <p class="modcard__tag">让模型从「会说」变成「会做」</p>
+            <p class="modcard__meta">~28 分钟 · 前置：M10</p>
+            <label class="modcard__done"><input type="checkbox" data-done="m12"><span>已读</span></label>
+          </article></li>
+        </ul>
+      </div>
+
+      <div class="modmap__group" id="safety" data-part="safety">
+        <h3>06 能力与风险</h3>
+        <ul class="modgrid">
+          <li><article class="modcard" data-mod="m13" data-status="skeleton">
+            <header><span class="modcard__no">M13</span><span class="badge badge--lvl">难度 4</span><span class="badge badge--debate">存在争议</span></header>
+            <h4>安全、对齐与评测</h4>
+            <p class="modcard__tag">我们如何知道它有多强</p>
+            <p class="modcard__meta">~26 分钟 · 前置：M09 M10 M12</p>
+            <label class="modcard__done"><input type="checkbox" data-done="m13"><span>已读</span></label>
+          </article></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         模块区：13 个 section，每个固定六段式（DESIGN.md §5、§11.3 命名规范）
+         结构约定：
+           section.module[data-module][data-part]
+             ├ header.module__head  （编号 / 标题 / 徽章 / 完成勾选）
+             ├ div.sectionnav       （六段锚点条）
+             ├ article.seg#<模块>--hook
+             ├ article.seg#<模块>--intuition
+             ├ article.seg#<模块>--mechanism
+             ├ article.seg#<模块>--demo
+             ├ article.seg#<模块>--misconception
+             ├ article.seg#<模块>--takeaway
+             └ footer.module__pager （上一/下一，按 DAG 拓扑序）
+         ===================================================================== -->
+    <div class="modules" id="modules">
+
+      <!-- ============================== M01 ============================== -->
+      <section class="module" id="m01" data-module="m01" data-part="intuition" aria-labelledby="m01-title">
+        <header class="module__head">
+          <p class="module__no">M01 · 直觉地基</p>
+          <h2 id="m01-title">模式与压缩</h2>
+          <p class="module__tag">AI 不是「理解」，而是「预测下一个」</p>
+          <div class="module__badges">
+            <span class="badge badge--lvl">难度 1</span><span class="badge badge--time">~18 分钟</span>
+            <span class="badge badge--status">skeleton</span>
+          </div>
+        </header>
+        <div class="sectionnav" role="navigation" aria-label="M01 段落">
+          <a href="#m01--hook">钩子</a><a href="#m01--intuition">直觉</a><a href="#m01--mechanism">机制</a>
+          <a href="#m01--demo">演示</a><a href="#m01--misconception">误区</a><a href="#m01--takeaway">带走</a>
+        </div>
+        <article class="seg" id="m01--hook" data-seg="hook"><h3>开场钩子</h3>
+          <!-- TODO(§5-1): 一个反直觉事实或困惑；≤120 字；禁止术语；以问题结尾 -->
+          <p class="todo">内容待填 · 规范见 DESIGN.md §5 第 1 段</p></article>
+        <article class="seg" id="m01--intuition" data-seg="intuition"><h3>直觉与类比</h3>
+          <!-- TODO(§5-2): mental model + 必须标注类比的失效边界 -->
+          <p class="todo">内容待填 · 规范见 DESIGN.md §5 第 2 段</p></article>
+        <article class="seg" id="m01--mechanism" data-seg="mechanism"><h3>机制拆解</h3>
+          <!-- TODO(§5-3): 编号步骤 ≥3；≥1 张 .figure 静态图解；符号首现即定义 -->
+          <p class="todo">内容待填 · 需配图解（§4 M01 主可视化：香农游戏 / 游程编码对比）</p>
+          <figure class="figure" data-fig="m01-shannon-game-1"><div class="figure__slot">SVG 图解占位</div><figcaption>怎么看：待补</figcaption></figure></article>
+        <article class="seg" id="m01--demo" data-seg="demo"><h3>动手演示</h3>
+          <!-- TODO(§6.3): demo 容器，控件须为原生 input[type=range]，须提供重置 -->
+          <div class="demo" data-demo="m01-shannon-game"><div class="demo__canvas">演示画布占位</div>
+            <div class="demo__controls"><p class="todo">控件待填 · 契约见 DESIGN.md §6.3</p></div></div></article>
+        <article class="seg" id="m01--misconception" data-seg="misconception"><h3>常见误区</h3>
+          <!-- TODO(§5-5): ≥3 条 .myth，格式「误解 / 为何会有此误解 / 正确说法」 -->
+          <p class="todo">内容待填 · 规范见 DESIGN.md §5 第 5 段</p></article>
+        <article class="seg" id="m01--takeaway" data-seg="takeaway"><h3>带走一句</h3>
+          <!-- TODO(§5-6): ≤40 字可复述句 + 1 道自测题 + 2 个延伸指针 -->
+          <p class="todo">内容待填 · 规范见 DESIGN.md §5 第 6 段</p></article>
+        <footer class="module__pager"><span class="module__pager-prev">—</span><a class="module__pager-next" href="#m02">下一模块 M02 →</a></footer>
+      </section>
+
+      <!-- ============================== M02 ============================== -->
+      <section class="module" id="m02" data-module="m02" data-part="intuition" aria-labelledby="m02-title">
+        <header class="module__head">
+          <p class="module__no">M02 · 直觉地基</p>
+          <h2 id="m02-title">概率、信息熵与损失</h2>
+          <p class="module__tag">一切学习都始于「猜得不准」</p>
+          <div class="module__badges"><span class="badge badge--lvl">难度 2</span><span class="badge badge--time">~20 分钟</span><span class="badge badge--status">skeleton</span></div>
+        </header>
+        <div class="sectionnav" role="navigation" aria-label="M02 段落">
+          <a href="#m02--hook">钩子</a><a href="#m02--intuition">直觉</a><a href="#m02--mechanism">机制</a>
+          <a href="#m02--demo">演示</a><a href="#m02--misconception">误区</a><a href="#m02--takeaway">带走</a>
+        </div>
+        <article class="seg" id="m02--hook" data-seg="hook"><h3>开场钩子</h3><p class="todo">内容待填 · DESIGN.md §5-1</p></article>
+        <article class="seg" id="m02--intuition" data-seg="intuition"><h3>直觉与类比</h3><p class="todo">内容待填 · DESIGN.md §5-2</p></article>
+        <article class="seg" id="m02--mechanism" data-seg="mechanism"><h3>机制拆解</h3>
+          <p class="todo">内容待填 · 需配图解：概率分布→熵条形图 / −log p 惊喜度曲面（§4 M02）</p>
+          <div class="math math--fallback">占位：交叉熵公式（H 位需 KaTeX，§10.2）</div></article>
+        <article class="seg" id="m02--demo" data-seg="demo"><h3>动手演示</h3>
+          <div class="demo" data-demo="m02-entropy-bars"><div class="demo__canvas">演示画布占位</div><div class="demo__controls"><p class="todo">控件待填 · §6.3</p></div></div></article>
+        <article class="seg" id="m02--misconception" data-seg="misconception"><h3>常见误区</h3><p class="todo">内容待填 · DESIGN.md §5-5</p></article>
+        <article class="seg" id="m02--takeaway" data-seg="takeaway"><h3>带走一句</h3><p class="todo">内容待填 · DESIGN.md §5-6</p></article>
+        <footer class="module__pager"><a class="module__pager-prev" href="#m01">← M01</a><a class="module__pager-next" href="#m03">M03 →</a></footer>
+      </section>
+
+      <!-- ============================== M03 ============================== -->
+      <section class="module" id="m03" data-module="m03" data-part="intuition" aria-labelledby="m03-title">
+        <header class="module__head">
+          <p class="module__no">M03 · 直觉地基</p>
+          <h2 id="m03-title">线性代数即几何</h2>
+          <p class="module__tag">向量是「意义的坐标」</p>
+          <div class="module__badges"><span class="badge badge--lvl">难度 2</span><span class="badge badge--time">~22 分钟</span><span class="badge badge--status">skeleton</span></div>
+        </header>
+        <div class="sectionnav" role="navigation" aria-label="M03 段落">
+          <a href="#m03--hook">钩子</a><a href="#m03--intuition">直觉</a><a href="#m03--mechanism">机制</a>
+          <a href="#m03--demo">演示</a><a href="#m03--misconception">误区</a><a href="#m03--takeaway">带走</a>
+        </div>
+        <article class="seg" id="m03--hook" data-seg="hook"><h3>开场钩子</h3><p class="todo">内容待填 · DESIGN.md §5-1</p></article>
+        <article class="seg" id="m03--intuition" data-seg="intuition"><h3>直觉与类比</h3><p class="todo">内容待填 · DESIGN.md §5-2</p></article>
+        <article class="seg" id="m03--mechanism" data-seg="mechanism"><h3>机制拆解</h3>
+          <p class="todo">内容待填 · 点积=相似度 / 矩阵=空间变换 / 特征向量=不变方向（§4 M03）</p>
+          <figure class="figure" data-fig="m03-vector-field-1"><div class="figure__slot">SVG 图解占位</div><figcaption>怎么看：待补</figcaption></figure></article>
+        <article class="seg" id="m03--demo" data-seg="demo"><h3>动手演示</h3>
+          <div class="demo" data-demo="m03-vector-field"><div class="demo__canvas">演示画布占位（可拖拽二维向量场）</div><div class="demo__controls"><p class="todo">控件待填 · §6.3</p></div></div></article>
+        <article class="seg" id="m03--misconception" data-seg="misconception"><h3>常见误区</h3><p class="todo">内容待填 · DESIGN.md §5-5</p></article>
+        <article class="seg" id="m03--takeaway" data-seg="takeaway"><h3>带走一句</h3><p class="todo">内容待填 · DESIGN.md §5-6</p></article>
+        <footer class="module__pager"><a class="module__pager-prev" href="#m02">← M02</a><a class="module__pager-next" href="#m04">M04 →</a></footer>
+      </section>
+
+      <!-- ============================== M04 ============================== -->
+      <section class="module" id="m04" data-module="m04" data-part="intuition" aria-labelledby="m04-title">
+        <header class="module__head">
+          <p class="module__no">M04 · 直觉地基</p>
+          <h2 id="m04-title">微积分与优化</h2>
+          <p class="module__tag">下山：梯度是怎么「指路」的</p>
+          <div class="module__badges"><span class="badge badge--lvl">难度 2</span><span class="badge badge--time">~24 分钟</span><span class="badge badge--status">skeleton</span></div>
+        </header>
+        <div class="sectionnav" role="navigation" aria-label="M04 段落">
+          <a href="#m04--hook">钩子</a><a href="#m04--intuition">直觉</a><a href="#m04--mechanism">机制</a>
+          <a href="#m04--demo">演示</a><a href="#m04--misconception">误区</a><a href="#m04--takeaway">带走</a>
+        </div>
+        <article class="seg" id="m04--hook" data-seg="hook"><h3>开场钩子</h3><p class="todo">内容待填 · DESIGN.md §5-1</p></article>
+        <article class="seg" id="m04--intuition" data-seg="intuition"><h3>直觉与类比</h3><p class="todo">内容待填 · 类比须标失效边界（蒙眼下山）</p></article>
+        <article class="seg" id="m04--mechanism" data-seg="mechanism"><h3>机制拆解</h3><p class="todo">内容待填 · SGD / momentum / Adam 各解决什么问题（§4 M04）</p></article>
+        <article class="seg" id="m04--demo" data-seg="demo"><h3>动手演示</h3>
+          <div class="demo" data-demo="m04-loss-terrain"><div class="demo__canvas">演示画布占位（损失地形小球动画，含鞍点/高原）</div><div class="demo__controls"><p class="todo">lr / momentum 滑块待填 · §6.3</p></div></div></article>
+        <article class="seg" id="m04--misconception" data-seg="misconception"><h3>常见误区</h3><p class="todo">内容待填 · DESIGN.md §5-5</p></article>
+        <article class="seg" id="m04--takeaway" data-seg="takeaway"><h3>带走一句</h3><p class="todo">内容待填 · DESIGN.md §5-6</p></article>
+        <footer class="module__pager"><a class="module__pager-prev" href="#m03">← M03</a><a class="module__pager-next" href="#m05">M05 →</a></footer>
+      </section>
+
+      <!-- ============================== M05 ============================== -->
+      <section class="module" id="m05" data-module="m05" data-part="learning" aria-labelledby="m05-title">
+        <header class="module__head">
+          <p class="module__no">M05 · 学习机制</p>
+          <h2 id="m05-title">神经网络与反向传播</h2>
+          <p class="module__tag">一堆线性变换 + 一个「非线性开关」</p>
+          <div class="module__badges"><span class="badge badge--lvl">难度 3</span><span class="badge badge--time">~30 分钟</span><span class="badge badge--demo">旗舰 Demo</span><span class="badge badge--status">skeleton</span></div>
+        </header>
+        <div class="sectionnav" role="navigation" aria-label="M05 段落">
+          <a href="#m05--hook">钩子</a><a href="#m05--intuition">直觉</a><a href="#m05--mechanism">机制</a>
+          <a href="#m05--demo">演示</a><a href="#m05--misconception">误区</a><a href="#m05--takeaway">带走</a>
+        </div>
+        <article class="seg" id="m05--hook" data-seg="hook"><h3>开场钩子</h3><p class="todo">内容待填 · DESIGN.md §5-1</p></article>
+        <article class="seg" id="m05--intuition" data-seg="intuition"><h3>直觉与类比</h3><p class="todo">内容待填 · 反向传播=责任分摊（§4 M05）</p></article>
+        <article class="seg" id="m05--mechanism" data-seg="mechanism"><h3>机制拆解</h3>
+          <p class="todo">内容待填 · 无激活函数会怎样；链式法则如何变成可工程化的计算图反向遍历</p>
+          <div class="math math--fallback">占位：链式法则与参数更新式（§10.2 KaTeX）</div></article>
+        <article class="seg" id="m05--demo" data-seg="demo"><h3>动手演示 · 旗舰</h3>
+          <!-- 规格见 DESIGN.md §6.4 D-M05；实现文件 assets/js/demos/m05-microcalc.js -->
+          <div class="demo demo--flagship" data-demo="m05-microcalc"><div class="demo__canvas">可编辑计算图占位（micro-calculator）</div>
+            <div class="demo__controls"><p class="todo">权重编辑 / 逐帧反向传播 待填 · §6.4</p></div></div></article>
+        <article class="seg" id="m05--misconception" data-seg="misconception"><h3>常见误区</h3><p class="todo">内容待填 · DESIGN.md §5-5</p></article>
+        <article class="seg" id="m05--takeaway" data-seg="takeaway"><h3>带走一句</h3><p class="todo">内容待填 · DESIGN.md §5-6</p></article>
+        <footer class="module__pager"><a class="module__pager-prev" href="#m04">← M04</a><a class="module__pager-next" href="#m06">M06 →</a></footer>
+      </section>
+
+      <!-- ============================== M06 ============================== -->
+      <section class="module" id="m06" data-module="m06" data-part="learning" aria-labelledby="m06-title">
+        <header class="module__head">
+          <p class="module__no">M06 · 学习机制</p>
+          <h2 id="m06-title">CNN、RNN 与序列建模的瓶颈</h2>
+          <p class="module__tag">Transformer 之前的世界</p>
+          <div class="module__badges"><span class="badge badge--lvl">难度 3</span><span class="badge badge--time">~25 分钟</span><span class="badge badge--status">skeleton</span></div>
+        </header>
+        <div class="sectionnav" role="navigation" aria-label="M06 段落">
+          <a href="#m06--hook">钩子</a><a href="#m06--intuition">直觉</a><a href="#m06--mechanism">机制</a>
+          <a href="#m06--demo">演示</a><a href="#m06--misconception">误区</a><a href="#m06--takeaway">带走</a>
+        </div>
+        <article class="seg" id="m06--hook" data-seg="hook"><h3>开场钩子</h3><p class="todo">内容待填 · DESIGN.md §5-1</p></article>
+        <article class="seg" id="m06--intuition" data-seg="intuition"><h3>直觉与类比</h3><p class="todo">内容待填 · DESIGN.md §5-2</p></article>
+        <article class="seg" id="m06--mechanism" data-seg="mechanism"><h3>机制拆解</h3>
+          <p class="todo">内容待填 · 感受野、时间展开、路径长度与梯度衰减（§4 M06）</p>
+          <figure class="figure" data-fig="m06-receptive-field-1"><div class="figure__slot">SVG 图解占位</div><figcaption>怎么看：待补</figcaption></figure></article>
+        <article class="seg" id="m06--demo" data-seg="demo"><h3>动手演示</h3>
+          <div class="demo" data-demo="m06-rnn-vanish"><div class="demo__canvas">演示画布占位（梯度随步长衰减折线）</div><div class="demo__controls"><p class="todo">控件待填 · §6.3</p></div></div></article>
+        <article class="seg" id="m06--misconception" data-seg="misconception"><h3>常见误区</h3><p class="todo">内容待填 · DESIGN.md §5-5</p></article>
+        <article class="seg" id="m06--takeaway" data-seg="takeaway"><h3>带走一句</h3><p class="todo">内容待填 · DESIGN.md §5-6</p></article>
+        <footer class="module__pager"><a class="module__pager-prev" href="#m05">← M05</a><a class="module__pager-next" href="#m07">M07 →</a></footer>
+      </section>
+
+      <!-- ============================== M07 ============================== -->
+      <section class="module" id="m07" data-module="m07" data-part="transformer" aria-labelledby="m07-title">
+        <header class="module__head">
+          <p class="module__no">M07 · Transformer</p>
+          <h2 id="m07-title">注意力与 Transformer</h2>
+          <p class="module__tag">AI 学会「按需读取上下文」</p>
+          <div class="module__badges"><span class="badge badge--lvl">难度 4</span><span class="badge badge--time">~35 分钟</span><span class="badge badge--demo">旗舰 Demo</span><span class="badge badge--math">公式密集</span><span class="badge badge--status">skeleton</span></div>
+        </header>
+        <div class="sectionnav" role="navigation" aria-label="M07 段落">
+          <a href="#m07--hook">钩子</a><a href="#m07--intuition">直觉</a><a href="#m07--mechanism">机制</a>
+          <a href="#m07--demo">演示</a><a href="#m07--misconception">误区</a><a href="#m07--takeaway">带走</a>
+        </div>
+        <article class="seg" id="m07--hook" data-seg="hook"><h3>开场钩子</h3><p class="todo">内容待填 · DESIGN.md §5-1</p></article>
+        <article class="seg" id="m07--intuition" data-seg="intuition"><h3>直觉与类比</h3><p class="todo">内容待填 · 「图书馆检索」类比的失效边界必须写明</p></article>
+        <article class="seg" id="m07--mechanism" data-seg="mechanism"><h3>机制拆解</h3>
+          <p class="todo">内容待填 · Q/K/V、多头、位置编码(绝对/RoPE)、残差、LayerNorm、O(n²) 来源（§4 M07）</p>
+          <div class="math math--fallback">占位：Attention(Q,K,V)=softmax(QKᵀ/√d)V</div>
+          <figure class="figure" data-fig="m07-transformer-flow-1"><div class="figure__slot">SVG 图解占位：Transformer 数据流</div><figcaption>怎么看：待补</figcaption></figure></article>
+        <article class="seg" id="m07--demo" data-seg="demo"><h3>动手演示 · 旗舰</h3>
+          <!-- 规格见 DESIGN.md §6.4 D-M07；注意力数据须离线生成到 assets/data/attn/*.json -->
+          <div class="demo demo--flagship" data-demo="m07-attn-map"><div class="demo__canvas">注意力热力图占位（因果掩码矩阵 + 逐 token 高亮）</div>
+            <div class="demo__controls"><p class="todo">head / layer / scaleMode 选择器待填 · §6.3</p></div></div></article>
+        <article class="seg" id="m07--misconception" data-seg="misconception"><h3>常见误区</h3><p class="todo">内容待填 · DESIGN.md §5-5</p></article>
+        <article class="seg" id="m07--takeaway" data-seg="takeaway"><h3>带走一句</h3><p class="todo">内容待填 · DESIGN.md §5-6</p></article>
+        <footer class="module__pager"><a class="module__pager-prev" href="#m06">← M06</a><a class="module__pager-next" href="#m08">M08 →</a></footer>
+      </section>
+
+      <!-- ============================== M08 ============================== -->
+      <section class="module" id="m08" data-module="m08" data-part="training" aria-labelledby="m08-title">
+        <header class="module__head">
+          <p class="module__no">M08 · 训练与涌现</p>
+          <h2 id="m08-title">预训练与 Scaling Law</h2>
+          <p class="module__tag">智能从规模里涌现</p>
+          <div class="module__badges"><span class="badge badge--lvl">难度 3</span><span class="badge badge--time">~28 分钟</span><span class="badge badge--debate">争议并列</span><span class="badge badge--status">skeleton</span></div>
+        </header>
+        <div class="sectionnav" role="navigation" aria-label="M08 段落">
+          <a href="#m08--hook">钩子</a><a href="#m08--intuition">直觉</a><a href="#m08--mechanism">机制</a>
+          <a href="#m08--demo">演示</a><a href="#m08--misconception">误区</a><a href="#m08--takeaway">带走</a>
+        </div>
+        <article class="seg" id="m08--hook" data-seg="hook"><h3>开场钩子</h3><p class="todo">内容待填 · DESIGN.md §5-1</p></article>
+        <article class="seg" id="m08--intuition" data-seg="intuition"><h3>直觉与类比</h3><p class="todo">内容待填 · DESIGN.md §5-2</p></article>
+        <article class="seg" id="m08--mechanism" data-seg="mechanism"><h3>机制拆解</h3>
+          <p class="todo">内容待填 · 幂律、Chinchilla 结论、涌现 vs 反涌现争议两派并列（§4 M08 / §14-5）</p></article>
+        <article class="seg" id="m08--demo" data-seg="demo"><h3>动手演示</h3>
+          <div class="demo" data-demo="m08-scaling-curve"><div class="demo__canvas">演示画布占位（loss vs tokens 双对数折线）</div><div class="demo__controls"><p class="todo">控件待填 · §6.3</p></div></div></article>
+        <article class="seg" id="m08--misconception" data-seg="misconception"><h3>常见误区</h3><p class="todo">内容待填 · DESIGN.md §5-5</p></article>
+        <article class="seg" id="m08--takeaway" data-seg="takeaway"><h3>带走一句</h3><p class="todo">内容待填 · DESIGN.md §5-6</p></article>
+        <footer class="module__pager"><a class="module__pager-prev" href="#m07">← M07</a><a class="module__pager-next" href="#m09">M09 →</a></footer>
+      </section>
+
+      <!-- ============================== M09 ============================== -->
+      <section class="module" id="m09" data-module="m09" data-part="training" aria-labelledby="m09-title">
+        <header class="module__head">
+          <p class="module__no">M09 · 训练与涌现</p>
+          <h2 id="m09-title">后训练与对齐</h2>
+          <p class="module__tag">会接话 ≠ 会帮忙</p>
+          <div class="module__badges"><span class="badge badge--lvl">难度 4</span><span class="badge badge--time">~30 分钟</span><span class="badge badge--status">skeleton</span></div>
+        </header>
+        <div class="sectionnav" role="navigation" aria-label="M09 段落">
+          <a href="#m09--hook">钩子</a><a href="#m09--intuition">直觉</a><a href="#m09--mechanism">机制</a>
+          <a href="#m09--demo">演示</a><a href="#m09--misconception">误区</a><a href="#m09--takeaway">带走</a>
+        </div>
+        <article class="seg" id="m09--hook" data-seg="hook"><h3>开场钩子</h3><p class="todo">内容待填 · DESIGN.md §5-1</p></article>
+        <article class="seg" id="m09--intuition" data-seg="intuition"><h3>直觉与类比</h3><p class="todo">内容待填 · DESIGN.md §5-2</p></article>
+        <article class="seg" id="m09--mechanism" data-seg="mechanism"><h3>机制拆解</h3>
+          <p class="todo">内容待填 · SFT→RM→PPO 闭环、DPO 为何省掉奖励模型（§4 M09）</p>
+          <figure class="figure" data-fig="m09-rlhf-flow-1"><div class="figure__slot">SVG 图解占位：RLHF 三段流程</div><figcaption>怎么看：待补</figcaption></figure></article>
+        <article class="seg" id="m09--demo" data-seg="demo"><h3>动手演示</h3>
+          <div class="demo" data-demo="m09-reward-kl"><div class="demo__canvas">演示画布占位（奖励 vs KL 约束权衡曲线）</div><div class="demo__controls"><p class="todo">控件待填 · §6.3</p></div></div></article>
+        <article class="seg" id="m09--misconception" data-seg="misconception"><h3>常见误区</h3><p class="todo">内容待填 · DESIGN.md §5-5</p></article>
+        <article class="seg" id="m09--takeaway" data-seg="takeaway"><h3>带走一句</h3><p class="todo">内容待填 · DESIGN.md §5-6</p></article>
+        <footer class="module__pager"><a class="module__pager-prev" href="#m08">← M08</a><a class="module__pager-next" href="#m10">M10 →</a></footer>
+      </section>
+
+      <!-- ============================== M10 ============================== -->
+      <section class="module" id="m10" data-module="m10" data-part="inference" aria-labelledby="m10-title">
+        <header class="module__head">
+          <p class="module__no">M10 · 推理与应用</p>
+          <h2 id="m10-title">解码、采样与上下文</h2>
+          <p class="module__tag">模型的「性格」藏在采样里</p>
+          <div class="module__badges"><span class="badge badge--lvl">难度 3</span><span class="badge badge--time">~30 分钟</span><span class="badge badge--demo">旗舰 Demo</span><span class="badge badge--status">skeleton</span></div>
+        </header>
+        <div class="sectionnav" role="navigation" aria-label="M10 段落">
+          <a href="#m10--hook">钩子</a><a href="#m10--intuition">直觉</a><a href="#m10--mechanism">机制</a>
+          <a href="#m10--demo">演示</a><a href="#m10--misconception">误区</a><a href="#m10--takeaway">带走</a>
+        </div>
+        <article class="seg" id="m10--hook" data-seg="hook"><h3>开场钩子</h3><p class="todo">内容待填 · DESIGN.md §5-1</p></article>
+        <article class="seg" id="m10--intuition" data-seg="intuition"><h3>直觉与类比</h3><p class="todo">内容待填 · DESIGN.md §5-2</p></article>
+        <article class="seg" id="m10--mechanism" data-seg="mechanism"><h3>机制拆解</h3>
+          <p class="todo">内容待填 · temperature/top-p、幻觉机制根源、KV Cache 省算力不省内存、长上下文失效两因（§4 M10）</p>
+          <div class="math math--fallback">占位：softmax(logits / T)</div></article>
+        <article class="seg" id="m10--demo" data-seg="demo"><h3>动手演示 · 旗舰</h3>
+          <!-- 规格见 DESIGN.md §6.4 D-M10 温度采样实验室 -->
+          <div class="demo demo--flagship" data-demo="m10-temp-lab"><div class="demo__canvas">候选词概率柱状图 + 100 次抽样直方图 占位</div>
+            <div class="demo__controls"><p class="todo">temperature / top-p 滑块待填 · §6.4</p></div></div></article>
+        <article class="seg" id="m10--misconception" data-seg="misconception"><h3>常见误区</h3><p class="todo">内容待填 · DESIGN.md §5-5</p></article>
+        <article class="seg" id="m10--takeaway" data-seg="takeaway"><h3>带走一句</h3><p class="todo">内容待填 · DESIGN.md §5-6</p></article>
+        <footer class="module__pager"><a class="module__pager-prev" href="#m09">← M09</a><a class="module__pager-next" href="#m11">M11 →</a></footer>
+      </section>
+
+      <!-- ============================== M11 ============================== -->
+      <section class="module" id="m11" data-module="m11" data-part="inference" aria-labelledby="m11-title">
+        <header class="module__head">
+          <p class="module__no">M11 · 推理与应用</p>
+          <h2 id="m11-title">多模态</h2>
+          <p class="module__tag">把图像翻译成模型能读的 token</p>
+          <div class="module__badges"><span class="badge badge--lvl">难度 3</span><span class="badge badge--time">~25 分钟</span><span class="badge badge--status">skeleton</span></div>
+        </header>
+        <div class="sectionnav" role="navigation" aria-label="M11 段落">
+          <a href="#m11--hook">钩子</a><a href="#m11--intuition">直觉</a><a href="#m11--mechanism">机制</a>
+          <a href="#m11--demo">演示</a><a href="#m11--misconception">误区</a><a href="#m11--takeaway">带走</a>
+        </div>
+        <article class="seg" id="m11--hook" data-seg="hook"><h3>开场钩子</h3><p class="todo">内容待填 · DESIGN.md §5-1</p></article>
+        <article class="seg" id="m11--intuition" data-seg="intuition"><h3>直觉与类比</h3><p class="todo">内容待填 · DESIGN.md §5-2</p></article>
+        <article class="seg" id="m11--mechanism" data-seg="mechanism"><h3>机制拆解</h3>
+          <p class="todo">内容待填 · CLIP 对比学习、离散图像 tokenizer vs 连续嵌入、典型失效模式（§4 M11）</p>
+          <figure class="figure" data-fig="m11-vit-patch-1"><div class="figure__slot">SVG 图解占位：ViT 切块</div><figcaption>怎么看：待补</figcaption></figure></article>
+        <article class="seg" id="m11--demo" data-seg="demo"><h3>动手演示</h3>
+          <div class="demo" data-demo="m11-clip-space"><div class="demo__canvas">演示画布占位（图文配对嵌入空间）</div><div class="demo__controls"><p class="todo">控件待填 · §6.3</p></div></div></article>
+        <article class="seg" id="m11--misconception" data-seg="misconception"><h3>常见误区</h3><p class="todo">内容待填 · DESIGN.md §5-5</p></article>
+        <article class="seg" id="m11--takeaway" data-seg="takeaway"><h3>带走一句</h3><p class="todo">内容待填 · DESIGN.md §5-6</p></article>
+        <footer class="module__pager"><a class="module__pager-prev" href="#m10">← M10</a><a class="module__pager-next" href="#m12">M12 →</a></footer>
+      </section>
+
+      <!-- ============================== M12 ============================== -->
+      <section class="module" id="m12" data-module="m12" data-part="inference" aria-labelledby="m12-title">
+        <header class="module__head">
+          <p class="module__no">M12 · 推理与应用</p>
+          <h2 id="m12-title">智能体、工具与检索增强</h2>
+          <p class="module__tag">让模型从「会说」变成「会做」</p>
+          <div class="module__badges"><span class="badge badge--lvl">难度 3</span><span class="badge badge--time">~28 分钟</span><span class="badge badge--status">skeleton</span></div>
+        </header>
+        <div class="sectionnav" role="navigation" aria-label="M12 段落">
+          <a href="#m12--hook">钩子</a><a href="#m12--intuition">直觉</a><a href="#m12--mechanism">机制</a>
+          <a href="#m12--demo">演示</a><a href="#m12--misconception">误区</a><a href="#m12--takeaway">带走</a>
+        </div>
+        <article class="seg" id="m12--hook" data-seg="hook"><h3>开场钩子</h3><p class="todo">内容待填 · DESIGN.md §5-1</p></article>
+        <article class="seg" id="m12--intuition" data-seg="intuition"><h3>直觉与类比</h3><p class="todo">内容待填 · DESIGN.md §5-2</p></article>
+        <article class="seg" id="m12--mechanism" data-seg="mechanism"><h3>机制拆解</h3>
+          <p class="todo">内容待填 · ReAct 循环、Agent 记忆分层、RAG 为何压幻觉又为何失效（§4 M12）</p>
+          <figure class="figure" data-fig="m12-agent-loop-1"><div class="figure__slot">SVG 图解占位：plan→act→observe</div><figcaption>怎么看：待补</figcaption></figure></article>
+        <article class="seg" id="m12--demo" data-seg="demo"><h3>动手演示</h3>
+          <div class="demo" data-demo="m12-agent-timeline"><div class="demo__canvas">演示画布占位（可播放时间线，C 类动画）</div><div class="demo__controls"><p class="todo">逐帧/倍速控件待填 · §6.2</p></div></div></article>
+        <article class="seg" id="m12--misconception" data-seg="misconception"><h3>常见误区</h3><p class="todo">内容待填 · DESIGN.md §5-5</p></article>
+        <article class="seg" id="m12--takeaway" data-seg="takeaway"><h3>带走一句</h3><p class="todo">内容待填 · DESIGN.md §5-6</p></article>
+        <footer class="module__pager"><a class="module__pager-prev" href="#m11">← M11</a><a class="module__pager-next" href="#m13">M13 →</a></footer>
+      </section>
+
+      <!-- ============================== M13 ============================== -->
+      <section class="module" id="m13" data-module="m13" data-part="safety" aria-labelledby="m13-title">
+        <header class="module__head">
+          <p class="module__no">M13 · 能力与风险</p>
+          <h2 id="m13-title">安全、对齐与评测</h2>
+          <p class="module__tag">我们如何知道它有多强</p>
+          <div class="module__badges"><span class="badge badge--lvl">难度 4</span><span class="badge badge--time">~26 分钟</span><span class="badge badge--debate">争议并列</span><span class="badge badge--status">skeleton</span></div>
+        </header>
+        <div class="sectionnav" role="navigation" aria-label="M13 段落">
+          <a href="#m13--hook">钩子</a><a href="#m13--intuition">直觉</a><a href="#m13--mechanism">机制</a>
+          <a href="#m13--demo">演示</a><a href="#m13--misconception">误区</a><a href="#m13--takeaway">带走</a>
+        </div>
+        <article class="seg" id="m13--hook" data-seg="hook"><h3>开场钩子</h3><p class="todo">内容待填 · DESIGN.md §5-1</p></article>
+        <article class="seg" id="m13--intuition" data-seg="intuition"><h3>直觉与类比</h3><p class="todo">内容待填 · DESIGN.md §5-2</p></article>
+        <article class="seg" id="m13--mechanism" data-seg="mechanism"><h3>机制拆解</h3>
+          <p class="todo">内容待填 · 基准饱和、越狱成因、提示注入路径、可扩展监督（§4 M13）</p>
+          <figure class="figure" data-fig="m13-capability-alignment-1"><div class="figure__slot">SVG 图解占位：能力/对齐二维散点</div><figcaption>怎么看：待补</figcaption></figure></article>
+        <article class="seg" id="m13--demo" data-seg="demo"><h3>动手演示</h3>
+          <div class="demo" data-demo="m13-bench-saturation"><div class="demo__canvas">演示画布占位（基准饱和曲线）</div><div class="demo__controls"><p class="todo">控件待填 · §6.3</p></div></div></article>
+        <article class="seg" id="m13--misconception" data-seg="misconception"><h3>常见误区</h3><p class="todo">内容待填 · DESIGN.md §5-5</p></article>
+        <article class="seg" id="m13--takeaway" data-seg="takeaway"><h3>带走一句</h3><p class="todo">内容待填 · DESIGN.md §5-6</p></article>
+        <footer class="module__pager"><a class="module__pager-prev" href="#m12">← M12</a><span class="module__pager-next">已是最后一个模块 · 回 <a href="#home">地图</a></span></footer>
+      </section>
+
+    </div><!-- /.modules -->
+  </main>
+
+  <!-- 右栏：当前模块六段 TOC（由 app.js 依据可见模块生成条目状态） -->
+  <aside class="toc" id="toc" aria-label="当前模块段落">
+    <div class="toc__inner">
+      <p class="toc__heading">本模块段落</p>
+      <ul class="toc__list" id="toc-list">
+        <li><a href="#m01--hook" data-seg="hook">开场钩子</a></li>
+        <li><a href="#m01--intuition" data-seg="intuition">直觉与类比</a></li>
+        <li><a href="#m01--mechanism" data-seg="mechanism">机制拆解</a></li>
+        <li><a href="#m01--demo" data-seg="demo">动手演示</a></li>
+        <li><a href="#m01--misconception" data-seg="misconception">常见误区</a></li>
+        <li><a href="#m01--takeaway" data-seg="takeaway">带走一句</a></li>
+      </ul>
+      <p class="toc__hint">快捷键：<kbd>t</kbd> 主题 · <kbd>j</kbd>/<kbd>k</kbd> 跳段 · <kbd>[</kbd>/<kbd>]</kbd> 换模块</p>
+    </div>
+  </aside>
+</div><!-- /.layout -->
+
+<footer class="sitefooter">
+  <div class="sitefooter__cols">
+    <section><h4>关于</h4><p class="todo">占位：项目主张一句话（DESIGN.md §1.1）</p></section>
+    <section><h4>内容规范</h4><ul><li><a href="./docs/writing-guide.md">写作规范</a></li><li><a href="./docs/glossary.md">术语表</a></li><li><a href="./DESIGN.md">设计文档</a></li></ul></section>
+    <section><h4>数据</h4><ul><li><a href="./assets/data/modules.json">modules.json</a></li><li><a href="./content/modules/">内容草稿目录</a></li></ul></section>
+    <section><h4>许可</h4><p class="todo">占位：文字 CC BY-SA 4.0 · 代码 MIT（README 中落实）</p></section>
+  </div>
+  <p class="sitefooter__status">v0.1 结构骨架 · 13 个模块全部为 <code>status: skeleton</code>，正文与演示尚未填充</p>
+</footer>
+
+<!-- 图解放大视图（DESIGN.md §9.2） -->
+<dialog class="lightbox" id="lightbox" aria-label="图解放大视图">
+  <div class="lightbox__bar"><span class="lightbox__title">图解</span><button class="iconbtn" id="lightbox-close" aria-label="关闭">✕</button></div>
+  <div class="lightbox__stage" id="lightbox-stage"></div>
+</dialog>
+
+<noscript>
+  <p class="noscript">本页面在无 JavaScript 时仍可完整阅读文字结构；主题切换、段落高亮与交互演示需要启用 JS。</p>
+</noscript>
+</body>
+</html>

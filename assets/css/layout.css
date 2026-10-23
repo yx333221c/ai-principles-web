@@ -1,0 +1,168 @@
+/* ==========================================================================
+   layout.css · 断点 / 栅格 / 外壳三栏（DESIGN.md §7.4 §8.4）
+   S <768 单栏 + 抽屉｜M 768–1100 双栏｜L 1100–1440 三栏｜XL >1440 同 L 加留白
+   ========================================================================== */
+
+.shell {
+  display:grid;
+  grid-template-rows:auto 1fr auto;
+  grid-template-columns:1fr;
+  min-height:100vh; min-height:100dvh;
+}
+
+/* ---------- 顶栏 ---------- */
+.siteheader {
+  position:sticky; top:0; z-index:30;
+  height:var(--h-header);
+  display:flex; align-items:center; gap:var(--s-4);
+  padding:0 var(--s-4);
+  background:color-mix(in srgb,var(--c-bg-elev) 88%,transparent);
+  backdrop-filter:saturate(1.4) blur(8px);
+  border-bottom:1px solid var(--c-line);
+}
+.siteheader__burger { display:none; flex:0 0 auto }
+.siteheader__actions { margin-left:auto; display:flex; align-items:center; gap:var(--s-2) }
+.brand { display:flex; align-items:center; gap:var(--s-2); color:inherit; text-decoration:none }
+.brand__mark { font-size:var(--t-2); color:var(--c-accent) }
+.brand__text { display:flex; flex-direction:column; line-height:1.15 }
+.brand__text strong { font-size:var(--t-0); font-weight:700 }
+.brand__text em { font-style:normal; font-size:var(--t--2); color:var(--c-fg-faint); letter-spacing:.02em }
+
+.topnav { min-width:0 }
+.topnav ul { display:flex; gap:var(--s-1); margin:0; padding:0; list-style:none; overflow-x:auto; scrollbar-width:none }
+.topnav ul::-webkit-scrollbar { display:none }
+.topnav a { display:block; padding:6px 10px; border-radius:var(--r-sm);
+  font-size:var(--t--1); color:var(--c-fg-muted); text-decoration:none; white-space:nowrap;
+  transition:background var(--dur-micro) var(--ease),color var(--dur-micro) var(--ease) }
+.topnav a:hover { background:var(--c-bg-sunken); color:var(--c-fg) }
+.topnav a[aria-current="true"] { color:var(--c-accent); background:color-mix(in srgb,var(--c-accent) 10%,transparent) }
+
+/* ---------- 阅读进度条（§9.2） ---------- */
+.readbar { position:fixed; inset:0 0 auto 0; height:2px; z-index:40; pointer-events:none }
+.readbar__fill { height:100%; width:0; background:var(--c-accent); transition:width 90ms linear }
+
+/* ---------- 主体三栏 ---------- */
+.layout {
+  display:grid;
+  grid-template-columns:var(--w-sidebar) minmax(0,1fr) var(--w-toc);
+  align-items:start;
+  gap:0;
+  width:100%;
+}
+
+.sidebar {
+  position:sticky; top:var(--h-header);
+  height:calc(100vh - var(--h-header)); height:calc(100dvh - var(--h-header));
+  overflow-y:auto; overscroll-behavior:contain;
+  border-right:1px solid var(--c-line);
+  background:var(--c-bg-elev);
+}
+.sidebar__inner { padding:var(--s-5) var(--s-4) var(--s-7) }
+
+.main { min-width:0; padding:var(--s-6) var(--s-6) var(--s-8) }
+.main > * { max-width:88rem; margin-inline:auto }   /* 内容列不无限拉宽（§8.4 XL） */
+
+.toc { position:sticky; top:var(--h-header);
+  height:calc(100vh - var(--h-header)); overflow-y:auto;
+  border-left:1px solid var(--c-line); padding:var(--s-5) var(--s-4) }
+.toc__inner { max-width:var(--w-toc) }
+
+/* ---------- 首页区 ---------- */
+.hero { padding:var(--s-7) 0 var(--s-6); display:grid;
+  grid-template-columns:minmax(0,1fr) auto; gap:var(--s-6); align-items:center }
+.hero__kicker { color:var(--c-warn); font-size:var(--t--1); letter-spacing:.08em; text-transform:uppercase }
+.hero h1 { font-size:var(--t-5); max-width:22ch }
+.hero__actions { display:flex; gap:var(--s-3); flex-wrap:wrap; margin-top:var(--s-2) }
+.hero__ring { width:84px; flex:0 0 auto }
+.ring-bg { fill:none; stroke:var(--c-line); stroke-width:6 }
+.ring-fg { fill:none; stroke:var(--c-accent); stroke-width:6; stroke-linecap:round;
+  stroke-dasharray:176; stroke-dashoffset:176; transform:rotate(-90deg); transform-origin:50% 50%;
+  transition:stroke-dashoffset var(--dur-slow) var(--ease) }
+.ring-label { font:600 14px var(--f-mono); fill:var(--c-fg-muted); text-anchor:middle }
+
+.modmap { padding:var(--s-6) 0 }
+.modmap > h2 { font-size:var(--t-4) }
+.modmap__group { margin-top:var(--s-6) }
+.modmap__group > h3 { font-size:var(--t-1); color:var(--c-fg-muted);
+  border-bottom:1px solid var(--c-line); padding-bottom:var(--s-2) }
+.modgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+  gap:var(--s-4); list-style:none; margin:var(--s-4) 0 0; padding:0 }
+.modgrid > li { display:flex }
+
+/* ---------- 模块区 ---------- */
+.modules { padding-top:var(--s-7) }
+.module { padding:var(--s-6) 0 var(--s-7); border-top:1px solid var(--c-line) }
+.module:first-child { border-top:0 }
+.module__head { max-width:var(--measure) }
+.module__no { font:600 var(--t--1)/1 var(--f-mono); color:var(--c-accent);
+  letter-spacing:.06em; margin-bottom:var(--s-2) }
+.module__head h2 { font-size:var(--t-4) }
+.module__tag { color:var(--c-fg-muted); font-size:var(--t-1) }
+.module__badges { display:flex; flex-wrap:wrap; gap:var(--s-2); margin-top:var(--s-3) }
+.module__pager { display:flex; justify-content:space-between; gap:var(--s-4);
+  margin-top:var(--s-6); padding-top:var(--s-4); border-top:1px dashed var(--c-line);
+  max-width:var(--measure); font-size:var(--t--1) }
+
+.seg { padding:var(--s-5) 0; max-width:var(--measure) }
+.seg > h3 { font-size:var(--t-2); color:var(--c-fg); position:relative; padding-left:1.6em }
+.seg > h3::before { content:""; position:absolute; left:0; top:.55em; width:.85em; height:.85em;
+  border-radius:var(--r-pill); background:var(--c-line-strong) }
+.seg[data-seg="demo"] > h3::before,
+.seg[data-seg="misconception"] > h3::before { background:var(--c-warn) }
+.seg.is-current > h3::before { background:var(--c-accent) }
+
+/* ---------- 页脚 ---------- */
+.sitefooter { border-top:1px solid var(--c-line); background:var(--c-bg-elev);
+  padding:var(--s-7) var(--s-6) var(--s-5) }
+.sitefooter__cols { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:var(--s-6); max-width:88rem; margin-inline:auto }
+.sitefooter h4 { font-size:var(--t--1); text-transform:uppercase; letter-spacing:.08em; color:var(--c-fg-faint) }
+.sitefooter ul { list-style:none; padding:0; margin:0; font-size:var(--t--1) }
+.sitefooter__status { margin:var(--s-6) auto 0; max-width:88rem; font-size:var(--t--2); color:var(--c-fg-faint) }
+
+/* ==========================================================================
+   断点 M：768–1100 —— 双栏（左图标栏 + 内容），右 TOC 收进模块顶部锚点条
+   ========================================================================== */
+@media (max-width:1100px) {
+  .layout { grid-template-columns:var(--w-sidebar) minmax(0,1fr) }
+  .toc { display:none }
+}
+
+/* ==========================================================================
+   断点 S：<768 —— 单栏，侧栏变抽屉
+   ========================================================================== */
+@media (max-width:880px) {
+  .layout { grid-template-columns:minmax(0,1fr) }
+  .siteheader__burger { display:inline-flex }
+  .topnav { display:none }                 /* 顶部横向导航在窄屏让位给抽屉地图 */
+  .brand__text em { display:none }
+  .sidebar {
+    position:fixed; inset:var(--h-header) auto 0 0; width:min(84vw,320px); z-index:29;
+    transform:translateX(-102%); transition:transform var(--dur-normal) var(--ease);
+    box-shadow:var(--shadow-2);
+  }
+  body.nav-open .sidebar { transform:none }
+  body.nav-open::after {                    /* 抽屉遮罩 */
+    content:""; position:fixed; inset:var(--h-header) 0 0 0; z-index:28;
+    background:rgba(0,0,0,.35); backdrop-filter:blur(1px) }
+  .main { padding:var(--s-5) var(--s-4) var(--s-7) }
+  .hero { grid-template-columns:minmax(0,1fr); padding-top:var(--s-5) }
+  .hero h1 { font-size:var(--t-3) }
+  .hero__ring { display:none }
+  .modgrid { grid-template-columns:1fr }
+  .sitefooter__cols { grid-template-columns:1fr 1fr }
+}
+
+@media (max-width:520px) {
+  .sitefooter__cols { grid-template-columns:1fr }
+  .seg > h3 { font-size:var(--t-1); padding-left:0 }
+  .seg > h3::before { display:none }
+}
+
+/* 打印：只保留阅读正文，去掉外壳与交互（§12.2 引用友好） */
+@media print {
+  .sidebar,.toc,.siteheader,.readbar,.sectionnav,.demo,.lightbox,.skip { display:none !important }
+  .layout { display:block }
+  body { background:#fff; color:#000 }
+  .module { page-break-inside:avoid }
+}

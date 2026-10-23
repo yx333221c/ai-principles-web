@@ -1,0 +1,212 @@
+/* ==========================================================================
+   components.css · 原子/分子组件样式（DESIGN.md §7）
+   骨架阶段：仅实现已存在于 index.html 的组件；未来新增组件样式在此追加。
+   ========================================================================== */
+
+/* ---------- 按钮 / 图标按钮 ---------- */
+.btn { display:inline-flex; align-items:center; gap:var(--s-2);
+  padding:10px 18px; border-radius:var(--r-md); border:1px solid var(--c-line-strong);
+  background:var(--c-bg-elev); color:var(--c-fg); text-decoration:none;
+  font-size:var(--t--1); font-weight:600; box-shadow:var(--shadow-1);
+  transition:transform var(--dur-micro) var(--ease),background var(--dur-micro) var(--ease) }
+.btn:hover { background:var(--c-bg-sunken); text-decoration:none }
+.btn:active { transform:translateY(1px) }
+.btn--primary { background:var(--c-accent); border-color:var(--c-accent); color:var(--c-accent-ink) }
+.btn--primary:hover { background:color-mix(in srgb,var(--c-accent) 88%,var(--c-fg)) }
+
+.iconbtn { display:inline-flex; align-items:center; justify-content:center;
+  width:36px; height:36px; border-radius:var(--r-sm); color:var(--c-fg-muted);
+  transition:background var(--dur-micro) var(--ease),color var(--dur-micro) var(--ease) }
+.iconbtn:hover:not(:disabled) { background:var(--c-bg-sunken); color:var(--c-fg) }
+.iconbtn:disabled { opacity:.45; cursor:not-allowed }
+.iconbtn__glyph { font-size:var(--t-1); line-height:1 }
+
+/* 三段主题切换（§8.2） */
+.themeswitch { display:flex; align-items:center; gap:2px; padding:3px;
+  background:var(--c-bg-sunken); border:1px solid var(--c-line); border-radius:var(--r-pill) }
+.themeswitch__btn { padding:5px 10px; border-radius:var(--r-pill);
+  font-size:var(--t--2); color:var(--c-fg-muted);
+  transition:background var(--dur-micro) var(--ease),color var(--dur-micro) var(--ease) }
+.themeswitch__btn[aria-pressed="true"] { background:var(--c-bg-elev); color:var(--c-accent); box-shadow:var(--shadow-1) }
+
+.linkbtn { background:none; border:0; padding:0; font-size:var(--t--2);
+  color:var(--c-fg-faint); text-decoration:underline dotted }
+.linkbtn:hover { color:var(--c-accent) }
+
+/* ---------- 徽章（§7.2 .badge） ---------- */
+.badge { display:inline-flex; align-items:center; gap:4px;
+  padding:2px 9px; border-radius:var(--r-pill); font-size:var(--t--2); font-weight:600;
+  border:1px solid var(--c-line-strong); background:var(--c-bg-elev); color:var(--c-fg-muted);
+  white-space:nowrap }
+.badge--lvl::before        { content:"◈ " }
+.badge--time::before       { content:"◷ " }
+.badge--math               { color:var(--c-accent); border-color:color-mix(in srgb,var(--c-accent) 40%,var(--c-line)) }
+.badge--math::before       { content:"∑ " }
+.badge--demo               { color:var(--c-warn); border-color:color-mix(in srgb,var(--c-warn) 45%,var(--c-line)) }
+.badge--demo::before       { content:"⚙ " }
+.badge--debate             { color:var(--c-err); border-color:color-mix(in srgb,var(--c-err) 45%,var(--c-line)) }
+.badge--debate::before     { content:"⚖ " }
+.badge--simplify::before   { content:"≈ " }
+.badge--prereq::before     { content:"← " }
+.badge--new                { color:var(--c-ok); border-color:color-mix(in srgb,var(--c-ok) 45%,var(--c-line)) }
+.badge--status             { font-family:var(--f-mono); text-transform:lowercase }
+.badge--status[data-status="published"] { color:var(--c-ok); border-color:var(--c-ok) }
+.badge--status[data-status="reviewed"]  { color:var(--c-warn); border-color:var(--c-warn) }
+
+/* ---------- 学习地图树（§7.4 / §9.1） ---------- */
+.maptree__part { border-radius:var(--r-sm) }
+.maptree__part + .maptree__part { margin-top:var(--s-1) }
+.maptree__part > summary { display:flex; align-items:center; gap:var(--s-2);
+  list-style:none; cursor:pointer; padding:8px var(--s-2); border-radius:var(--r-sm);
+  font-size:var(--t--1); font-weight:650; color:var(--c-fg) }
+.maptree__part > summary::-webkit-details-marker { display:none }
+.maptree__part > summary::after { content:""; margin-left:auto; width:6px; height:6px;
+  border-right:2px solid var(--c-fg-faint); border-bottom:2px solid var(--c-fg-faint);
+  transform:rotate(-45deg); transition:transform var(--dur-micro) var(--ease) }
+.maptree__part[open] > summary::after { transform:rotate(45deg) }
+.maptree__part > summary:hover { background:var(--c-bg-sunken) }
+.maptree__partno { font:600 var(--t--2)/1 var(--f-mono); color:var(--c-accent) }
+
+.maptree__mods { list-style:none; margin:0; padding:0 0 var(--s-2) var(--s-5) }
+.maptree__mods a { display:flex; align-items:center; gap:var(--s-2); padding:6px var(--s-2);
+  border-radius:var(--r-sm); font-size:var(--t--1); color:var(--c-fg-muted); text-decoration:none }
+.maptree__mods a:hover { background:var(--c-bg-sunken); color:var(--c-fg) }
+.maptree__mods a i { font-style:normal; font:600 var(--t--2)/1 var(--f-mono); opacity:.55 }
+.maptree__mods a[aria-current="true"] { color:var(--c-accent); background:color-mix(in srgb,var(--c-accent) 12%,transparent) }
+.maptree__mods a[aria-current="true"] i { opacity:1 }
+.maptree__mods a.is-done { color:var(--c-fg-faint) }
+.maptree__mods a.is-done::after { content:"✓"; margin-left:auto; color:var(--c-ok); font-size:var(--t--2) }
+
+.sidebar__heading { font-size:var(--t--1); text-transform:uppercase; letter-spacing:.1em;
+  color:var(--c-fg-faint); margin-bottom:var(--s-3) }
+.sidebar__meta { display:flex; align-items:center; justify-content:space-between; gap:var(--s-2);
+  margin-top:var(--s-5); padding-top:var(--s-3); border-top:1px solid var(--c-line);
+  font-size:var(--t--2); color:var(--c-fg-muted) }
+.sidebar__note { margin-top:var(--s-4); font-size:var(--t--2); color:var(--c-fg-faint) }
+
+/* ---------- 模块内六段锚点条（§7.3 .sectionnav） ---------- */
+.sectionnav { position:sticky; top:var(--h-header); z-index:12;
+  display:flex; flex-wrap:wrap; gap:var(--s-1); margin:var(--s-4) 0 var(--s-3);
+  padding:var(--s-2); max-width:var(--measure);
+  background:color-mix(in srgb,var(--c-bg) 92%,transparent);
+  border:1px solid var(--c-line); border-radius:var(--r-pill); backdrop-filter:blur(6px) }
+.sectionnav a { padding:4px 12px; border-radius:var(--r-pill); font-size:var(--t--2);
+  color:var(--c-fg-muted); text-decoration:none; white-space:nowrap;
+  transition:background var(--dur-micro) var(--ease),color var(--dur-micro) var(--ease) }
+.sectionnav a:hover { background:var(--c-bg-sunken); color:var(--c-fg) }
+.sectionnav a.is-current { background:var(--c-accent); color:var(--c-accent-ink) }
+
+/* ---------- TOC（右栏） ---------- */
+.toc__heading { font-size:var(--t--2); text-transform:uppercase; letter-spacing:.1em;
+  color:var(--c-fg-faint); margin-bottom:var(--s-3) }
+.toc__list { list-style:none; margin:0; padding:0; border-left:1px solid var(--c-line) }
+.toc__list a { display:block; padding:6px 0 6px var(--s-3); margin-left:-1px;
+  border-left:2px solid transparent; font-size:var(--t--2); color:var(--c-fg-muted); text-decoration:none }
+.toc__list a:hover { color:var(--c-fg) }
+.toc__list a.is-current { color:var(--c-accent); border-left-color:var(--c-accent) }
+.toc__hint { margin-top:var(--s-4); font-size:var(--t--2); color:var(--c-fg-faint) }
+
+/* ---------- 模块卡（§7.3 .modcard） ---------- */
+.modcard { display:flex; flex-direction:column; gap:var(--s-2); width:100%;
+  padding:var(--s-4); border:1px solid var(--c-line); border-radius:var(--r-lg);
+  background:var(--c-bg-elev); box-shadow:var(--shadow-1);
+  transition:transform var(--dur-normal) var(--ease),box-shadow var(--dur-normal) var(--ease) }
+.modcard:hover { transform:translateY(-2px); box-shadow:var(--shadow-2) }
+.modcard header { display:flex; flex-wrap:wrap; align-items:center; gap:6px }
+.modcard__no { font:700 var(--t--1)/1 var(--f-mono); color:var(--c-accent) }
+.modcard h4 { margin:0; font-size:var(--t-1) }
+.modcard h4 a { color:inherit; text-decoration:none }
+.modcard h4 a::after { content:""; position:absolute; inset:0 }   /* 整卡可点 */
+.modcard { position:relative }
+.modcard__tag { margin:0; font-size:var(--t--1); color:var(--c-fg-muted) }
+.modcard__meta { margin:auto 0 0; font-size:var(--t--2); color:var(--c-fg-faint); font-family:var(--f-mono) }
+.modcard__done { position:relative; z-index:1; display:inline-flex; align-items:center; gap:6px;
+  margin-top:var(--s-2); font-size:var(--t--2); color:var(--c-fg-muted); cursor:pointer }
+.modcard__done input { accent-color:var(--c-ok); width:15px; height:15px }
+.modcard[data-status="published"] { border-color:color-mix(in srgb,var(--c-ok) 40%,var(--c-line)) }
+
+/* ---------- 图解容器（§7.3 .figure） ---------- */
+.figure { margin:var(--s-5) 0; padding:var(--s-4); border:1px solid var(--c-line);
+  border-radius:var(--r-md); background:var(--c-bg-elev) }
+.figure__slot { display:grid; place-items:center; min-height:180px;
+  border:2px dashed var(--c-line-strong); border-radius:var(--r-sm);
+  color:var(--c-fg-faint); font-size:var(--t--1); aspect-ratio:16/7 }  /* 预留宽高比避免 CLS（§12.1） */
+.figure figcaption { margin-top:var(--s-3); font-size:var(--t--1); color:var(--c-fg-muted) }
+.figure figcaption::before { content:"怎么看："; color:var(--c-fg-faint) }
+.figure svg { margin-inline:auto }
+.figure [data-zoomable] { cursor:zoom-in }
+
+/* ---------- Demo 容器（§6.3 / §7.3 .demo） ---------- */
+.demo { margin:var(--s-5) 0; border:1px solid var(--c-line); border-radius:var(--r-lg);
+  background:var(--c-bg-elev); overflow:hidden }
+.demo--flagship { border-color:color-mix(in srgb,var(--c-warn) 45%,var(--c-line)); box-shadow:var(--shadow-2) }
+.demo__canvas { display:grid; place-items:center; min-height:260px; padding:var(--s-4);
+  background:
+    repeating-conic-gradient(var(--c-bg-sunken) 0 25%,transparent 0 50%) 0 0/22px 22px;
+  color:var(--c-fg-faint); font-size:var(--t--1); border-bottom:1px solid var(--c-line) }
+.demo__controls { display:flex; flex-wrap:wrap; align-items:center; gap:var(--s-4);
+  padding:var(--s-3) var(--s-4); font-size:var(--t--1) }
+.demo__field { display:flex; align-items:center; gap:var(--s-2); min-width:180px }
+.demo__field label { font-size:var(--t--2); color:var(--c-fg-muted); white-space:nowrap }
+.demo__field output { font-family:var(--f-mono); font-size:var(--t--2); color:var(--c-accent) }
+.demo input[type=range] { flex:1; accent-color:var(--c-accent); min-width:80px }
+.demo__reset { margin-left:auto; font-size:var(--t--2); color:var(--c-fg-muted) }
+.demo__legend { padding:var(--s-3) var(--s-4); font-size:var(--t--2); color:var(--c-fg-faint);
+  background:var(--c-bg-sunken) }
+
+/* ---------- 提示卡 / 误区 / 折叠 / 公式（§7.2 §7.3） ---------- */
+.callout { margin:var(--s-4) 0; padding:var(--s-3) var(--s-4);
+  border-left:4px solid var(--c-accent); border-radius:0 var(--r-md) var(--r-md) 0;
+  background:var(--c-bg-elev); font-size:var(--t--1) }
+.callout--note { border-left-color:var(--c-accent) }
+.callout--key  { border-left-color:var(--c-ok) }
+.callout--warn { border-left-color:var(--c-warn) }
+.callout p:last-child { margin-bottom:0 }
+
+.myth { border:1px solid var(--c-line); border-radius:var(--r-md);
+  margin-bottom:var(--s-3); background:var(--c-bg-elev) }
+.myth > summary { cursor:pointer; padding:var(--s-3) var(--s-4); font-weight:650; font-size:var(--t--1);
+  list-style:none }
+.myth > summary::-webkit-details-marker { display:none }
+.myth > summary::before { content:"✕ "; color:var(--c-err); font-weight:700 }
+.myth[open] > summary { border-bottom:1px dashed var(--c-line) }
+.myth__body { padding:var(--s-3) var(--s-4) }
+.myth__body p { margin-bottom:var(--s-2) }
+.myth__truth { color:var(--c-ok); font-weight:600 }
+
+.steps { list-style:none; counter-reset:step; padding:0; margin:var(--s-4) 0 }
+.steps > li { counter-increment:step; position:relative; padding:0 0 var(--s-4) 2.6em }
+.steps > li::before { content:counter(step); position:absolute; left:0; top:0;
+  width:2em; height:2em; display:grid; place-items:center; border-radius:var(--r-pill);
+  background:var(--c-accent); color:var(--c-accent-ink); font:700 var(--t--1)/1 var(--f-mono) }
+.steps > li.is-current::before { box-shadow:0 0 0 4px color-mix(in srgb,var(--c-accent) 25%,transparent) }
+
+details.math--fallback { border:1px dashed var(--c-line-strong); border-radius:var(--r-sm);
+  padding:var(--s-2) var(--s-3); background:var(--c-bg-code); font-family:var(--f-mono); font-size:var(--t--1) }
+.math { font-family:var(--f-serif) }
+
+.quiz { border:1px solid var(--c-line); border-radius:var(--r-md); padding:var(--s-4);
+  background:var(--c-bg-elev) }
+.quiz__option { display:block; padding:6px var(--s-2); border-radius:var(--r-sm); font-size:var(--t--1) }
+.quiz__option:hover { background:var(--c-bg-sunken) }
+
+/* ---------- 骨架占位（本次交付专用，内容填充后整段删除） ---------- */
+.todo { display:block; padding:var(--s-3) var(--s-4); border-radius:var(--r-sm);
+  border:1px dashed color-mix(in srgb,var(--c-warn) 55%,var(--c-line));
+  background:color-mix(in srgb,var(--c-warn) 8%,transparent);
+  color:var(--c-fg-muted); font-size:var(--t--1) }
+.todo::before { content:"⬜ 待填 "; color:var(--c-warn); font-weight:700 }
+
+/* ---------- Lightbox（§9.2） ---------- */
+.lightbox { width:min(1100px,92vw); max-height:88vh; padding:0; border:1px solid var(--c-line);
+  border-radius:var(--r-lg); background:var(--c-bg); color:var(--c-fg); box-shadow:var(--shadow-2) }
+.lightbox::backdrop { background:rgba(0,0,0,.55); backdrop-filter:blur(2px) }
+.lightbox__bar { display:flex; align-items:center; justify-content:space-between;
+  padding:var(--s-2) var(--s-3); border-bottom:1px solid var(--c-line) }
+.lightbox__title { font-size:var(--t--1); color:var(--c-fg-muted) }
+.lightbox__stage { padding:var(--s-4); overflow:auto; max-height:calc(88vh - 52px) }
+
+/* ---------- 无脚本提示 ---------- */
+.noscript { margin:var(--s-4) var(--s-6); padding:var(--s-3) var(--s-4);
+  border:1px solid var(--c-warn); border-radius:var(--r-sm);
+  background:color-mix(in srgb,var(--c-warn) 10%,transparent); font-size:var(--t--1) }
