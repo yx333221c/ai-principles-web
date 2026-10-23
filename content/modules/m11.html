@@ -1,0 +1,131 @@
+<meta title="多模态" tagline="把图像翻译成模型能读的 token">
+
+<seg name="hook">
+  <p class="hook">把一张照片发给大模型，它没有眼睛。照片在进入模型之前，已经被切成几十个小方块、每个方块压成一串数字——和文字进去时变成的是<strong>同一种东西</strong>。所以它「看图」的方式，其实是读一篇由方块写成的外语文章。</p>
+</seg>
+
+<seg name="intuition">
+  <p>语言模型只认一种输入：<strong>定长向量的序列</strong>。文字能进来，是因为「先切成词元、再查表换成向量」这一步做得很自然。</p>
+  <p>图像要进来，就得先伪造出一套「词元」。做法简单粗暴：把 224×224 的照片切成 16×16 的小块，一共 196 块，<strong>每一块当成一个「单词」</strong>，压成一个向量。于是一张图就变成了一句 196 个词的句子——顺序是「从左到右、从上到下」扫过去。</p>
+  <p>有了这句话，M07 那套 Transformer 一个字都不用改就能直接处理。多模态的关键突破不在架构，而在<strong>「图像也能被写成一句话」这个翻译</strong>。</p>
+
+  <div class="callout callout--warn">
+    <p><strong>这个「翻译成外语」的类比对下面几件事不成立：</strong></p>
+    <ul>
+      <li><strong>那门外语没有词典，也没有语法。</strong>文本的词元来自一套固定的分词表（约 3 万到 25 万个条目，每个都有身份）；图像的「方块词元」只是像素的切片，<strong>没有任何一个方块对应一个可命名的对象</strong>。「猫」这个词元在词典里是确定的，「左上角那块 16×16 像素」不是。</li>
+      <li><strong>翻译是有损的，而且损失不可指定。</strong>一张图被压成 196 个向量时，被丢掉的是高频细节（小字、纹理、远处的小物体）。你无法事先知道哪些细节活了下来——这正是它读不清图片里小字的机制原因，不是「不认真看」。</li>
+    </ul>
+  </div>
+</seg>
+
+<seg name="mechanism">
+  <ol class="steps">
+    <li data-step="1"><strong>切块：把图像变成序列。</strong>224×224 的图按 16×16 切成 196 块，每块展平成 768 维向量（16×16×3 通道），再经一个线性投影降到模型的工作维度，加上位置信息。这一步之后，图像与一句 196 词的话在数学上<strong>完全同形</strong>。</li>
+    <li data-step="1"><strong>喂给标准 Transformer。</strong>ViT 的架构就是 M07 那套：自注意力 + 前馈 + 残差 + 归一化，没有任何「视觉专用算子」。卷积的局部性在这里被注意力取代——每个方块可以直接看所有其他方块。</li>
+    <li data-step="2"><strong>分岔一：连续嵌入路线。</strong>图像编码器输出一串向量，用一个「翻译层」（线性投影或交叉注意力）把它们映射到语言模型的向量空间，然后当作前缀拼进文本。保真度高，但图像向量与文本词元<strong>不在同一个离散空间</strong>，无法共用同一套下一词预测损失。</li>
+    <li data-step="2"><strong>分岔二：离散 tokenizer 路线。</strong>先用向量量化（VQ）把每个方块归到一本「视觉词典」里的某个条目（比如 8192 个码字之一），于是图像真的变成了 196 个整数 ID。好处是<strong>图像和文本共用同一套自回归机制、同一个损失、同一个采样器</strong>；代价是量化必然丢信息，且码本大小是个新的魔法数字（见下方简化声明）。</li>
+    <li data-step="3"><strong>CLIP 的对比学习：不标注也能对齐。</strong>两个编码器（图像、文本）各自把输入压成一个向量，训练目标是：配对的图文（同一网页上的图片与其标题）向量靠近，不配对的推开。监督信号来自互联网上<strong>天然存在的图文配对</strong>，4 亿对量级 [2026-10]，没有一个人工标签。</li>
+    <li data-step="3"><strong>为什么这带来「零样本分类」。</strong>没为「猫/狗」训练过任何分类头。做法是把类别名填进模板句子——「一张猫的照片」「一张狗的照片」——编码成向量，再看图像向量离哪句最近。<strong>分类被降级成了检索</strong>，类别可以随时增减，不需要重新训练。</li>
+    <li data-step="4"><strong>失效模式一：数不清。</strong>视觉词元是<strong>定长</strong>的：无论图里有 3 只猫还是 30 只猫，都切成同样多的方块。数量没有作为一个计数被编码进任何一个方块，它只弥散在整体模式里。所以细粒度计数天生不可靠，而物体越大、占的方块越多，反而更容易被「数」对。</li>
+    <li data-step="4"><strong>失效模式二：看不清小字。</strong>切块 + 下采样会丢掉高频细节，一行 8 像素的小字可能在投影后只剩噪声级差异。这不是「分辨率不够」的简单问题，而是<strong>信息在进模型之前就已经不在了</strong>。</li>
+    <li data-step="4"><strong>失效模式三：空间关系与左右。</strong>位置编码提供的是「第几块」，不是「A 在 B 左边」这种关系；池化与全局注意力进一步把坐标信息摊薄。于是「左边第三个」这类问题常常答得自信而错。</li>
+    <li data-step="5"><strong>「看图说话但看不到细节」的根源。</strong>翻译层把视觉向量对齐到语言空间时，优化目标是「让语言模型能接着往下说」，而不是「保留所有像素事实」。所以它保留的是<strong>可被语言复述的那部分</strong>——能说出「一只橘猫在沙发上」，却说不出沙发扶手上有一道裂纹。</li>
+  </ol>
+
+  <div class="math-block math">
+    L<sub>对比</sub> <span class="op">=</span> −<span class="bigg">(</span> log <span class="frac"><span class="num">exp(<span style="border-top:1px solid;display:inline-block">s</span><sub>i</sub>·t<sub>i</sub> / τ)</span><span class="den">Σ<sub>j</sub> exp(<span style="border-top:1px solid;display:inline-block">s</span><sub>i</sub>·t<sub>j</sub> / τ)</span></span> <span class="op">+</span> log <span class="frac"><span class="num">exp(<span style="border-top:1px solid;display:inline-block">t</span><sub>i</sub>·s<sub>i</sub> / τ)</span><span class="den">Σ<sub>j</sub> exp(<span style="border-top:1px solid;display:inline-block">t</span><sub>i</sub>·s<sub>j</sub> / τ)</span></span> <span class="bigg">)</span>
+    <span class="reads">读作：对每一张图，在它配对的句子与同批其他句子之间做一次「选对哪个句子」的交叉熵；再反过来，对每个句子做一次「选对哪张图」的交叉熵；两项相加。这就是 InfoNCE——它仍然是 M02 的交叉熵，只是「类别」换成了「同批的其他样本」。</span>
+  </div>
+  <p>其中 <span class="math">τ</span> 是温度，和 M10 里的采样温度是<strong>同一个数学角色</strong>：它决定「推得多狠」。τ 小 → 只把最像的负例当回事；τ 大 → 逼着模型把所有负例都推开。它不是随便取的：CLIP 把它做成一个可学习参数，初值 0.07 [2026-10]。</p>
+
+  <div class="figure" data-fig="m11-patch-1">
+    <div class="figure__inner">
+      <div class="fig">
+        <div class="fig__head">一张图如何变成一句「话」（对应第 ①②③④ 步）</div>
+        <div class="fig__flow">
+          <div class="fig__box"><b>224×224 像素</b><span class="fig__sub">15 万像素，3 通道</span></div>
+          <span class="fig__arrow">→</span>
+          <div class="fig__box fig__box--a"><b>切成 16×16 块</b><span class="fig__sub">196 个方块</span></div>
+          <span class="fig__arrow">→</span>
+          <div class="fig__box fig__box--w"><b>每块线性投影</b><span class="fig__sub">→ 1 个向量</span></div>
+          <span class="fig__arrow">→</span>
+          <div class="fig__box fig__box--g"><b>+ 位置编码</b><span class="fig__sub">196 个向量的序列</span></div>
+          <span class="fig__arrow">→</span>
+          <div class="fig__box fig__box--sun"><b>标准 Transformer</b><span class="fig__sub">与 M07 完全相同</span></div>
+        </div>
+        <div class="fig__grid" style="grid-template-columns:repeat(8,1fr);max-width:280px;margin:8px auto 0">
+          <div class="fig__cell fig__cell--h1">1</div><div class="fig__cell fig__cell--h0">2</div><div class="fig__cell fig__cell--h2">3</div><div class="fig__cell fig__cell--h1">4</div><div class="fig__cell fig__cell--h0">5</div><div class="fig__cell fig__cell--h3">6</div><div class="fig__cell fig__cell--h1">7</div><div class="fig__cell fig__cell--h0">8</div>
+          <div class="fig__cell fig__cell--h0">9</div><div class="fig__cell fig__cell--h2">10</div><div class="fig__cell fig__cell--h1">11</div><div class="fig__cell fig__cell--h0">12</div><div class="fig__cell fig__cell--h1">13</div><div class="fig__cell fig__cell--h0">14</div><div class="fig__cell fig__cell--h2">15</div><div class="fig__cell fig__cell--h1">16</div>
+          <div class="fig__cell fig__cell--h1">…</div><div class="fig__cell fig__cell--h0"></div><div class="fig__cell fig__cell--h2"></div><div class="fig__cell fig__cell--h1"></div><div class="fig__cell fig__cell--h0"></div><div class="fig__cell fig__cell--h3"></div><div class="fig__cell fig__cell--h1"></div><div class="fig__cell fig__cell--h0">196</div>
+        </div>
+        <div class="fig__note">方块编号就是「词的顺序」；方块内部的颜色深浅代表它被压成的向量。</div>
+        <div class="fig__legend">
+          <span><i class="sw-a"></i>离散路线：每块再查一本「视觉词典」→ 变成 196 个整数 ID</span>
+          <span><i class="sw-g"></i>连续路线：向量直接投影进语言空间当后缀</span>
+        </div>
+      </div>
+    </div>
+    <figcaption>怎么看：从左到右读流程条，五个方框是一条流水线；下方的 8×8 网格是「切块」的缩略示意（真实是 14×14=196）。底部两个图例是两条分岔路线，对应机制第 ③④ 步。</figcaption>
+  </div>
+
+  <p><span class="badge badge--simplify">已简化</span> 关于码本大小：8192 这个数字取自公开 VQ 类工作的常见量级，但「多大才够」没有普适答案——它同时决定重建质量与词表长度，且与后续语言模型的词表大小耦合。本站不假装存在一个正确值。</p>
+
+  <details class="math-detail">
+    <summary>展开：为什么「定长视觉词元」必然让计数不可靠</summary>
+    <div class="math-detail__body prose">
+      <p>设图被切成 K 个方块（K 固定，如 196）。若物体数量 N 从 3 变到 30，方块数<strong>不变</strong>，变的只是每个方块内部的像素模式。模型要「数出来」，只能依赖两种途径之一：① 某个方块的局部模式恰好编码了「附近有几个同类」——但方块是固定网格，物体跨块时会被切开；② 全局注意力把多个方块的信息汇总成一个隐式计数——这需要模型自己发明一种「累加」，而累加在 Transformer 里是出了名的薄弱环节（多位数加法要靠思维链逐位算，见 M12）。</p>
+      <p>所以正确的预期不是「它数错了」，而是「<strong>数数这件事在它的表示里根本没有一个专门的位置</strong>」。物体越大、占据方块越多，反而越容易被正确判断——因为那时「方块数」本身成了数量的代理指标。</p>
+    </div>
+  </details>
+</seg>
+
+<seg name="demo">
+  <h4>对齐是怎么「长」出来的</h4>
+  <p>下面这张平面是嵌入空间的二维投影。拖动「训练步数」，你会看到配对的图文彼此靠近、不配对的被推开；然后你随便挑一张图，看模型如何在没有任何分类头的情况下认出它。</p>
+</seg>
+
+<seg name="misconception">
+  <details class="myth">
+    <summary>「多模态模型是真的'看见'了图像，就像人眼那样。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>它能用自然语言描述照片，而且描述得相当到位；「能描述」在直觉上就等于「看见了」。</p>
+      <p class="myth__truth">正确说法：它处理的是像素经过<strong>有损压缩</strong>之后的一串向量。哪些细节活下来由编码器的训练目标决定，而不是由「什么比较重要」决定。所以会出现一个很怪的组合：它能说出「这是一张 1950 年代的街景照片」，却读不出同一张图里那块招牌上的字。前者是可被语言复述的整体风格，后者是已被切块下采样抹掉的高频细节。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「图文对齐靠的是人工标注——有人告诉模型哪张图配哪句话。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong> supervised 学习在图像分类里的形象太牢固（ImageNet 确实是人工标注的），而且「4 亿对」这个数字听起来不可能人工完成，于是人们要么以为标注是自动的、要么以为标了很多人。</p>
+      <p class="myth__truth">正确说法：监督信号是<strong>互联网上天然存在的配对</strong>——图片文件与它旁边的 alt 文本、标题、说明。没人做过匹配，匹配是网页结构免费提供的。代价是这批「标签」噪声极大（大量 alt 文本与图片关系松散），所以对比学习学到的是统计共现的粗对齐，而不是精确的语义对应。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「模型数不清图里有几只猫，是因为训练数据里计数样本太少，多标一些就好了。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>「数据不够」是解释 AI 失败最省力的答案，而且对很多任务确实成立。</p>
+      <p class="myth__truth">正确说法：这是<strong>表示层</strong>的问题，不是数据量问题。见机制第 ⑦ 步与展开框：视觉词元定长，数量没有被编码在任何位置上。加标注能改善的只是「它愿不愿意给一个数」，改善不了「那个数从哪来」。真正有效的方向是改变表示（更细的切块、显式的目标检测框、或让它逐个数并输出中间过程）。</p>
+    </div>
+  </details>
+</seg>
+
+<seg name="takeaway">
+  <blockquote class="takeaway__line">图像不是被看见的，是被翻译成一句定长的话——翻译丢掉的，永远找不回来。</blockquote>
+
+  <div class="quiz">
+    <p class="quiz__q">自测：模型能识别出照片里有一只橘猫，却数不清是 2 只还是 3 只。最贴近机制的解释是？</p>
+    <label class="quiz__opt"><input type="radio" name="q-m11" data-right="1"><span>视觉词元数量固定，「几只」没有被编码在任何位置上</span></label>
+    <label class="quiz__opt"><input type="radio" name="q-m11"><span>训练数据里多猫照片太少，它没见过</span></label>
+    <label class="quiz__opt"><input type="radio" name="q-m11"><span>它的注意力被猫毛的纹理干扰了，所以看漏了一只</span></label>
+    <div class="quiz__fb">
+      <p data-for="no"><strong>回到机制第 ⑦ 步：</strong>「数据不够」和「被干扰」都假设了数量本来是被表示出来的、只是没学好或没看清。但真实情况更彻底——无论图里有几只猫，切块数量都是同一个 196。「识别出猫」用的是模式匹配（这个方块看起来像猫），「数出几只」需要的是计数，而计数在这套定长表示里<strong>没有一个可存放的位置</strong>。所以改进方向不是加数据，而是换表示。</p>
+      <p data-for="ok"><strong>对了。</strong>这正是「表示决定能力边界」的例子：识别是模式匹配，计数是累加，而后者在定长词元里没有落脚点。带着这个视角去看 M12——当模型需要真正可靠的累加、检索、执行时，工程上的答案是<strong>把这些动作交给外部工具</strong>，而不是继续逼表示层。</p>
+    </div>
+    <p class="quiz__result" aria-live="polite"></p>
+  </div>
+
+  <ul class="nextlinks">
+    <li><a href="#m12">M12 智能体与工具：表示做不到的事，如何交给外部执行</a></li>
+    <li><a href="#m07">M07 注意力：为什么图像切成方块后能直接复用同一套架构</a></li>
+    <li><a href="#m02">M02 交叉熵：InfoNCE 其实就是换了「类别」的交叉熵</a></li>
+  </ul>
+</seg>

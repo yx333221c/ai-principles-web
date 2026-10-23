@@ -247,7 +247,7 @@
       api.barAt.textContent = 'RNN：前向 ' + s.n + ' 拍 + 反向 ' + s.n + ' 拍 = ' + (2 * s.n) + ' 拍，一步等一步';
       api.barB.setAttribute('width', 4);
       api.barBt.setAttribute('x', L + 12);
-      api.barBt.textContent = '注意力：≈1 拍，全部位置同时算 —— 代价换成一张 n×n 的表（M07 第 ③ 步）';
+      api.barBt.textContent = '注意力：≈1 拍，全部位置同时算 —— 代价换成一张 n×n 的表（M07 第 ② 步）';
 
       // 读数
       if (api._ro) {

@@ -1,0 +1,273 @@
+<meta title="线性代数即几何" tagline="向量是「意义的坐标」">
+
+<seg name="hook">
+  <p class="hook">把每个词都变成一串数字，放进一张地图上。这时会出现一件怪事：「国王」减去「男人」、再加上「女人」，落点几乎正好是「女王」。数字为什么会做加减法？结果又凭什么讲得通？</p>
+  <p class="demo__note">本站全程用二维画图来讲几百维的事实，所有图都是示意 <span class="badge badge--simplify">已简化</span>。读完本模块只需要 M01。</p>
+</seg>
+
+<seg name="intuition">
+  <p>想象一张<strong>巨大的意义地图</strong>。每个词、每句话、每张图，都是地图上的一个点。我们手上真正有用的东西不是点，而是从原点指向那个点的<strong>箭头</strong>——箭头指向哪，含义就是哪。</p>
+  <p>在这张地图上，「挨得近」不再是排版上的巧合，而是可以量出来的：两个箭头方向越一致，两样东西就越像。于是「猫」和「狗」靠近，「猫」和「财务报表」远离；「国王 − 男人 + 女人」之所以像「女王」，是因为这四个箭头刚好拼成一个闭合的平行四边形。</p>
+  <p>更关键的是第二步：地图可以<strong>被整张搬动</strong>。拉伸它、旋转它、把它剪切歪——搬动它的东西就是一个矩阵。神经网络里每一层权重，干的就是这件事：不是修改某个词，而是重新安排整张地图。</p>
+
+  <div class="callout callout--warn">
+    <p><strong>这张「意义地图」的类比对下面三件事不成立，务必记住：</strong></p>
+    <ul>
+      <li><strong>地图不是二维的，也不是画在纸上的。</strong>真实<span class="term" data-def="把离散对象（词、句子、图像块）映射成一串连续数字的结果；数字之间的远近表示语义相似度。" data-en="embedding">嵌入</span>有 512 到上万维：Qwen2.5-0.5B 是 896 维，Llama 3.1 70B 是 8192 维，GPT-3 175B 的模型宽度是 12288 维 [2026-10]。「方向一致」在二维里能画出来，在高维里只能算出来。</li>
+      <li><strong>没有任何一根坐标轴对应人类概念。</strong>地图有 896 根互相垂直的轴，其中没有一根叫「性别」「情绪」「礼貌程度」。轴是训练时自由生长出来的记账坐标，人只能事后拿统计方法去猜某根轴大致与什么有关。</li>
+      <li><strong>向量加减只在局部成立。</strong>「国王 − 男人 + 女人」这类算式，在语义关系密集、方向近似平行的一小片区域里能对；换一批词就经常失败。把它当成普遍规律，就会得出「模型靠做算术理解世界」的错误结论。</li>
+    </ul>
+  </div>
+</seg>
+
+<seg name="mechanism">
+  <h4>三件事：怎么量相似、怎么搬空间、什么是搬不动的方向</h4>
+  <p>先给结论：本站要用的只有三个动作——<strong>点积</strong>量相似度，<strong>矩阵</strong>搬整张地图，<strong>特征向量</strong>指出搬完仍然不改方向的那条线。下面逐步拆开。全程用二维 <span class="badge badge--simplify">已简化</span>：把二维换成 896 维，公式一个字都不用改，只是画不出来。</p>
+
+  <ol class="steps">
+    <li data-step="1"><strong>向量就是空间里的一支箭头。</strong>一串数字 <code>(x, y)</code> 描述的是「从原点出发，横着走 x、竖着走 y」；箭头的<strong>方向</strong>说它是什么，<strong>长度</strong>说它有多强。同一支箭头换成别的坐标系记账，数字全变，箭头不变——所以箭头才是本体，数字只是写法。</li>
+    <li data-step="2"><strong>点积 = 对应位置相乘再求和，几何上是投影。</strong>把一支箭头投影到另一支的方向上，投影长度乘上对方长度，结果就是点积。所以点积同时取决于两件事：夹角与长度。</li>
+    <li data-step="3"><strong>除以长度，就只剩方向——这就是余弦相似度。</strong>两个箭头同向时点积最大，垂直时为 0，反向时为负。把长度除掉之后，读数只回答一个问题：方向有多一致。</li>
+    <li data-step="4"><strong>矩阵 = 对整个空间的一次线性变换。</strong>它把每一支箭头搬到新位置，规则只有两条：原点不动，原本平行且等距的网格搬完仍然平行且等距。旋转、拉伸、剪切都是矩阵。</li>
+    <li data-step="5"><strong>矩阵乘向量 = 施加这次变换。</strong>最省解的读法是看列：矩阵的第 1 列就是「横轴单位箭头」被搬去的地方，第 2 列是「竖轴单位箭头」的落点。两条基向量落到哪，整个空间就怎么被搬。</li>
+    <li data-step="6"><strong>特征向量 = 变换后方向不变的箭头，特征值 = 被拉伸的倍数。</strong>搬动整张地图时，绝大多数箭头的方向都被改掉了；只有少数几条直线上的箭头，搬完仍落在自己原来那条直线上——它们只是被拉长或压短。特征值为负表示方向被翻转成反向。</li>
+    <li data-step="7"><strong>嵌入是学出来的坐标，不是人定的坐标。</strong>我们没有规定「第 37 轴表示动物」。训练目标只是「常被一起用到的对象要靠近」，坐标轴为了让整体距离最短而自由生长。所以某根轴恰好与「性别」相关是巧合，不是设计。</li>
+  </ol>
+
+  <div class="figure" data-fig="m03-vector-field-1">
+    <div class="figure__inner">
+      <svg viewBox="0 0 640 236" class="dgm" role="img" aria-labelledby="f3a-t" aria-describedby="f3a-d">
+        <title id="f3a-t">点积的几何意义：把向量 a 投影到向量 b 的方向上，点积等于投影长度乘 b 的长度，因此只由夹角和长度决定</title>
+        <desc id="f3a-d">左半：从同一原点出发两支箭头 a 与 b，夹角记作 θ；从 a 的箭头顶端向 b 所在直线作垂线，垂足到原点的距离即投影长度。右半：三组箭头对，分别是同向、垂直、反向，旁边标注对应点积的正负。</desc>
+
+        <g data-step="2">
+          <line x1="90" y1="180" x2="360" y2="180" class="line" stroke-dasharray="4 4" opacity=".5"></line>
+          <line x1="90" y1="180" x2="90" y2="30" class="line" stroke-dasharray="4 4" opacity=".5"></line>
+          <text x="366" y="184" class="t-xs muted">b 的方向</text>
+
+          <line x1="90" y1="180" x2="340" y2="150" class="line--w" stroke-width="2.4"></line>
+          <path d="M340,150 L323,146 L327,159 Z" fill="var(--c-warn)"></path>
+          <text x="348" y="150" class="t-sm warm">b</text>
+
+          <line x1="90" y1="180" x2="230" y2="80" class="line--a"></line>
+          <path d="M230,80 L214,82 L224,94 Z" fill="var(--c-accent)"></path>
+          <text x="236" y="76" class="t-sm accent">a</text>
+
+          <path d="M135.7,174.5 A46,46 0 0 0 127.4,153.3" class="line" stroke-width="1.2"></path>
+          <text x="142" y="158" class="t-xs muted">θ</text>
+
+          <line x1="230" y1="80" x2="240" y2="162" class="line" stroke-dasharray="5 4"></line>
+          <path d="M240,162 L240,150 L252,149 L252,161 Z" fill="none" class="line" stroke-width="1"></path>
+          <text x="248" y="120" class="t-xs muted">垂直分量</text>
+          <text x="248" y="132" class="t-xs muted">不进点积</text>
+
+          <line x1="90" y1="188" x2="240" y2="188" class="line--a" stroke-width="1.6"></line>
+          <text x="96" y="204" class="t-xs accent">投影长度 = ‖a‖·cos θ</text>
+          <text x="90" y="222" class="t-xs muted">点积 = 投影长度 × ‖b‖</text>
+        </g>
+
+        <g data-step="3">
+          <rect x="404" y="26" width="228" height="150" rx="8" class="box"></rect>
+          <text x="418" y="46" class="t-sm muted">三档读数（方向决定符号）</text>
+
+          <line x1="422" y1="74" x2="462" y2="74" class="line--a" stroke-width="2"></line>
+          <line x1="422" y1="80" x2="462" y2="80" class="line--w" stroke-width="2"></line>
+          <text x="472" y="79" class="t-xs">同向 · 点积大</text>
+          <text x="596" y="79" class="t-xs good" text-anchor="end">像</text>
+
+          <line x1="422" y1="116" x2="462" y2="116" class="line--a" stroke-width="2"></line>
+          <line x1="442" y1="134" x2="442" y2="98" class="line--w" stroke-width="2"></line>
+          <text x="472" y="121" class="t-xs">垂直 · 点积 = 0</text>
+          <text x="596" y="121" class="t-xs muted">无关</text>
+
+          <line x1="422" y1="156" x2="462" y2="156" class="line--a" stroke-width="2"></line>
+          <line x1="462" y1="156" x2="422" y2="156" class="line--w" stroke-width="2"></line>
+          <path d="M422,156 L436,151 L436,161 Z" fill="var(--c-warn)"></path>
+          <text x="472" y="161" class="t-xs">反向 · 点积为负</text>
+          <text x="596" y="161" class="t-xs bad">相反</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption>从左往右读：先在左半看清「投影」这一步——从 a 的箭头顶端向 b 所在直线作垂线，垂线那一支完全不参与点积，所以点积只保留方向一致的部分；右半给出三种夹角对应的三档读数。机制段第 ② ③ 步说的就是这张图。</figcaption>
+  </div>
+
+  <div class="math-block math">
+    <span class="vec">a</span> <span class="op">·</span> <span class="vec">b</span> <span class="op">=</span>
+    a<span class="sub">1</span>b<span class="sub">1</span> <span class="op">+</span> a<span class="sub">2</span>b<span class="sub">2</span>
+    <span class="bigg">(</span><span class="op">+</span> <span class="muted">…</span> <span class="bigg">)</span>
+    <span class="op">=</span> ‖<span class="vec">a</span>‖ ‖<span class="vec">b</span>‖ <span class="op">·</span> cos θ
+    <span class="reads">两支向量的点积：把对应位置的数字逐个相乘再全部加起来；它同时等于两支向量的长度相乘，再乘上它们夹角的余弦——所以点积读的是「方向有多一致，以及两支各有多长」。</span>
+  </div>
+
+  <div class="math-block math">
+    cos θ <span class="op">=</span>
+    <span class="frac"><span class="num"><span class="vec">a</span> <span class="op">·</span> <span class="vec">b</span></span><span class="den">‖<span class="vec">a</span>‖ <span class="op">·</span> ‖<span class="vec">b</span>‖</span></span>
+    <span class="reads">夹角的余弦 = 点积 除以 两支长度之积。除以长度的作用是把「有多长」这个因素整个除掉，读数只剩方向；取值从 1（同向）到 −1（反向）。</span>
+  </div>
+
+  <p><strong>为什么要特意把长度除掉？</strong>因为一串坐标里，长度这件事往往不是语义。一个词在语料里出现得越多、越常见，它被训练出来的向量往往越长；一句长话的向量也常常比短句长。这些差别与「意思像不像」无关，却会直接灌进点积。除掉长度之后，剩下的纯粹是方向。</p>
+
+  <div class="math-block math">
+    ‖<span class="vec">a</span> <span class="op">−</span> <span class="vec">b</span>‖<span class="sup">2</span> <span class="op">=</span> ‖<span class="vec">a</span>‖<span class="sup">2</span> <span class="op">+</span> ‖<span class="vec">b</span>‖<span class="sup">2</span> <span class="op">−</span> 2<span class="bigg">(</span><span class="vec">a</span> <span class="op">·</span> <span class="vec">b</span><span class="bigg">)</span>
+    <span class="reads">两点之间的欧氏距离的平方，等于两支长度平方相加，再减去两倍点积。特殊情形：如果两支长度都已经归一化成 1，距离平方就只剩 2 − 2·点积——此时「按距离排序」和「按点积排序」是同一个排序。</span>
+  </div>
+
+  <table class="tbl tbl--scroll">
+    <caption style="caption-side:top;text-align:left" class="t-sm muted">两种相似度读数的分工</caption>
+    <thead><tr><th>读数</th><th>它在看什么</th><th>什么时候用</th></tr></thead>
+    <tbody>
+      <tr><td>点积 <code>a·b</code></td><td>方向一致 <em>且</em> 两支都长 → 值大</td><td>模型内部打分（注意力分数就是点积）；长度本身带信息时</td></tr>
+      <tr><td>余弦相似度</td><td>只看方向，长度被除掉</td><td>检索与聚类：一句长话和它的短摘要应当算「像」</td></tr>
+      <tr><td>欧氏距离</td><td>看两个点实际隔多远，长度差的会被算成远</td><td>向量已归一化时等价于余弦；未归一化时要把长度因素考虑进去</td></tr>
+    </tbody>
+  </table>
+
+  <div class="figure" data-fig="m03-matrix-transform-2">
+    <div class="figure__inner">
+      <svg viewBox="0 0 640 224" class="dgm" role="img" aria-labelledby="f3b-t" aria-describedby="f3b-d">
+        <title id="f3b-t">矩阵把整张平面搬动：单位圆被拉成椭圆，只有少数几条直线上的箭头搬完仍落在自己原来的直线上，那些方向就是特征向量</title>
+        <desc id="f3b-d">左侧一个方格网里的单位圆与两条基向量箭头；中间一个向右箭头，上方标注「× 矩阵 M」；右侧是同一张网被剪切拉伸后的样子：圆变成倾斜的椭圆，两条虚线穿过中心表示方向不变的两条特征方向。</desc>
+
+        <g data-step="4">
+          <text x="20" y="18" class="t-sm faint">搬之前</text>
+          <line x1="24" y1="60" x2="252" y2="60" class="grid-l"></line>
+          <line x1="24" y1="100" x2="252" y2="100" class="grid-l"></line>
+          <line x1="24" y1="140" x2="252" y2="140" class="grid-l"></line>
+          <line x1="24" y1="180" x2="252" y2="180" class="grid-l"></line>
+          <line x1="64" y1="20" x2="64" y2="200" class="grid-l"></line>
+          <line x1="104" y1="20" x2="104" y2="200" class="grid-l"></line>
+          <line x1="144" y1="20" x2="144" y2="200" class="grid-l"></line>
+          <line x1="184" y1="20" x2="184" y2="200" class="grid-l"></line>
+          <line x1="224" y1="20" x2="224" y2="200" class="grid-l"></line>
+          <circle cx="138" cy="110" r="52" class="line"></circle>
+          <line x1="138" y1="110" x2="190" y2="110" class="line--w" stroke-width="2"></line>
+          <line x1="138" y1="110" x2="138" y2="58" class="line--a" stroke-width="2"></line>
+          <text x="194" y="114" class="t-xs warm">e₁</text>
+          <text x="142" y="54" class="t-xs accent">e₂</text>
+          <text x="24" y="216" class="t-xs muted">网格平行、等距；原点不动</text>
+        </g>
+
+        <g data-step="5">
+          <line x1="268" y1="110" x2="330" y2="110" class="arrow"></line>
+          <path d="M330,110 L314,103 L314,117 Z" fill="var(--c-fg-muted)"></path>
+          <text x="266" y="96" class="t-sm muted">× M</text>
+          <text x="262" y="132" class="t-xs faint">M 的两列</text>
+          <text x="258" y="146" class="t-xs faint">= e₁、e₂ 的落点</text>
+        </g>
+
+        <g data-step="6">
+          <text x="356" y="18" class="t-sm faint">搬之后</text>
+          <line x1="352" y1="52" x2="616" y2="86" class="grid-l"></line>
+          <line x1="348" y1="104" x2="620" y2="132" class="grid-l"></line>
+          <line x1="346" y1="156" x2="624" y2="178" class="grid-l"></line>
+          <line x1="400" y1="24" x2="386" y2="198" class="grid-l"></line>
+          <line x1="470" y1="24" x2="462" y2="198" class="grid-l"></line>
+          <line x1="540" y1="24" x2="540" y2="198" class="grid-l"></line>
+          <line x1="608" y1="26" x2="616" y2="198" class="grid-l"></line>
+          <ellipse cx="486" cy="110" rx="76" ry="40" transform="rotate(-20 486 110)" class="line--a"></ellipse>
+          <line x1="486" y1="110" x2="486" y2="110" class="line"></line>
+          <line x1="410" y1="138" x2="562" y2="82" class="line--w" stroke-width="1.6" stroke-dasharray="6 4"></line>
+          <line x1="452" y1="62" x2="520" y2="158" class="line--w" stroke-width="1.6" stroke-dasharray="6 4"></line>
+          <text x="566" y="78" class="t-xs warm">方向不变 ①</text>
+          <text x="524" y="168" class="t-xs warm">方向不变 ②</text>
+          <text x="352" y="216" class="t-xs muted">圆被拉成椭圆；只有这两条直线上的箭头没被扳向别处</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption>从左往右读：左边是搬之前的单位圆与两条基向量；中间告诉你「读矩阵就读这两列」；右边是搬之后——网格依然平行等距（这就是「线性」二字的全部内容），圆成了倾斜椭圆，两条橙色虚线是搬完仍留在自己直线上的方向，即特征向量。机制段第 ④⑤⑥ 步。</figcaption>
+  </div>
+
+  <div class="math-block math">
+    M <span class="op">·</span> <span class="vec">v</span> <span class="op">=</span>
+    <span class="bigg">[</span><span class="frac"><span class="num">p<span class="op">·</span>x <span class="op">+</span> q<span class="op">·</span>y</span><span class="den">r<span class="op">·</span>x <span class="op">+</span> s<span class="op">·</span>y</span></span><span class="bigg">]</span>
+    <span class="muted">，其中 M = [[p q],[r s]]，<span class="vec">v</span> = (x, y)</span>
+    <span class="reads">矩阵乘向量：新坐标的每一行，是矩阵那一行的数字与向量逐项相乘再求和。二维写出来就是两行——第一行决定搬完之后横坐标是多少，第二行决定纵坐标是多少。</span>
+  </div>
+
+  <p>为什么列才是关键？把 <code>x=1, y=0</code> 代入上式，输出正好是第 1 列 <code>(p, r)</code>；把 <code>x=0, y=1</code> 代入，输出是第 2 列 <code>(q, s)</code>。任何箭头都是这两条基向量的加权组合，基向量落到哪，剩下的空间跟着落。</p>
+
+  <div class="math-block math">
+    M <span class="op">·</span> <span class="vec">v</span> <span class="op">=</span> λ <span class="op">·</span> <span class="vec">v</span>
+    <span class="reads">特征方程：对某个特殊方向 v，施加变换 M 的效果，和把它整体乘一个数 λ 的效果完全一样。v 是<span class="term" data-def="线性变换后方向仍落在自己原来那条直线上的向量。" data-en="eigenvector">特征向量</span>，λ 是<span class="term" data-def="特征向量方向上被拉伸的倍数；负值表示被翻成反向。" data-en="eigenvalue">特征值</span>：λ 大于 1 拉长，小于 1 压短，为负则指向反方向。</span>
+  </div>
+
+  <details class="math-detail">
+    <summary>展开：二维情形怎么手算特征值，以及为什么旋转没有特征方向</summary>
+    <div class="math-detail__body prose">
+      <p>对 <code>M = [[p q],[r s]]</code>，把 <code>M·v = λ·v</code> 移项成 <code>(M − λI)·v = 0</code>。要让一个非零的 v 满足它，矩阵 <code>M − λI</code> 必须把某支箭头压成零，也就是把平面压扁——这等价于行列式为 0：</p>
+      <div class="math-block math">
+        <span class="bigg">(</span>p <span class="op">−</span> λ<span class="bigg">)</span><span class="bigg">(</span>s <span class="op">−</span> λ<span class="bigg">)</span> <span class="op">−</span> q<span class="op">·</span>r <span class="op">=</span> 0
+        <span class="reads">关于 λ 的一元二次方程：解出来的两个 λ 就是这次变换在两条不变方向上的拉伸倍数；判别式为负时两个解都不是实数，意思是这次搬动没有任何一条直线能保住方向。</span>
+      </div>
+      <p>把旋转 90° 的矩阵 <code>[[0 −1],[1 0]]</code> 代进去：得到 <code>λ² + 1 = 0</code>，实数域内无解。这非常合理——旋转把每一条直线都扳向别处，二维里根本不存在「转 90° 还留在原直线上」的方向。你在演示里把四个滑块调成旋转，会看到椭圆的两个「不变方向」标记直接消失。</p>
+      <p>反过来，对角矩阵 <code>[[2 0],[0 0.5]]</code> 给出 λ = 2 与 λ = 0.5：横轴被拉长一倍，竖轴被压到一半，两条坐标轴本身就是特征方向。一般矩阵只是「先转到某个斜的角度，再照这个倍数拉伸」，所以特征方向常常是斜的——这正是演示图里那两条橙色虚线。</p>
+    </div>
+  </details>
+
+  <p>最后是第三件事：<strong>这些坐标是学出来的</strong>。我们从不规定第几根轴表示什么。训练时唯一的压力是「一起出现的对象要靠近」，几万根轴为了把这个条件满足得尽可能好，自己长成了一个怪形状坐标系。于是「意义」并不住在某一根轴上，而住在<strong>箭头之间的夹角</strong>里。</p>
+
+  <div class="math-block math">
+    <span class="vec">v</span><span class="sub">国王</span> <span class="op">−</span> <span class="vec">v</span><span class="sub">男人</span> <span class="op">+</span> <span class="vec">v</span><span class="sub">女人</span>
+    <span class="op">≈</span> <span class="vec">v</span><span class="sub">女王</span>
+    <span class="reads">四个词各自的坐标，做「国王减男人加女人」这一步算术，得到的新坐标离「女王」的坐标很近。减法把「男性」那个方向的分量抽走，加法把「女性」方向的分量补上——前提是这两个分量在地图上是近似平行的两个方向。</span>
+  </div>
+  <p>静态词向量时代这类算式最出名：word2vec 用 300 维坐标报告了「king − man + woman ≈ queen」[2026-10]。要读准这句话：它是「四个箭头恰好拼成近似平行四边形」，不是「模型在做性别推理」。同一批算式换一个词对，经常失败 <span class="badge badge--simplify">已简化</span>（演示与本页所有图只保留最规整的一例）。</p>
+</seg>
+
+<seg name="demo">
+  <h4>亲手量一次，再亲手把地图搬歪</h4>
+  <p>下面左半可拖动「猫」「狗」的箭头端点（或用滑块改夹角与长度比），实时看点积、余弦、夹角、距离四个读数；右半改 2×2 矩阵的四个数字，看单位圆被拉成椭圆、以及哪两条方向搬完不变。这就是机制段第 ②③④⑤⑥ 步。</p>
+</seg>
+
+<seg name="misconception">
+  <details class="myth">
+    <summary>「嵌入的第 N 个维度代表『性别』，还有一个维度代表『善恶』。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>科普配图习惯给坐标轴涂上颜色、标上「礼貌轴」「情绪轴」，因为读者需要看得见抓手；另外一些论文确实报告了「沿某方向移动能改变性别表述」的实验结果，很容易被读成「模型里有性别这一栏」。</p>
+      <p class="myth__truth">正确说法：单个坐标数字没有任何人类语义。896 根轴是训练时为了满足「相似对象靠近」而自由生长的记账方向，没有一根是被设计来表示性别的 [2026-10]。所谓「性别方向」是人事后拿一批成对样本测出来的<strong>统计方向</strong>，往往还是几个轴的组合，而且换一个模型、换一层，方向就变。因果关系是反的：不是「因为有性别轴所以行为有性别差」，而是「因为行为有性别差，我们才量出这么一个方向」。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「余弦相似度等于 1，就是同一个意思。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>检索工具会把 0.98、0.99 这种分数亮给用户看，看上去像一把精确的尺子；「分数越高越像」被顺手推成了「分数满格就是相同」。</p>
+      <p class="myth__truth">正确说法：cos θ = 1 只说明两支箭头方向完全一致，长度可以相差很远；而「相关」与「同义」本来就是两件事。真实系统里最麻烦的一类失败恰恰相反：「我喜欢这部电影」和「我不喜欢这部电影」常常拿到极高的余弦相似度，因为它们在地图上共享绝大部分词汇方向，只差一个否定词 <span class="badge badge--simplify">已简化</span>（本页演示只放语义干净的词，不演示这种翻车）。相似度是给候选<strong>排序</strong>用的线索，不是判定「等价」的开关。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「矩阵就是一张数字表格，和表格里的加减乘除没什么两样。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>线性代数课从行列式、从「按行按列算」的机械步骤入门，很多读者整个学期都没被告知这张表格在<strong>做</strong>什么。</p>
+      <p class="myth__truth">正确说法：矩阵是一次<strong>空间变换的记录</strong>，它的两列就是两条基向量被搬去哪里。丢掉这个视角，就看不懂神经网络在干什么：M05 里每个权重矩阵做的事，是把整张意义空间再定向、再拉伸、再剪切一次，把原始坐标改写成下一层更容易读出的坐标；M07 里的注意力分数，是把两支向量放到一起点一下看方向有多一致。把矩阵读成表格，这些就都只剩「按公式算」。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「维度越多越像人脑，所以 12288 维比 300 维更『懂』。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>「表示能力」被等同于「精细程度」，而人脑神经元数量巨大，于是高维 = 高级似乎顺理成章。</p>
+      <p class="myth__truth">正确说法：维度是<strong>预算</strong>，不是理解力。多一根轴就多一分能把对象分得更开的能力，但也多一分把噪声当结构的浪费；GPT-3 175B 的模型宽度是 12288，Qwen2.5-0.5B 是 896 [2026-10]，后者同样能完成类比与检索。真正决定「像不像」的是坐标之间的夹角是否反映了实际共现关系，而这来自训练数据与目标，不来自维度数字本身。</p>
+    </div>
+  </details>
+</seg>
+
+<seg name="takeaway">
+  <blockquote class="takeaway__line">点积量方向，矩阵搬空间，特征向量是搬完不变的那条线。</blockquote>
+
+  <div class="quiz">
+    <p class="quiz__q">自测：向量检索系统通常把向量先归一化（长度都调成 1），再算点积。为什么这样做？</p>
+    <label class="quiz__opt"><input type="radio" name="q-m03" data-right="1"><span>归一化后点积就等于余弦相似度：读数只看方向，长短不再干扰排序</span></label>
+    <label class="quiz__opt"><input type="radio" name="q-m03"><span>归一化后点积算得更快，因为省掉了乘法项</span></label>
+    <label class="quiz__opt"><input type="radio" name="q-m03"><span>归一化是为了把维度降下来，让 896 维变成 1 维</span></label>
+    <div class="quiz__fb">
+      <p data-for="no"><strong>再想一步：</strong>归一化既没有减少乘法，也没有减少维度——它只做一件事：把每支箭头除以它自己的长度，于是所有箭头长度都变成 1。回到机制段第 ③ 步的公式 <code>‖a−b‖² = ‖a‖² + ‖b‖² − 2(a·b)</code>：两个长度项都被钉成 1 之后，点积里就只剩方向，「按点积排序」和「按余弦排序」变成同一件事。这才是工程上这么做的理由。</p>
+      <p data-for="ok"><strong>对了。</strong>长度这个因素被除掉之后，点积纯粹读方向——这正是本页的核心：意义住在夹角里，不住在某一根轴上，也不住在长度里。带着这个结论去 M07：那里的注意力分数就是两支向量的点积，所以「谁和谁方向一致」直接决定了模型读谁。</p>
+      </div>
+    <p class="quiz__result" aria-live="polite"></p>
+  </div>
+
+  <ul class="nextlinks">
+    <li><a href="#m07">M07 注意力：点积如何变成「该读哪个词」的分数</a></li>
+    <li><a href="#m05">M05 反向传播：权重矩阵如何被学着搬正这张地图</a></li>
+    <li><a href="#m04">M04 梯度与优化：往哪个方向挪能让损失降最快</a></li>
+  </ul>
+</seg>

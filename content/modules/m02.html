@@ -45,16 +45,17 @@
         KL<span class="bigg">(</span>q <span class="op">‖</span> p<span class="bigg">)</span> <span class="op">=</span> <span class="bigg">∑</span><span class="sub">i</span> q<span class="sub">i</span> <span class="op">·</span> log<span class="sub">2</span> <span class="frac"><span class="num">q<span class="sub">i</span></span><span class="den">p<span class="sub">i</span></span></span>
         <span class="reads">读作：相对熵是「真实频率除以你用的频率」再按真实频率取平均；只有 q 和 p 完全相同时它才等于 0，而且它不对称，KL(q‖p) 和 KL(p‖q) 一般不相等。</span>
       </div>
-    <li data-step="5"><strong>因为只差一个常数，最小化交叉熵就等于最小化 KL。</strong>数据集一旦定下来，<code>H(q)</code> 就固定不动，与模型参数无关。<span class="badge badge--simplify">已简化</span> 真实的下一词预测里标签是「某一个词元」，此时 <code>H(q) = 0</code>，两个量严格相等，训练时省掉那一项不会改变任何一步参数更新。</li>
-    <li data-step="6"><strong>困惑度 = 2 的交叉熵次方 = 等效均匀选项数。</strong>指数运算把「比特」换算回「几个选项」：交叉熵 3 bit 就是 2³ = 8，意思是这个模型的平均表现，等价于在 8 个等可能答案里蒙一个。</li>
-      <div class="math-block math">
-        perplexity <span class="op">=</span> 2<span class="sup">H(q, p)</span> <span class="op">=</span> 2<span class="sup">H(q) + KL(q‖p)</span>
-        <span class="reads">读作：困惑度是交叉熵以 2 为底取指数；它等于「模型实际表现得像在有几种等可能选项之间瞎选」的那个数。</span>
-      </div>
+    <li data-step="5"><strong>因为只差一个常数，最小化交叉熵就等于最小化 KL。</strong>数据集一旦定下来，<code>H(q)</code> 就固定不动，与模型参数无关，所以两者只被同一条曲线推动。</li>
       <div class="math-block math">
         <span class="bigg">∵</span> H<span class="bigg">(</span>q<span class="bigg">)</span> <span class="op">=</span> 常数
         <span class="op">⟹</span> min H<span class="bigg">(</span>q, p<span class="bigg">)</span> <span class="op">=</span> min KL<span class="bigg">(</span>q <span class="op">‖</span> p<span class="bigg">)</span>
         <span class="reads">读作：因为真实分布那一项是常数，所以「把交叉熵降下来」和「把 KL 降下来」是同一件事，只是纵轴平移了一格。</span>
+      </div>
+      <p><span class="badge badge--simplify">已简化</span> 真实的下一词预测里标签是「某一个词元」，也就是 one-hot，此时 <code>H(q) = 0</code>，两个量严格相等，训练时省掉那一项不改变任何一步参数更新。</p>
+    <li data-step="6"><strong>困惑度 = 2 的交叉熵次方 = 等效均匀选项数。</strong>指数运算把「比特」换算回「几个选项」：交叉熵 3 bit 就是 2³ = 8，意思是这个模型的平均表现，等价于在 8 个等可能答案里蒙一个。</li>
+      <div class="math-block math">
+        perplexity <span class="op">=</span> 2<span class="sup">H(q, p)</span> <span class="op">=</span> 2<span class="sup">H(q) + KL(q‖p)</span>
+        <span class="reads">读作：困惑度是交叉熵以 2 为底取指数；它等于「模型实际表现得像在有几种等可能选项之间瞎选」的那个数。</span>
       </div>
   </ol>
 
@@ -116,10 +117,10 @@
           <text x="456" y="204" class="t-xs muted">5 个等可能答案，每个 .20</text>
           <text x="456" y="222" class="t-xs faint">惊讶度全都 2.32 bit</text>
         </g>
-        <text x="18" y="240" class="t-xs muted">把 0.20 换成 0.02，同一句话的损失立刻从 2.32 bit 跳到 5.64 bit：这就是「越自信的错，罚得越重」。</text>
+        <text x="18" y="240" class="t-xs muted">注意第 ② 格里柱子的高度差：0.60 和 0.20 差 3 倍，惊讶度只差 1.6 bit。</text>
       </svg>
     </div>
-    <figcaption>从左往右读，四格就是同一条算式的四个阶段：份额 → 取对数 → 只留真实标签那一格（长期则按频率加权）→ 取 2 的幂。第三格的柱高与第四格的柱高完全相同，因为它们是同一个数的两种单位；第五格的柱子根数就是「等效选项数」。</figcaption>
+    <figcaption>从左往右读，四格是同一条算式的四个阶段：份额 → 取对数 → 只留真实标签那一格（长期则按频率加权）→ 取 2 的幂。第三格的柱高与第四格的柱高完全相同，因为它们是同一个数的两种单位；第四格的柱子根数就是「等效选项数」。反过来看第 ② 格才是重点：把 0.20 换成 0.02，惊讶度从 2.32 bit 跳到 5.64 bit——<strong>概率除以 10，损失加 3.32 bit</strong>，这就是「越自信的错，代价越大」的确切形状。</figcaption>
   </div>
 
   <h4>手算第一遍：真实标签是「茶」</h4>
@@ -161,7 +162,8 @@
   </div>
 
   <div class="callout callout--note">
-    <p>给这两个单位一个真实量级。词表大小从 3.2 万（2023 年的主流开源模型）涨到 12.8 万量级（2024 年之后）[2026-10]：如果一个模型对全部候选词元<strong>均匀瞎猜</strong>，交叉熵就是 log₂ 128000 ≈ 17 bit，困惑度正好等于词表大小 128000。而公开报告的预训练收敛损失常见 1.7～2.2 个 nat（约 2.5～3.2 bit）[2026-10]，换算成困惑度就是 5～9。<strong>所以「困惑度 8」不是抽象数字，它落在现代模型的真实量级里。</strong></p>
+    <p>给这两个单位两个能摸到的端点。<strong>地板是困惑度 1</strong>（<code>0 bit</code>，模型百分之百确定），<strong>天花板是词表大小</strong>：若模型对全部候选词元<strong>均匀瞎猜</strong>，交叉熵恰好等于 <code>log₂ V</code>，困惑度恰好等于 <code>V</code>。词表在 3.2 万到 12.8 万之间（2023–2024 年的主流开源模型）[2026-10]，于是天花板就是 15.0～17.0 bit、困惑度 32000～128000。<strong>「困惑度 8」落在这两端之间、非常靠下的位置。</strong></p>
+    <p>读论文时还要盯住单位：同一份预测，用 <code>log₂</code> 记是比特，用 <code>ln</code> 记是 nat（<code>1 nat ≈ 1.44 bit</code>），规模定律类论文又常报 bits-per-byte（按字节而非词元平均，与词表大小无关）[2026-10]。所以两篇论文里同样写着「损失 2.0」的曲线，可能根本不是同一个量纲——能横比的只有<strong>同一数据集、同一单位</strong>下的困惑度。</p>
   </div>
 
   <details class="math-detail">

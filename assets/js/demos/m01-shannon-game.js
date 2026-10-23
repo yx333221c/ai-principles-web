@@ -1,20 +1,20 @@
 /* ==========================================================================
    m01-shannon-game.js · M01 主演示：香农游戏（逐符号猜序列）
-   演示键 = modules.json 里 m01.demo.id = 'm01-shannon-game'
+   注册键 = modules.json 里 m01.demo.id = 'm01-shannon-game'
 
    设计意图（DESIGN.md §4 M01 / §6.3）：把「猜得越准 → 付的比特越少 → 越可压缩」
    这条链做成可操作的。读者每押一个符号立刻结算；同一张画布上并列四条累计线
    （定长 / 理论地板 / 模型 / 你），四者分得越开，说明这段数据的规律越多。
 
-   诚实性声明（§2.2 第 4 条）：
-   · 序列是**合成数据**：三条一阶马尔可夫链，转移概率写在下面 TYPES 里，
+   诚实性声明（作者契约 §2.2 第 4 条）：
+   · 序列是**合成数据**：三条一阶马尔可夫链，转移概率写死在下面 TYPES 里，
      画面顶部常驻「示意数据（合成序列）」；不是真实语料，也不是任何模型的输出。
    · 「模型」不是预训练模型：它只对**已揭示的前缀**做计数 + 贝叶斯回退估计
      （0/1/2 阶由 modelClass 决定），绝不偷看后面的符号。
    · 「理论地板」用的是 TYPES 那套真实转移概率（只有造数据的人知道），
      所以它是这条序列在该规律下的下限，不是任何经验方法一定能达到的值。
    · 读者押注按 1/3 比特结算，是**教学简化**：真实做法是分配概率、付 −log₂ p
-     （机制段第 ② 步）。这一点同时写在 demo 段与 hint 里。
+     （机制段第 ② 步）。这一点同时写在 demo 段、画面与 hint 里。
    · 随机数走 DK.rng(seed)：同 seed 同参数必得同一序列，重置与刷新都可复现。
    ========================================================================== */
 (function (AIP) {
@@ -25,13 +25,13 @@
   const SYM = ['A', 'B', 'C', 'D'];
   const K = SYM.length;
   const FIXED = Math.log2(K);              // 定长基准 = 2 bit/符号
-  const PRIOR = 1.2;                       // 回退伪计数强度（模型超参数）
+  const PRIOR = 1.2;                       // 回退伪计数强度（模型唯一的超参数）
 
-  /* rows[上一符号][下一符号]：每行和为 1 */
+  /* rows[上一符号][下一符号]；每行和为 1（已用脚本校验） */
   const TYPES = [
     {
       short: '强规律',
-      desc: '强规律（A→B→C→D 循环，掺 3% 噪声）：只要盯住上一个符号就几乎不会错，地板极低。',
+      desc: '强规律（A→B→C→D 循环，掺 3% 噪声）：盯住上一个符号就几乎不会错，地板约 0.6 bit/符号。',
       P: [
         [0.03, 0.91, 0.03, 0.03],
         [0.03, 0.03, 0.91, 0.03],
@@ -41,17 +41,17 @@
     },
     {
       short: '语言式',
-      desc: '语言式（偏斜转移）：有倾向但不决定，某些符号更常见、某些搭配更常见 → 中等压缩率。',
+      desc: '语言式（偏斜转移）：有强烈倾向但仍会翻脸，地板约 1.45 bit/符号——省得有限，且要样本才挖得出来。',
       P: [
-        [0.10, 0.55, 0.25, 0.10],
-        [0.35, 0.10, 0.45, 0.10],
-        [0.20, 0.30, 0.10, 0.40],
-        [0.45, 0.20, 0.25, 0.05]
+        [0.05, 0.70, 0.20, 0.05],
+        [0.60, 0.05, 0.30, 0.05],
+        [0.15, 0.15, 0.15, 0.55],
+        [0.10, 0.10, 0.70, 0.10]
       ]
     },
     {
       short: '纯随机',
-      desc: '纯随机（四个各 1/4）：没有任何可预测性 → 地板 = 定长 = 2 bit/符号，压缩率 1.00 倍。',
+      desc: '纯随机（四个各 1/4）：没有任何可预测性，地板 = 定长 = 2 bit/符号，压缩率上限 1.00 倍。',
       P: [
         [0.25, 0.25, 0.25, 0.25],
         [0.25, 0.25, 0.25, 0.25],
@@ -74,7 +74,7 @@
 
   const neglog2 = (p) => -Math.log2(Math.max(p, 1e-12));
 
-  /** 在已揭示前缀 hist[0..upto) 上，统计某个阶的下一符号计数 */
+  /** 在已揭示前缀 hist[0..upto) 上，统计 order 阶上下文的下一符号计数 */
   function ctxCounts(hist, upto, order) {
     const counts = [0, 0, 0, 0];
     if (upto < order) return { counts: counts, total: 0 };
@@ -100,19 +100,21 @@
     return out;
   }
 
-  /** 第 t 个符号的「真实规律」概率（t=0 用平稳分布） */
+  /** 第 t 个符号在「真实规律」下的概率（t=0 用平稳分布）→ 地板线 */
   function truthProb(api, t) {
     return t === 0 ? api._pi[api._seq[t]] : api._P[api._seq[t - 1]][api._seq[t]];
   }
 
-  /* ---------------- 几何常量（viewBox 720 × 344） ---------------- */
+  const argmax = (p) => { let b = 0; for (let j = 1; j < p.length; j++) if (p[j] > p[b]) b = j; return b; };
+
+  /* ---------------- 几何常量（viewBox 720 × 348） ---------------- */
   const G = {
     perRow: 30, cell: 21, rowH: 24, stripX: 12, stripY: 46,
-    barX: 12, barY: 128, barW: 300, barH: 25, barGap: 6,
-    chart: { x: 372, y: 116, w: 332, h: 170 }
+    barX: 12, barY: 132, barW: 300, barH: 24, barGap: 5,
+    chart: { x: 372, y: 118, w: 332, h: 168 }
   };
 
-  /* ---------------- 逻辑助手（模块级，避免挂到 spec 上） ---------------- */
+  /* ---------------- 状态逻辑（模块级，避免挂到 spec 上） ---------------- */
   function gen(api) {
     const s = api.state;
     const T = TYPES[s.seqType];
@@ -137,15 +139,15 @@
     api.draw();
   }
 
-  /** 换阶 / 换长度后：用当前 modelClass 重算已揭示部分 */
+  /** 换阶之后：用当前 modelClass 重算已揭示部分的每一步代价（不偷看未来） */
   function recomputeModel(api) {
     const s = api.state;
-    s.modelBits = 0;
+    let acc = 0;
     for (let t = 0; t < s.idx; t++) {
       const c = neglog2(estimate(api._seq, t, s.modelClass)[api._seq[t]]);
-      api._stepModel[t] = c;
-      s.modelBits += c;
+      api._stepModel[t] = c; acc += c;
     }
+    s.modelBits = acc;
   }
 
   function guess(api, j) {
@@ -165,21 +167,116 @@
     api.draw();
   }
 
+  /** 让模型每步押自己最想押的符号（连续动画，尊重 prefers-reduced-motion） */
   function autoplay(api) {
     if (api.state.idx >= api.state.sequenceLen) return;
     api.animate((a) => {
       if (a.state.idx >= a.state.sequenceLen) return false;
-      const p = estimate(a._seq, a.state.idx, a.state.modelClass);
-      let best = 0;
-      for (let j = 1; j < K; j++) if (p[j] > p[best]) best = j;
-      guess(a, best);
+      guess(a, argmax(estimate(a._seq, a.state.idx, a.state.modelClass)));
       return a.state.idx < a.state.sequenceLen;
     });
   }
 
+  /* ---------------- 绘制：三个分组各自先清空，绝不跨帧堆积 ---------------- */
+  function paintStrip(api, s, done) {
+    const g = api.gStrip;
+    while (g.firstChild) g.removeChild(g.firstChild);
+    for (let t = 0; t < s.sequenceLen; t++) {
+      const x = G.stripX + (t % G.perRow) * G.cell;
+      const y = G.stripY + Math.floor(t / G.perRow) * G.rowH;
+      const w = G.cell - 3, h = G.rowH - 8;
+      if (t < s.idx) {
+        /* 方块越浅 = 模型当时越意外（惊讶度映到热力档，4 bit 为「全浅」） */
+        const heat = DK.clamp(1 - (api._stepModel[t] || 0) / 4, 0, 1);
+        g.appendChild(DK.el('rect', { x: x, y: y, width: w, height: h, rx: 3, fill: DK.heatFill(heat) }));
+        g.appendChild(DK.el('text', {
+          x: x + w / 2, y: y + h - 3, class: 't-sm', 'text-anchor': 'middle', text: SYM[api._seq[t]]
+        }));
+      } else {
+        g.appendChild(DK.el('rect', {
+          x: x, y: y, width: w, height: h, rx: 3, fill: 'var(--c-bg-sunken)',
+          stroke: t === s.idx ? 'var(--c-accent)' : 'var(--c-line)',
+          'stroke-width': t === s.idx ? 1.6 : .8
+        }));
+        if (t === s.idx) g.appendChild(DK.el('text', {
+          x: x + w / 2, y: y + h - 3, class: 't-sm accent', 'text-anchor': 'middle', text: '?'
+        }));
+      }
+    }
+    g.appendChild(DK.el('text', { x: 12, y: G.barY - 14, class: 't-xs faint', text: TYPES[s.seqType].desc }));
+    g.appendChild(DK.el('text', {
+      x: 600, y: G.stripY - 6, class: 't-xs', 'text-anchor': 'end',
+      text: '已揭示 ' + s.idx + ' / ' + s.sequenceLen + (done ? ' · 本局结束' : ' · 待押') + '（越浅=模型越意外）'
+    }));
+  }
+
+  function paintBars(api, s, modelP) {
+    const gb = api.gBars;
+    while (gb.firstChild) gb.removeChild(gb.firstChild);
+    const maxP = Math.max(modelP[0], modelP[1], modelP[2], modelP[3]) || 1;
+    const track = G.barW - 44;
+    for (let j = 0; j < K; j++) {
+      const y = G.barY + j * (G.barH + G.barGap);
+      gb.appendChild(DK.el('text', { x: G.barX, y: y + 15, class: 't-sm', text: SYM[j] }));
+      gb.appendChild(DK.el('rect', {
+        x: G.barX + 18, y: y, width: track, height: G.barH - 8, rx: 3, fill: 'var(--c-bg-sunken)'
+      }));
+      gb.appendChild(DK.el('rect', {
+        x: G.barX + 18, y: y, width: Math.max(2, track * (modelP[j] / maxP)), height: G.barH - 8, rx: 3,
+        fill: DK.heatFill(modelP[j] / maxP),
+        stroke: s.lastGuess === j ? 'var(--c-warn)' : (s.lastTruth === j ? 'var(--c-ok)' : 'var(--c-line-strong)'),
+        'stroke-width': (s.lastGuess === j || s.lastTruth === j) ? 2 : .6
+      }));
+      gb.appendChild(DK.el('text', {
+        x: G.barX + 24, y: y + 14, class: 't-xs',
+        text: (modelP[j] * 100).toFixed(0) + '% → −log₂p ' + DK.fmt(neglog2(modelP[j]), 2) + ' bit'
+      }));
+    }
+    gb.appendChild(DK.el('text', {
+      x: G.barX, y: G.barY + K * (G.barH + G.barGap) + 8, class: 't-xs accent',
+      text: '模型最想押 ' + SYM[argmax(modelP)] + ' ｜ 橙框=你上次押的 · 绿框=实际出现的'
+    }));
+  }
+
+  function paintChart(api, s) {
+    const gc = api.gChart;
+    while (gc.firstChild) gc.removeChild(gc.firstChild);
+    const C = G.chart, xMax = s.sequenceLen;
+    const yMax = Math.max(FIXED * xMax, s.youBits) * 1.12;
+    const px = (v) => C.x + (v / xMax) * C.w;
+    const py = (v) => C.y + C.h - (v / yMax) * C.h;
+    const yStep = yMax > 100 ? 40 : 20;
+    for (let b = 0; b <= yMax; b += yStep) {
+      gc.appendChild(DK.el('line', { x1: C.x, y1: py(b), x2: C.x + C.w, y2: py(b), class: 'grid', 'stroke-dasharray': '2 4' }));
+      gc.appendChild(DK.el('text', { x: C.x - 6, y: py(b) + 3, class: 't-xs muted', 'text-anchor': 'end', text: String(b) }));
+    }
+    for (let n = 0; n <= xMax; n += 12) {
+      gc.appendChild(DK.el('text', { x: px(n), y: C.y + C.h + 13, class: 't-xs muted', 'text-anchor': 'middle', text: String(n) }));
+    }
+    gc.appendChild(DK.el('text', { x: C.x + C.w, y: C.y + C.h + 25, class: 't-xs faint', 'text-anchor': 'end', text: '已揭示符号数 →' }));
+    /* 定长基准：每符号 2 bit 的直线 */
+    gc.appendChild(DK.el('line', {
+      x1: px(0), y1: py(0), x2: px(xMax), y2: py(FIXED * xMax),
+      stroke: 'var(--c-line-strong)', 'stroke-width': 2, 'stroke-dasharray': '5 4'
+    }));
+    gc.appendChild(DK.el('text', {
+      x: px(xMax) - 2, y: py(FIXED * xMax) - 4, class: 't-xs muted', 'text-anchor': 'end', text: '定长（压缩率 1.00）'
+    }));
+    const curve = (costs, col) => {
+      if (!costs.length) return;
+      let acc = 0; const pts = [px(0) + ',' + py(0)];
+      for (let t = 0; t < costs.length; t++) { acc += costs[t]; pts.push(px(t + 1) + ',' + py(DK.clamp(acc, 0, yMax))); }
+      gc.appendChild(DK.el('polyline', { points: pts.join(' '), fill: 'none', stroke: col, 'stroke-width': 2.2 }));
+    };
+    curve(api._stepFloor, 'var(--c-ok)');
+    curve(api._stepModel, 'var(--c-accent)');
+    curve(api._stepYou, 'var(--c-warn)');
+  }
+
+  /* ---------------- 注册 ---------------- */
   DK.define('m01-shannon-game', {
     title: '猜下一个符号：每猜准一次，就少付一个比特',
-    viewBox: [720, 344],
+    viewBox: [720, 348],
 
     state: {
       seqType: 0,          // 0 强规律 / 1 语言式 / 2 纯随机
@@ -208,7 +305,7 @@
       }));
       holder.appendChild(DK.range({
         key: 'sequenceLen', label: '序列长度', min: 12, max: 60, step: 6,
-        value: api.state.sequenceLen, unit: ' 个',
+        value: api.state.sequenceLen, unit: ' 个符号',
         on(v) { api.state.sequenceLen = v; restart(api); }
       }));
       holder.appendChild(DK.range({
@@ -217,7 +314,7 @@
         on(v) { api.state.seed = v; restart(api); }
       }));
 
-      /* 押注按钮组：动作而非参数，仍挂 key 让 reset 刷新可用态 */
+      /* 押注按钮组：动作而非参数，仍挂 key，让 reset 一并刷新可用态 */
       const wrap = document.createElement('div');
       wrap.className = 'demo__field';
       const lab = document.createElement('label');
@@ -250,145 +347,45 @@
     build(svg, api) {
       svg.appendChild(DK.el('text', {
         x: 12, y: 15, class: 't-sm muted',
-        text: '香农游戏：逐个符号押「下一个是什么」。押中记 1 bit，押错记 3 bit；右下角四条累计线越分开，规律越多。'
+        text: '香农游戏：逐个符号押「下一个是什么」。押中记 1 bit，押错记 3 bit；四条累计线分得越开，说明规律越多。'
       }));
       svg.appendChild(DK.el('text', {
         x: 12, y: 30, class: 't-xs faint',
         text: '示意数据（合成序列）：由代码里写死的三条马尔可夫链生成，不是真实语料，也不是任何预训练模型的输出。'
       }));
-      svg.appendChild(DK.el('text', { x: 12, y: 120, class: 't-xs faint', text: '模型对下一个符号的概率分配（左边那格 = 你上次押的）' }));
-      svg.appendChild(DK.el('text', { x: G.chart.x, y: 104, class: 't-xs faint', text: '累计付出的比特（越低越省）' }));
+      svg.appendChild(DK.el('text', { x: 12, y: 122, class: 't-xs faint', text: '模型对下一个符号的概率分配（此刻尚未揭示第 ' + (api.state.idx + 1) + ' 个）' }));
+      svg.appendChild(DK.el('text', { x: G.chart.x, y: 106, class: 't-xs faint', text: '累计付出的比特（越低越省）' }));
 
       api.gStrip = DK.el('g'); svg.appendChild(api.gStrip);
       api.gBars = DK.el('g'); svg.appendChild(api.gBars);
       api.gChart = DK.el('g'); svg.appendChild(api.gChart);
 
-      /* 图例 + 简化声明（静态） */
       const LEG = [
         ['定长 2 bit/符号', 'var(--c-line-strong)'],
         ['理论地板', 'var(--c-ok)'],
-        ['模型', 'var(--c-accent)'],
-        ['你', 'var(--c-warn)']
+        ['模型（计数估计）', 'var(--c-accent)'],
+        ['你（押注）', 'var(--c-warn)']
       ];
       LEG.forEach(([txt, col], i) => {
-        const lx = 12 + i * 112;
-        svg.appendChild(DK.el('line', { x1: lx, y1: 330, x2: lx + 14, y2: 330, stroke: col, 'stroke-width': 2.4 }));
-        svg.appendChild(DK.el('text', { x: lx + 18, y: 333, class: 't-xs muted', text: txt }));
+        const lx = 12 + i * 116;
+        svg.appendChild(DK.el('line', { x1: lx, y1: 338, x2: lx + 15, y2: 338, stroke: col, 'stroke-width': 2.4 }));
+        svg.appendChild(DK.el('text', { x: lx + 19, y: 341, class: 't-xs muted', text: txt }));
       });
       svg.appendChild(DK.el('text', {
-        x: 468, y: 333, class: 't-xs faint',
+        x: 486, y: 341, class: 't-xs faint',
         text: '1/3 bit 是教学简化；真实代价 −log₂ p 见机制段第 ② 步。'
       }));
     },
 
-    /* ---------- 每次状态变化重绘：分组先清空，不堆积 DOM ---------- */
     draw(api) {
       if (!api._seq) gen(api);
       const s = api.state;
       const done = s.idx >= s.sequenceLen;
       const modelP = estimate(api._seq, s.idx, s.modelClass);
+      paintStrip(api, s, done);
+      paintBars(api, s, modelP);
+      paintChart(api, s);
 
-      /* --- ① 序列条 --- */
-      const g = api.gStrip;
-      while (g.firstChild) g.removeChild(g.firstChild);
-      for (let t = 0; t < s.sequenceLen; t++) {
-        const col = t % G.perRow, row = Math.floor(t / G.perRow);
-        const x = G.stripX + col * G.cell, y = G.stripY + row * G.rowH;
-        const w = G.cell - 3, h = G.rowH - 8;
-        if (t < s.idx) {
-          /* 方块越浅 = 模型当时越意外（惊讶度映射到热力档） */
-          const heat = DK.clamp(1 - (api._stepModel[t] || 0) / 4, 0, 1);
-          g.appendChild(DK.el('rect', { x: x, y: y, width: w, height: h, rx: 3, fill: DK.heatFill(heat) }));
-          g.appendChild(DK.el('text', {
-            x: x + w / 2, y: y + h - 3, class: 't-sm', 'text-anchor': 'middle', text: SYM[api._seq[t]]
-          }));
-        } else {
-          g.appendChild(DK.el('rect', {
-            x: x, y: y, width: w, height: h, rx: 3,
-            fill: 'var(--c-bg-sunken)', stroke: t === s.idx ? 'var(--c-accent)' : 'var(--c-line)',
-            'stroke-width': t === s.idx ? 1.6 : .8
-          }));
-          if (t === s.idx) g.appendChild(DK.el('text', {
-            x: x + w / 2, y: y + h - 3, class: 't-sm accent', 'text-anchor': 'middle', text: '?'
-          }));
-        }
-      }
-      g.appendChild(DK.el('text', {
-        x: 12, y: G.barY - 42, class: 't-xs faint',
-        text: TYPES[s.seqType].desc
-      }));
-      g.appendChild(DK.el('text', {
-        x: 600, y: G.stripY - 4, class: 't-xs', 'text-anchor': 'end',
-        text: '已揭示 ' + s.idx + ' / ' + s.sequenceLen + (done ? ' · 本局结束' : ' · 当前待押')
-      }));
-
-      /* --- ② 概率条形图 --- */
-      const gb = api.gBars;
-      while (gb.firstChild) gb.removeChild(gb.firstChild);
-      const maxP = Math.max(modelP[0], modelP[1], modelP[2], modelP[3]) || 1;
-      for (let j = 0; j < K; j++) {
-        const y = G.barY + j * (G.barH + G.barGap);
-        const track = G.barW - 40;
-        gb.appendChild(DK.el('text', { x: G.barX, y: y + 16, class: 't-sm', text: SYM[j] }));
-        gb.appendChild(DK.el('rect', {
-          x: G.barX + 18, y: y, width: track, height: G.barH - 9, rx: 3, fill: 'var(--c-bg-sunken)'
-        }));
-        gb.appendChild(DK.el('rect', {
-          x: G.barX + 18, y: y, width: Math.max(2, track * (modelP[j] / maxP)), height: G.barH - 9, rx: 3,
-          fill: DK.heatFill(modelP[j] / maxP),
-          stroke: s.lastGuess === j ? 'var(--c-warn)' : (s.lastTruth === j ? 'var(--c-ok)' : 'var(--c-line-strong)'),
-          'stroke-width': (s.lastGuess === j || s.lastTruth === j) ? 2 : .6
-        }));
-        gb.appendChild(DK.el('text', {
-          x: G.barX + 24, y: y + 14, class: 't-xs',
-          text: (modelP[j] * 100).toFixed(0) + '% → −log₂p ' + DK.fmt(neglog2(modelP[j]), 2) + ' bit'
-        }));
-      }
-      let arg = 0; for (let j = 1; j < K; j++) if (modelP[j] > modelP[arg]) arg = j;
-      gb.appendChild(DK.el('text', {
-        x: G.barX, y: G.barY + K * (G.barH + G.barGap) + 4, class: 't-xs accent',
-        text: '模型最想押 ' + SYM[arg] + '（橙框=你上次押的，绿框=实际出现的）'
-      }));
-
-      /* --- ③ 累计比特曲线 --- */
-      const gc = api.gChart;
-      while (gc.firstChild) gc.removeChild(gc.firstChild);
-      const C = G.chart;
-      const xMax = s.sequenceLen;
-      const yMax = FIXED * xMax * 1.12;
-      const px = (v) => C.x + (v / xMax) * C.w;
-      const py = (v) => C.y + C.h - (v / yMax) * C.h;
-      const yStep = yMax > 90 ? 40 : 20;
-      for (let b = 0; b <= yMax; b += yStep) {
-        gc.appendChild(DK.el('line', {
-          x1: C.x, y1: py(b), x2: C.x + C.w, y2: py(b), class: 'grid', 'stroke-dasharray': '2 4'
-        }));
-        gc.appendChild(DK.el('text', { x: C.x - 6, y: py(b) + 3, class: 't-xs muted', 'text-anchor': 'end', text: String(b) }));
-      }
-      for (let n = 0; n <= xMax; n += 12) {
-        gc.appendChild(DK.el('text', { x: px(n), y: C.y + C.h + 13, class: 't-xs muted', 'text-anchor': 'middle', text: String(n) }));
-      }
-      gc.appendChild(DK.el('text', { x: C.x + C.w, y: C.y + C.h + 25, class: 't-xs faint', 'text-anchor': 'end', text: '已揭示符号数 →' }));
-      /* 定长基准（虚线，从 0 到 2·n） */
-      gc.appendChild(DK.el('line', {
-        x1: px(0), y1: py(0), x2: px(xMax), y2: py(FIXED * xMax),
-        stroke: 'var(--c-line-strong)', 'stroke-width': 2, 'stroke-dasharray': '5 4'
-      }));
-      gc.appendChild(DK.el('text', {
-        x: px(xMax) - 2, y: py(FIXED * xMax) - 4, class: 't-xs muted', 'text-anchor': 'end', text: '定长 = 压缩率 1.00'
-      }));
-
-      const curve = (costs, col) => {
-        if (!costs.length) return;
-        let acc = 0; const pts = ['0,' + py(0)];
-        for (let t = 0; t < costs.length; t++) { acc += costs[t]; pts.push(px(t + 1) + ',' + py(DK.clamp(acc, 0, yMax))); }
-        gc.appendChild(DK.el('polyline', { points: pts.join(' '), fill: 'none', stroke: col, 'stroke-width': 2.2 }));
-      };
-      curve(api._stepFloor, 'var(--c-ok)');
-      curve(api._stepModel, 'var(--c-accent)');
-      curve(api._stepYou, 'var(--c-warn)');
-
-      /* --- ④ 读数 --- */
       if (api._ro) {
         const n = s.idx;
         api._ro.set('surprise', n ? DK.fmt(s.lastSurprise, 2) + ' bit' : '—');
@@ -398,7 +395,6 @@
         api._ro.set('ratio', n ? DK.fmt(FIXED * n / Math.max(s.modelBits, 1e-9), 2) + ' 倍' : '—');
         api._ro.set('acc', n ? (100 * s.hits / n).toFixed(0) + '%' : '—');
       }
-
       (api._btns || []).forEach((b, j) => {
         b.disabled = done;
         b.setAttribute('aria-pressed', String(!done && s.lastGuess === j));
@@ -409,17 +405,18 @@
 
     hint:
       '<strong>你能改什么：</strong>' +
-      '「序列类型」∈ {0 强规律, 1 语言式, 2 纯随机}——换的是数据源的规律强度（三条马尔可夫链的转移概率写死在代码里）；' +
-      '「模型看几个历史符号」∈ {0, 1, 2}（0 = 只统计整体频率，1 = 统计「前 1 个→下一个」的搭配，2 = 前 2 个；数字越大越吃样本）；' +
-      '「序列长度」∈ [12, 60] 步长 6，单位「个符号」，同时是曲线横轴上限；' +
-      '「随机种子」∈ [1, 40] 整数，同种子必得同一序列（改了就是换一道同分布的新题，便于复现与比较）；' +
-      'A/B/C/D 是你的押注（猜中 1 bit、猜错 3 bit，教学简化）。合法区间外的值控件不接受。<br>' +
-      '<strong>拨动它你会看到：</strong>切到「纯随机」，绿线（地板）与虚线（定长）重合，模型压缩率停在 1.00 倍——真随机一个比特都省不下来；' +
-      '切到「强规律」，绿线立刻贴着横轴跑，你的橙线也一起下降；' +
-      '把「看几个历史符号」从 1 调到 2，前十几个符号的蓝线会<strong>反而更高</strong>（上下文匹配不到几次，估计退化成瞎猜），' +
-      '得把「序列长度」拉到 48 以上才反超——这条规律是「看得多 ≠ 压得好，规律要靠样本才挖得出来」。<br>' +
-      '<strong>对应机制段：</strong>第 ① 步（给下一个符号分配概率 = 左侧四条条形）、第 ② 步（条上的 −log₂p 就是该符号的比特代价）、' +
-      '第 ③ 步（绿线＝按真实规律的平均码长，即信息熵地板）、第 ④ 步（押错就还原不了：橙线高于绿线的那段差额＝你猜得不准）、' +
-      '第 ⑤ 步（「模型压缩率」＝定长 ÷ 模型累计）、第 ⑥ 步（纯随机＝压不动的极端案例）、第 ⑦ 步（0/1/2 阶的取舍＝为什么模型要更大、数据要更多）。'
+      '「序列类型」∈ {0 强规律, 1 语言式, 2 纯随机}，换的是数据源本身的规律强度（三条一阶马尔可夫链的转移概率写死在代码里，理论地板分别约 0.6 / 1.45 / 2.0 bit/符号）；' +
+      '「模型看几个历史符号」∈ {0, 1, 2}——0 = 只统计整体频率，1 = 统计「前 1 个 → 下一个」的搭配，2 = 前 2 个组成的上下文；这是模型唯一的超参数；' +
+      '「序列长度」∈ [12, 60] 步长 6，单位「个符号」，同时是曲线横轴上限，含义是「让模型学多久」；' +
+      '「随机种子」∈ [1, 40] 整数，同种子必得同一条序列（换种子 = 换一道同分布的新题，方便复现与比较）；' +
+      'A/B/C/D 是押注（猜中 1 bit、猜错 3 bit，教学简化）。区间外的值控件不接受。<br>' +
+      '<strong>拨动它你会看到：</strong>① 切到「纯随机」，绿线（地板）与虚线（定长）严格重合——压缩率的上限就是 1.00 倍，谁来了都省不下一个比特；而蓝线还会<strong>略高于</strong>虚线（实测 40 个种子里没有一个低于 0.74 倍）：在真噪声里硬找规律的猜测，比最笨的定长编码更费。' +
+      '② 切到「强规律」，绿线立刻贴着横轴跑，蓝线与你的橙线一起往下掉（@36 个符号压缩率约 1.4–2.9 倍）。' +
+      '③ 「模型看几个历史符号」从 0 抬到 1，蓝线才真正离开定长——只看整体频率≈定长（实测约 0.9–1.0 倍），因为频率里没有「下一个」的信息。' +
+      '④ 在「语言式」上把阶从 1 抬到 2，蓝线<strong>全程更高</strong>（40 个种子里 0 个变好）：数据里本来没有二阶规律，上下文越窄命中次数越少，估计越退化成瞎猜——看得多 ≠ 压得好。<br>' +
+      '<strong>对应机制段：</strong>第 ① 步（给下一个符号分配概率 = 左侧四条条形）、第 ② 步（条上的 −log₂p 就是这个符号的比特代价）、' +
+      '第 ③ 步（绿线＝按真实规律的平均码长，即信息熵地板）、第 ④ 步（橙线高出蓝线那段＝你押错时多付的话）、' +
+      '第 ⑤ 步（读数「模型压缩率」＝定长 ÷ 模型累计）、第 ⑥ 步（「纯随机」就是压不动的极端案例）、' +
+      '第 ⑦ 步（0/1/2 阶与序列长度的取舍＝为什么模型要更大、数据要更多）。'
   });
 })(window.AIPrinciples);

@@ -1,0 +1,31 @@
+const lg2 = (x) => Math.log2(x);
+const sur = (x) => (x > 0 ? -lg2(x) : 0);
+const f = (v, d = 2) => v.toFixed(d);
+
+console.log('--- 手算一遍 ---');
+console.log('-log2(0.6) =', f(sur(0.6)), '| -log2(0.2) =', f(sur(0.2)), '| 2^2.322 =', f(Math.pow(2, sur(0.2))));
+console.log('--- 手算二遍 q=(.5,.3,.2) p=(.6,.2,.2) ---');
+const q = [0.5, 0.3, 0.2], p = [0.6, 0.2, 0.2];
+const ce = q.reduce((a, v, i) => a + v * sur(p[i]), 0);
+const hq = q.reduce((a, v) => a + sur(v) * v, 0);
+console.log('贡献:', q.map((v, i) => f(v * sur(p[i]))).join(' / '), '| CE=', f(ce), '| H(q)=', f(hq), '| KL=', f(ce - hq));
+console.log('perp(CE)=', f(Math.pow(2, ce)), '| perp(H)=', f(Math.pow(2, hq)));
+console.log('--- 单位与量级 ---');
+console.log('1 nat =', f(1 / Math.LN2, 4), 'bit | 1.7nat=', f(1.7 / Math.LN2), 'bit perp=', f(Math.pow(2, 1.7 / Math.LN2)));
+console.log('2.2nat=', f(2.2 / Math.LN2), 'bit perp=', f(Math.pow(2, 2.2 / Math.LN2)));
+console.log('log2(128000)=', f(lg2(128000)), '| 2^5.64=', f(Math.pow(2, sur(0.02))), '| -log2(0.02)=', f(sur(0.02)));
+console.log('--- hook 换算 ---');
+console.log('2^2.0 =', f(Math.pow(2, 2.0)), '| 2^1.5 =', f(Math.pow(2, 1.5)), '| 1/8=', f(100 / 8, 1) + '%');
+console.log('--- 演示默认态校验 (票数 60/20/20, q=只出茶) ---');
+const nrm = (a) => { const t = a.reduce((x, y) => x + y, 0); return a.map(v => v / t); };
+const pp = nrm([60, 20, 20]);
+console.log('p=', pp.map(v => f(v, 3)).join('/'), 'sur=', pp.map(sur).map(v => f(v)).join('/'));
+[["match", pp.slice()], ["hotB", [0, 1, 0]], ["uniform", [1 / 3, 1 / 3, 1 / 3]], ["skewA", [.8, .1, .1]]].forEach(([k, qq]) => {
+  const c = qq.reduce((a, v, i) => a + v * sur(pp[i]), 0);
+  const h = qq.reduce((a, v) => a + v * sur(v), 0);
+  const per = Math.pow(2, c);
+  console.log(k, 'CE=', f(c), 'H=', f(h), 'KL=', f(Math.max(0, c - h)), 'perp=', f(per), 'bars=', Math.min(16, Math.max(1, Math.round(per))), 'hit=', f(100 / per, 1));
+});
+console.log('--- 均匀 1/3 时的等效柱数（应为 3）---');
+const pu = nrm([30, 30, 30]);
+console.log('perp=', f(Math.pow(2, pu.reduce((a, v) => a + v * sur(v), 0))));

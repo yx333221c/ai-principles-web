@@ -224,7 +224,8 @@ built.forEach(m => {
     miss.length ? bad(f + ' hint 缺: ' + miss.join('/')) : ok(f + ' hint 三要素齐全');
   }
   const ranges = (src.match(/DK\.(range|select|checkbox|toggle)\(\{/g) || []).length;
-  const keyed = (src.match(/key:\s*'/g) || []).length;
+  /* key 可以是字面量，也可以是变量（如辅助函数里 `key: key`），都算已绑定 */
+  const keyed = (src.match(/key:\s*(?:'[^']+'|"[^"]+"|[A-Za-z_$][\w$]*)/g) || []).length;
   if (ranges && keyed < ranges) bad(f + ' 有 ' + ranges + ' 个控件但只有 ' + keyed + ' 个挂了 key（reset 会失效）');
   else if (ranges) ok(f + ' ' + ranges + ' 个控件均绑定 state key');
   if (/Math\.random/.test(src)) bad(f + ' 用了 Math.random（不可复现，须用 DK.rng(seed)）');

@@ -66,14 +66,20 @@
         key: 'showq', label: '叠上真实频率 q', value: api.state.showq,
         on(v) { api.state.showq = !!v; api.draw(); }
       }));
-      holder.appendChild(DK.button('换一例（可复现）', () => {
-        api.state.sample = (api.state.sample + 1) % 100000;
+      const swapLabel = (n) => '换一例（第 ' + n + ' 例）';
+      const swapBtn = DK.button(swapLabel(api.state.sample), () => {
+        api.state.sample = api.state.sample % 999 + 1;
         const r = DK.rng(api.state.sample);
         api.state.p1 = 1 + Math.floor(r() * 99);
         api.state.p2 = 1 + Math.floor(r() * 99);
         api.state.p3 = 1 + Math.floor(r() * 99);
+        swapBtn.textContent = swapLabel(api.state.sample);   // 让 seed 可见：同一例号必得同一组票数
         api._repaint(); api.draw();
-      }));
+      });
+      /* DK.button 不带 key，这里手动挂上，reset 才能把例号与标签一起还原（契约 §2.2） */
+      swapBtn._dkKey = 'sample';
+      swapBtn._dkRestore = (st) => { swapBtn.textContent = swapLabel(st.sample); };
+      holder.appendChild(swapBtn);
 
       const ro = DK.readout([
         ['ce', '交叉熵 H(q,p) / bit', ''],
@@ -255,8 +261,9 @@
       '<strong>它们不是概率</strong>：画面显示的 p 是「这一格票数 ÷ 三格总票数」，所以三个 p 之和永远是 1 —— ' +
       '你把「咖啡」从 20 拉到 60，另外两格的 p 会自动缩水，这不是故障，是归一化（机制段第 ① 步）。' +
       '「世界的真实分布 q」下拉框 ∈ 8 种设定：q = 模型自己 ／ 只出某一类（one-hot，就是手算第一遍）／ ' +
-      '世界偏向某一类 0.8 ／ 世界均匀 1/3；「叠上真实频率 q」开关控制虚线框与地板柱；' +
-      '「换一例」用固定种子 DK.rng(seed) 取三组票数，序号相同则结果相同（教学可复现，当前 seed 从 1 开始递增）。<br>' +
+      '「世界偏向某一类 0.8 ／ 世界均匀 1/3；「叠上真实频率 q」开关控制虚线框与地板柱；' +
+      '「换一例」按钮上的<strong>例号就是随机种子</strong>（∈ [1, 999]，循环递增）：它用 DK.rng(例号) 取三组票数，' +
+      '所以同一个例号在任何机器、任何时候都给出同一组数，报出例号就等于报出了这组数（教学可复现）。「重置」回到第 1 例。<br>' +
       '<strong>拨动它你会看到：</strong>① 三格票数拉成一样高时，第 4 格正好出现 3 根等效柱（困惑度 3.00）；' +
       '② 把真实标签那一格的票数压到 1，它在第 2 格的惊讶度柱会猛蹿——越自信的错，罚得越重；' +
       '③ q 选「q = 模型自己」时 KL = 0，虚线地板柱与堆积柱等高，换成其他任何 q 之后，堆积柱只在地板柱之上多加一段，那一段就是 KL，永不为负；' +
