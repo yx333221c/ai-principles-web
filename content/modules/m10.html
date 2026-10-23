@@ -1,0 +1,137 @@
+<meta title="解码、采样与上下文" tagline="模型的「性格」藏在采样里">
+
+<seg name="hook">
+  <p class="hook">同一个问题问两遍，它给了两个不同的答案；把温度调到 0，它每次一字不差。那么哪一个才是「它真正的想法」？答案是：都不存在。它每写一个字，都是在整本词典上掷一次骰子——而骰子的形状，是你能用两个数字改写的。</p>
+</seg>
+
+<seg name="intuition">
+  <p>模型每生成一个字之前，手里都有一份<strong>候选菜单</strong>：词典里几万个词，每个后面跟着一个概率。它不会照第一行点菜，而是<strong>按概率掷骰子</strong>——概率 60% 的菜有 60% 的机会被选中。</p>
+  <p>「温度」这个旋钮做的事很朴素：<strong>把菜单上的差距放大或缩小</strong>。温度调低，头牌和第二名的差距被拉到天上，模型几乎只点头牌；温度调高，差距被抹平，冷门菜也有机会上桌。</p>
+  <p>「top-p」则是另一件事：<strong>先把菜单上那些几乎没人点的行撕掉</strong>，再在剩下的里面掷骰子。撕到哪，取决于你要求「累计覆盖多少概率」。</p>
+
+  <div class="callout callout--warn">
+    <p><strong>这个类比对下面几件事不成立：</strong></p>
+    <ul>
+      <li><strong>菜单不是预先列好的。</strong>每写一个字，整份菜单都要用一次完整前向传播重算。所以「点菜」这个动作，一个字要重复一次，一个字比一个字贵。</li>
+      <li><strong>掷骰子的随机性不带来正确性。</strong>直觉上「多几种可能 = 更有创意」，但温度升高时上升的不仅是好答案的概率，<strong>错误答案的概率上升得更快</strong>——因为词典里错的词永远比对的多。</li>
+    </ul>
+  </div>
+</seg>
+
+<seg name="mechanism">
+  <ol class="steps">
+    <li data-step="1"><strong>模型输出的不是答案，是一整排分数。</strong>最后一层给出词表大小（约 3 万到 25 万）个实数，叫<span class="term" data-def="softmax 之前的实数分数，本身不是概率，只有相对高低有意义。" data-en="logit">未归一化得分</span>（logit）。单独看一个 logit 毫无意义，只有它们之间的大小关系有意义。</li>
+    <li data-step="1"><strong>温度在 softmax 之前缩放分数。</strong>它除的是<em>分数</em>，不是概率——这是它和「事后把概率重新开方」的本质区别：除以小数等于把整个分数轴拉伸，而指数函数对拉伸极其敏感，于是差距被急剧放大。</li>
+    <li data-step="1"><strong>温度只改陡峭度，绝不改排序。</strong>因为所有分数被同一个正数除，大小关系不变。所以分数最高的那个词，在任何温度下都是最高概率的那个词；温度只能改变「它领先多少」。这是理解后面所有现象的钥匙。</li>
+    <li data-step="2"><strong>top-p 先截断、再重归一化。</strong>把候选按概率降序累计到 ≥ p 为止，只保留这一段（称为<span class="term" data-def="按概率降序累计达到 p 的最小候选集合；集合外的候选概率被置零后重新归一化。" data-en="nucleus">核</span>），其余清零、剩下的重新除以总和。它比「只保留前 k 个」更常用，因为<strong>核的大小会随模型自信程度自动伸缩</strong>。</li>
+    <li data-step="1"><strong>幻觉不是 bug，是训练目标的直接后果。</strong>模型被训练成「让下一词最像人类写过的文本」，而人类文本里有海量语气笃定但内容错误的句子。训练目标里从来没有「不确定时应当沉默」这一项，于是模型学到：<strong>流畅地继续，永远比停下来更划算</strong>。</li>
+    <li data-step="3"><strong>KV Cache 省算力，不省内存。</strong>生成第 t 个字要用到前 1…t 个词的 K/V；全重算是 O(t²)，把算过的 K/V 留在显存里复用就降到每步 O(t)。但缓存本身必须常驻，且随上下文线性增长。</li>
+    <li data-step="4"><strong>窗口标称长度 ≠ 有效使用长度。</strong>两个独立原因：位置编码见过的距离有限，超出就是外推；softmax 每行权重之和恒为 1，候选越多每个词分到的平均权重越小，中段信息容易被首尾挤掉。所以正确的说法不是「它记不住」，而是<strong>它能看见，但未必会去看</strong>。</li>
+  </ol>
+
+  <div class="math-block math">
+    p<sub>i</sub> <span class="op">=</span> <span class="frac"><span class="num">exp(z<sub>i</sub> / T)</span><span class="den">Σ<sub>j</sub> exp(z<sub>j</sub> / T)</span></span>
+    <span class="reads">读作：把每个分数先除以温度 T，再取指数，再除以所有指数之和——T 越小，分数之间的差距被放得越开。</span>
+  </div>
+
+  <p>第 ⑤ 步要补一句：后训练（M09）确实会部分矫正「瞎编」的倾向，但它矫正的是<strong>行为分布</strong>（学会说「我不确定」），不是<strong>知识边界</strong>。<span class="badge badge--simplify">已简化</span> 采样参数会放大这个裂缝：温度升高时，「听起来合理但其实编的」那些词概率上升得比正确答案更快，因为词典里错的组合远多于对的。</p>
+
+  <div class="math-block math">
+    KV Cache 显存 <span class="op">≈</span> 2 <span class="op">×</span> 层数 <span class="op">×</span> KV 头数 <span class="op">×</span> 每头维度 <span class="op">×</span> 序列长 <span class="op">×</span> 字节数
+    <span class="reads">读作：每个历史词元要在每一层留下「键」和「值」两份向量；乘上词元数与层数就是总占用——它随上下文线性增长，且无法用算力换掉。</span>
+  </div>
+  <p><span class="badge badge--simplify">已简化</span> 口算一例：32 层、8 个 KV 头、每头 128 维、FP16（2 字节）的模型，每个词元占 2×32×8×128×2 ≈ 131 KB；128k 上下文的<strong>单条</strong>请求就是约 16 GB——在某些规模下比模型权重本身还大。数字取整便于心算 [2026-10]。</p>
+
+  <div class="figure" data-fig="m10-nucleus-1">
+    <div class="figure__inner">
+      <div class="fig">
+        <div class="fig__head">同一份概率，两种截断方式的差别（对应第 ④ 步）</div>
+        <div class="fig__grid" style="grid-template-columns:120px repeat(6,1fr)">
+          <div class="fig__lbl">候选（按概率降序）</div>
+          <div class="fig__tok">咖啡</div><div class="fig__tok">茶</div><div class="fig__tok">牛奶</div>
+          <div class="fig__tok">豆浆</div><div class="fig__tok">白开水</div><div class="fig__tok">…共 8 项</div>
+          <div class="fig__lbl">概率</div>
+          <div class="fig__code">58%</div><div class="fig__code">21%</div><div class="fig__code">11%</div>
+          <div class="fig__code">6%</div><div class="fig__code">2%</div><div class="fig__code">2%</div>
+          <div class="fig__lbl">累计</div>
+          <div class="fig__code fig__code--sun">58%</div><div class="fig__code fig__code--sun">79%</div>
+          <div class="fig__code fig__code--a">90% ← 到此为止</div><div class="fig__code fig__code--sun">96%</div>
+          <div class="fig__code fig__code--sun">98%</div><div class="fig__code fig__code--sun">100%</div>
+          <div class="fig__lbl">top-p = 0.9 保留</div>
+          <div class="fig__pill fig__pill--g">留</div><div class="fig__pill fig__pill--g">留</div>
+          <div class="fig__pill fig__pill--g">留（补齐 90%）</div><div class="fig__pill fig__pill--mute">剪</div>
+          <div class="fig__pill fig__pill--mute">剪</div><div class="fig__pill fig__pill--mute">剪</div>
+          <div class="fig__lbl">top-k = 3 保留</div>
+          <div class="fig__pill fig__pill--a">留</div><div class="fig__pill fig__pill--a">留</div>
+          <div class="fig__pill fig__pill--a">留</div><div class="fig__pill fig__pill--mute">剪</div>
+          <div class="fig__pill fig__pill--mute">剪</div><div class="fig__pill fig__pill--mute">剪</div>
+        </div>
+        <div class="fig__legend">
+          <span><i class="sw-g"></i>核采样：保留到累计 90%，数量随分布形状变化</span>
+          <span><i class="sw-a"></i>top-k：永远保留 3 个，不管模型多不确定</span>
+        </div>
+        <div class="fig__note">换成「平坦」分布（每项约 12%）时，top-p=0.9 会保留 8 项，而 top-k=3 仍只留 3 项——这就是前者更自适应的含义。</div>
+      </div>
+    </div>
+    <figcaption>怎么看：从上往下读五行。第一行是候选与概率；第三行的「累计」决定核在哪一列截断；第四、五行对比两种截断法各自留下哪些候选。关键差别是<strong>数量会不会随分布形状变</strong>。</figcaption>
+  </div>
+
+  <details class="math-detail">
+    <summary>展开：为什么 T→0 在数值上等于贪心解码</summary>
+    <div class="math-detail__body prose">
+      <p>设最高分 z₁ 与次高分 z₂ 之差为 Δ &gt; 0。两者概率之比是 <code>exp((z₁−z₂)/T) = exp(Δ/T)</code>。T→0 时 Δ/T→∞，比值→∞，于是最高项吃掉全部概率质量——这就是贪心解码。反过来 T→∞ 时比值→1，分布趋于均匀，模型退化成随机词表抽奖机。</p>
+      <p>实践里因此有两个推论：① T=0 不保证「正确」，只保证「每次一样」，贪心会稳定走进高概率但错误的套路；② 温度不能救回一个本身分数不高的正确答案——想让某个词更容易被选中，只能改输入或改模型。</p>
+    </div>
+  </details>
+</seg>
+
+<seg name="demo">
+  <h4>亲手把一份菜单改陡或改平</h4>
+  <p>下面左图是模型的概率分布，右图是按它实际抽样 N 次的结果。红色柱是「语义不当」的答案（热可乐、热矿泉水），它们同时给出了「翻车率」这个读数。</p>
+</seg>
+
+<seg name="misconception">
+  <details class="myth">
+    <summary>「温度调高，模型就更有创造力 / 在思考。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>产品界面把 temperature 做成「创造力」滑块，配上「高=有创意」的文案；用户观察到输出确实更多样，就把「多样」理解成「有想法」。</p>
+      <p class="myth__truth">正确说法：温度只做一件事——把概率分布压平。多样性和错误率是<strong>同一个动作的两个结果</strong>，无法只要前者。词典里语义不当的组合数量远大于恰当的组合，所以分布一压平，错的词涨得更快。真正的「创意」来自模型在训练数据里学到的远距离联想能力，那部分由模型规模和提示词决定，不由这个旋钮决定。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「temperature=0 就是正确答案，因为模型选的是它最确信的那个。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>「最确信」听起来天然等于「最正确」，而且关掉采样后输出确实稳定，稳定容易被误读成可靠。</p>
+      <p class="myth__truth">正确说法：贪心选的是<strong>单步</strong>最高概率，不是全局最优。语言里很多长句的正确走向需要先在局部选一个次优词（比如先写「虽然」），贪心会因为「虽然」单步概率低于「但是」而永远走不进那条路——这被称为贪心解码的短视。同时它还会放大重复：一旦某个短语出现，它的条件概率上升，贪心就更倾向再选它，于是陷入循环。稳定 ≠ 正确。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「上下文窗口写着 128k，那我把 12 万字丢进去，它当然全都读到了。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>厂商标称的是<strong>位置上限</strong>（技术上能塞进去多少词元），而用户把它理解成<strong>能力</strong>（塞进去之后能用好多少）。这两个数字可以差好几倍。</p>
+      <p class="myth__truth">正确说法：见机制第 ⑦ 步——能看见不等于会去看。位置外推与注意力稀释会让中段信息的实际可用度显著下降；公开评测里「把答案放在长文档中间」这一变体的正确率，明显低于「放在开头或结尾」[2026-10]。工程上的对策是把关键信息往首尾放、或者干脆用检索（M12）先筛一遍再喂进去。</p>
+    </div>
+  </details>
+</seg>
+
+<seg name="takeaway">
+  <blockquote class="takeaway__line">温度只改菜单的陡峭度，从不改排序；想换第一名的菜，只能换菜单。</blockquote>
+
+  <div class="quiz">
+    <p class="quiz__q">自测：模型对「咖啡」给 6.2 分、对「茶」给 4.4 分。你把温度从 1.0 调到 0.3，会发生什么？</p>
+    <label class="quiz__opt"><input type="radio" name="q-m10" data-right="1"><span>「咖啡」仍是第一，但它与「茶」的差距被拉大</span></label>
+    <label class="quiz__opt"><input type="radio" name="q-m10"><span>「茶」有机会超过「咖啡」，因为低温让冷门词更容易冒头</span></label>
+    <label class="quiz__opt"><input type="radio" name="q-m10"><span>两者概率都变成 50%，因为低温让模型不再偏好任何词</span></label>
+    <div class="quiz__fb">
+      <p data-for="no"><strong>回到第 ③ 步：</strong>温度是在指数之前对<strong>所有</strong>分数除以同一个正数。同除一个正数不改变大小关系，所以第一名永远是第一名——「茶」不可能靠调温度反超。而 T 变小是拉伸分数轴，差距只会更大不是更小。想让「茶」赢，唯一办法是改输入（比如把提示改成「我不喝咖啡」）。</p>
+      <p data-for="ok"><strong>对了。</strong>这正是第 ③ 步的全部内容：温度只改陡峭度、不改排序。顺手想一下推论：既然低温只会让头牌更稳，那「用高温度来纠正一个错误答案」这个常见做法，在机制上就不可能奏效——它只能让答案更随机，不能让它更准。带着这个结论去 M12：真正能改排序的是往上下文里塞进更好的证据。</p>
+    </div>
+    <p class="quiz__result" aria-live="polite"></p>
+  </div>
+
+  <ul class="nextlinks">
+    <li><a href="#m12">M12 智能体与检索增强：用外部证据改变下一个词的概率</a></li>
+    <li><a href="#m02">M02 概率与交叉熵：熵、困惑度与这里的读数是什么关系</a></li>
+    <li><a href="#m07">M07 注意力：softmax 在注意力里做的是同一件事</a></li>
+  </ul>
+</seg>

@@ -1,0 +1,221 @@
+<meta title="模式与压缩" tagline="AI 不是「理解」，而是「预测下一个」">
+
+<seg name="hook">
+  <p class="hook">先做个小实验：把这句话的元音全删掉——「Th qck brwn fx jmps」，你多半一眼就读出来了，意思一点没少。可同样长度的一串随机字母，你一个也认不出来。为什么删掉这么多，意思还在，而随机的一串，一个字母都省不下来？</p>
+  <p class="demo__note">这一段是全站的起点，没有前置模块。只需要会算「2 的几次方等于它」。</p>
+</seg>
+
+<seg name="intuition">
+  <p>我们玩一个传纸条的游戏。我要把一串符号告诉你，规则很简单：<strong>你可以猜，猜对了我就省一句话</strong>。</p>
+  <p>具体怎么省？我们约定只用「是/否问题」来传递信息。一个问题最多把可能性砍掉一半，这叫 1 比特。一个符号越常见，你越早把它问出来，我为它花的问题数就越少；一个符号越罕见，就要问越多次。<strong>「这个符号要问几个问题」就是它的长度，而长度由你猜得准不准决定。</strong></p>
+  <p>于是三件事被绑成了一条线：你猜得越准 → 每个符号要问的问题越少 → 这串东西越短，也就是越可压缩。反过来，如果我给这段字符串配了一个「猜下一个符号」的机器，这台机器同时就是一台压缩机。后面所有关于 AI 的内容，都挂在这条线上。</p>
+
+  <div class="callout callout--warn">
+    <p><strong>这个「问问题」的类比对下面三件事不成立，务必记住：</strong></p>
+    <ul>
+      <li><strong>对「压缩就是删掉不要紧的东西」不成立。</strong>无损压缩一个符号都不能丢，它靠的是把常见的换短、罕见的换长，而不是扔掉内容。删元音能读懂是<strong>有损</strong>，和这里说的不是一回事。</li>
+      <li><strong>对「猜对就免费、猜错就白干」不成立。</strong>真实做法不是押注一个符号，而是给所有候选<strong>分配概率</strong>：你为某个符号付的长度是它概率的函数。猜得差只是「多付一点」，不会出现「全盘落空、无法还原」。</li>
+      <li><strong>对「规律应该是几条能背出来的规则」不成立。</strong>省下来的比特来自成千上万条微弱倾向的累积（某个字母后面更常出现哪个字母），不是来自几条漂亮格言。越是想把规律总结成一句人话，通常压得越差。</li>
+    </ul>
+  </div>
+</seg>
+
+<seg name="mechanism">
+  <h4>先立住一件事：长度是概率的影子</h4>
+  <p>下面这条链条是本站最重要的四步等价。它会反复出现在 M02（损失函数）、M08（规模定律）里，只是换了名字。我们先在只有 4 个符号的世界里把它推干净。</p>
+
+  <ol class="steps">
+    <li data-step="1"><strong>给下一个符号分配概率。</strong>设字母表只有 4 个符号，我们手里的全部东西就是一个「看历史、给 4 个候选分概率」的函数，四个概率加起来等于 1。分得越偏，说明我们越有把握。</li>
+    <li data-step="2"><strong>一个符号该付多少比特，就是它的惊讶度。</strong>把可能性砍一半算一次，所以概率为 1/2 的符号付 1 比特，1/8 的付 3 比特，即定的长度必须是 <code>−log₂ p</code>。原因很硬：两个独立事件同时发生，概率相乘，而我们要「付出的比特相加」——只有对数能把乘法变成加法。</li>
+    <li data-step="3"><strong>平均惊讶度就是信息熵 H。</strong>按概率加权：<code>H = 平均(−log₂ p)</code>。香农信源编码定理说：存在编码方案让实际平均长度任意接近 H，且<strong>没有任何无损编码能低于 H</strong>。所以 H 是这套概率给出的地板。<span class="badge badge--simplify">已简化</span>真实的二进制码长度只能是整数，会有取整损失；算术编码把「半个比特」摊到整条序列上才把差距消掉。</li>
+    <li data-step="4"><strong>于是「压缩器」和「下一符号预测器」是同一台机器。</strong>编码器一边读符号一边按概率把剩下的数值区间切小，解码器手里必须有<strong>同一套概率</strong>才能切回去——它猜错的瞬间就还原不出原文。省下的每一比特，都对应一次成功的预测；写「一个好的下一词预测器」和写「一个好的无损压缩器」，是同一件事的两种写法。</li>
+    <li data-step="5"><strong>压缩率是能力的一个可读分数。</strong>用「定长编码的比特数 ÷ 实际付出的比特数」表示。4 个符号定长要 2 比特/符号，如果概率给得好、平均只花 1.25 比特，压缩率就是 1.6 倍。地板（信息熵）只由数据里的规律决定，不是你说了算。</li>
+    <li data-step="6"><strong>纯随机为什么压不动。</strong>真随机的符号没有可预测的模式，再聪明的猜测也只能停在「四个各 1/4」。这时每个符号都付 2 比特，平均码长等于定长，压缩率 1.00 倍——一个比特都省不下来。因为没有任何一次预测能提前把可能性砍掉一半。你把一段随机数据丢给 zip，文件通常还会变大一点点，多出来的是它给自己记的账（块头、表）。<span class="badge badge--simplify">已简化</span>这里说「一个比特都省不下来」指的是无损编码的平均码长下限；实际压缩器还会受块结构、字典大小等额外开销影响。</li>
+    <li data-step="7"><strong>大模型做的事，只是把第 ① 步的概率算得更准。</strong>它看的不是「上一个符号」，而是整段上下文；它的「记住」全部存在参数里。同一个字母表，随机瞎猜 10 万个词元要付约 17 比特/词元（log₂ 100000 ≈ 16.6），而训好的大模型在常见英文文本上平均码长能落到 1–2 比特/词元这个量级 [2026-10]。<span class="badge badge--simplify">已简化</span>1–2 比特是数量级示意，实际随语料、分词器和领域大幅浮动，不是某个模型的官方指标。</li>
+    <li data-step="8"><strong>省比特必须省在没见过的数据上才算能力。</strong>如果把原文抄进表里，在训练集上也算「预测准」，但对新数据一个比特都省不下。所以「压缩质量」真正度量的是<strong>可复用的规律</strong>，而不是记忆容量。这条是我们把「模型能力 ≈ 压缩质量」写在一起、而不是写成「≈ 背得多」的理由。</li>
+  </ol>
+
+  <div class="math-block math">
+    L<span class="bigg">(</span>符号<span class="bigg">)</span> <span class="op">=</span> −log<span class="sub">2</span> p<span class="bigg">(</span>符号<span class="bigg">)</span>
+    <span class="reads">读作：一个符号要付的比特数，等于它的概率取以 2 为底的对数再取负号——「可能性减半的次数」。p 越大，付得越少；p=1（百分百确定）付 0 比特。</span>
+  </div>
+  <div class="math-block math">
+    H <span class="op">=</span> Σ<span class="sub">i</span> p<span class="sub">i</span> <span class="op">·</span> <span class="bigg">(</span>−log<span class="sub">2</span> p<span class="sub">i</span><span class="bigg">)</span>
+    <span class="reads">读作：把每个符号的惊讶度按它出现的概率加权求和，就是「用这套概率来编码，平均每个符号要花多少比特」——这个平均值的正式名字是信息熵（information entropy）。</span>
+  </div>
+  <p>两个式子里的 <code>p<span class="sub">i</span></code> 是第 i 个符号的概率，<code>L</code> 的单位是比特/符号。维度这件事在这里很实在：把概率当成「占多大比重」，把长度当成「要问几个是否问题」，两者通过一个对数锁死。</p>
+
+  <div class="figure" data-fig="m01-shannon-game-1">
+    <div class="figure__inner">
+      <svg viewBox="0 0 640 236" class="dgm" role="img" aria-labelledby="f1a-t">
+        <title id="f1a-t">四步等价链条：给下一个符号分配概率 → 每个符号的最优码长等于负 log₂ p → 按概率加权得到信息熵 → 熵除以定长位宽就是压缩率</title>
+        <desc>左列四根条形是四个候选符号的概率 0.70、0.20、0.06、0.04；中列为对应的最优码长 0.51、2.32、4.06、4.64 比特；第三列给出加权平均 1.25 比特每符号；右列为相对 2 比特定长编码的压缩率 1.6 倍。</desc>
+        <text x="14" y="16" class="t-sm faint">① 你给下一个符号的概率</text>
+        <g data-step="1">
+          <text x="14" y="38" class="t-sm">A</text><rect x="34" y="28" width="105" height="14" rx="3" fill="var(--c-heat-3)"></rect><text x="145" y="39" class="t-xs muted">0.70</text>
+          <text x="14" y="60" class="t-sm">B</text><rect x="34" y="50" width="30" height="14" rx="3" fill="var(--c-heat-2)"></rect><text x="70" y="61" class="t-xs muted">0.20</text>
+          <text x="14" y="82" class="t-sm">C</text><rect x="34" y="72" width="9" height="14" rx="3" fill="var(--c-heat-1)"></rect><text x="49" y="83" class="t-xs muted">0.06</text>
+          <text x="14" y="104" class="t-sm">D</text><rect x="34" y="94" width="6" height="14" rx="3" fill="var(--c-heat-0)"></rect><text x="46" y="105" class="t-xs muted">0.04</text>
+          <text x="14" y="122" class="t-xs faint">条越长 = 越有把握</text>
+        </g>
+        <line class="arrow" x1="168" y1="66" x2="196" y2="66"></line>
+
+        <text x="200" y="16" class="t-sm faint">② 最优码长 = −log₂ p</text>
+        <g data-step="2">
+          <text x="200" y="38" class="t-sm">A</text><rect x="222" y="28" width="11" height="14" rx="3" fill="var(--c-heat-3)"></rect><text x="239" y="39" class="t-xs muted">0.51 比特</text>
+          <text x="200" y="60" class="t-sm">B</text><rect x="222" y="50" width="47" height="14" rx="3" fill="var(--c-heat-2)"></rect><text x="275" y="61" class="t-xs muted">2.32 比特</text>
+          <text x="200" y="82" class="t-sm">C</text><rect x="222" y="72" width="82" height="14" rx="3" fill="var(--c-heat-1)"></rect><text x="310" y="83" class="t-xs muted">4.06 比特</text>
+          <text x="200" y="104" class="t-sm">D</text><rect x="222" y="94" width="93" height="14" rx="3" fill="var(--c-heat-0)"></rect><text x="321" y="105" class="t-xs muted">4.64 比特</text>
+          <text x="200" y="122" class="t-xs faint">罕见的事一旦发生，说明起来就长</text>
+        </g>
+        <line class="arrow" x1="352" y1="66" x2="380" y2="66"></line>
+
+        <text x="384" y="16" class="t-sm faint">③ 按概率加权 = 信息熵</text>
+        <g data-step="3">
+          <rect class="box box--a" x="384" y="28" width="120" height="60" rx="6"></rect>
+          <text x="392" y="46" class="t-xs">0.70×0.51</text>
+          <text x="392" y="60" class="t-xs">＋0.20×2.32</text>
+          <text x="392" y="74" class="t-xs">＋0.06×4.06＋0.04×4.64</text>
+          <text x="392" y="100" class="t-sm accent">H = 1.25 比特/符号</text>
+        </g>
+        <line class="arrow" x1="512" y1="66" x2="540" y2="66"></line>
+
+        <text x="544" y="16" class="t-sm faint">④ 压缩率</text>
+        <g data-step="5">
+          <rect class="box box--g" x="544" y="28" width="84" height="60" rx="6"></rect>
+          <text x="552" y="46" class="t-xs">定长 2 比特</text>
+          <text x="552" y="60" class="t-xs">÷ 1.25</text>
+          <text x="552" y="80" class="t-sm good">1.6 倍</text>
+        </g>
+        <text x="14" y="150" class="t-sm muted">链条只有一句：概率 → 长度 → 平均 → 压缩率。中间没有「理解」「语义」这类东西插进来。</text>
+        <text x="14" y="170" class="t-xs faint">编码器和解码器共用第 ① 列那一套概率。解码方概率给错，切回去的区间就错位，原文还原不出来。</text>
+        <text x="14" y="196" class="t-xs warm">把第 ① 列全改成 0.25（纯随机）：四根长度条全变成 2 比特，H = 2，压缩率 1.00 倍——这就是噪声压不动的全过程。</text>
+        <text x="14" y="222" class="t-xs faint">数字为人为设定的示意（4 符号字母表），不是真实语料的统计结果。</text>
+      </svg>
+    </div>
+    <figcaption>从左往右读：四根概率条 → 四根长度条 → 加权平均 → 除以定长基准。概率越集中，第 ② 列那根最长的条就越少被抽到，平均值就越小。最后一行是反面案例：概率一视同仁，链条立刻走到头，一点都压不动。</figcaption>
+  </div>
+
+  <p>把三种「规律强度」摆在一起，链条的结果差异一目了然。定长基准是 log₂ 4 = 2 比特/符号。</p>
+  <table class="tbl">
+    <thead>
+      <tr><th>序列类型</th><th>下一个符号的概率分配</th><th>信息熵（比特/符号）</th><th>压缩率</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>强规律</td><td>0.97 / 0.01 / 0.01 / 0.01</td><td>0.24</td><td>8.3 倍</td></tr>
+      <tr><td>语言式</td><td>0.62 / 0.22 / 0.10 / 0.06</td><td>1.48</td><td>1.35 倍</td></tr>
+      <tr><td>纯随机</td><td>0.25 / 0.25 / 0.25 / 0.25</td><td>2.00</td><td>1.00 倍（压不动）</td></tr>
+    </tbody>
+  </table>
+  <p class="demo__note">表中概率是我们构造的示意值 <span class="badge badge--simplify">已简化</span>——真实英文的分布随上下文剧烈变化，香农 1951 年实测：孤立字母约 4.5 比特/字母，允许参考前 100 个词的上下文后降到约 2.3 比特/字母 [2026-10]。上下文越长、猜得越准，这条我们已经写进上表。</p>
+
+  <div class="figure" data-fig="m01-codec-loop-2">
+    <div class="figure__inner">
+      <svg viewBox="0 0 640 152" class="dgm" role="img" aria-labelledby="f1b-t">
+        <title id="f1b-t">同一套预测能力，两个方向：压缩器用它把符号流变成短码，解压器用它把短码变回符号流</title>
+        <desc>左为原文符号流，中为共享的下一符号预测器（概率表），右为编码后的短码流；上方箭头表示编码方向，下方箭头表示解码方向，两者都必须读取同一张概率表。</desc>
+        <text x="14" y="16" class="t-sm faint">原文（每个符号本来要 2 比特）</text>
+        <g data-step="4">
+          <rect class="box" x="14" y="26" width="40" height="26" rx="5"></rect><text x="34" y="43" class="t-sm" text-anchor="middle">A</text>
+          <rect class="box" x="58" y="26" width="40" height="26" rx="5"></rect><text x="78" y="43" class="t-sm" text-anchor="middle">A</text>
+          <rect class="box" x="102" y="26" width="40" height="26" rx="5"></rect><text x="122" y="43" class="t-sm" text-anchor="middle">A</text>
+          <rect class="box" x="146" y="26" width="40" height="26" rx="5"></rect><text x="166" y="43" class="t-sm" text-anchor="middle">B</text>
+          <rect class="box" x="190" y="26" width="40" height="26" rx="5"></rect><text x="210" y="43" class="t-sm" text-anchor="middle">A</text>
+        </g>
+        <line class="arrow" x1="240" y1="39" x2="272" y2="39"></line>
+        <g data-step="4">
+          <rect class="box box--a" x="276" y="18" width="132" height="70" rx="6"></rect>
+          <text x="288" y="38" class="t-sm">下一符号预测器</text>
+          <text x="288" y="56" class="t-xs muted">A → 0.70 · B → 0.20</text>
+          <text x="288" y="70" class="t-xs muted">C → 0.06 · D → 0.04</text>
+        </g>
+        <line class="arrow" x1="412" y1="39" x2="444" y2="39"></line>
+        <g data-step="4">
+          <rect class="box box--g" x="448" y="26" width="70" height="26" rx="5"></rect><text x="483" y="43" class="t-sm" text-anchor="middle">1 个数</text>
+          <text x="524" y="43" class="t-xs muted">平均 1.25 比特/符号</text>
+        </g>
+        <line class="line" x1="483" y1="60" x2="483" y2="98"></line>
+        <line class="line" x1="342" y1="88" x2="342" y2="98"></line>
+        <line class="line" x1="118" y1="60" x2="118" y2="98"></line>
+        <g data-step="4">
+          <line class="arrow" x1="483" y1="104" x2="346" y2="104"></line>
+          <line class="arrow" x1="338" y1="104" x2="122" y2="104"></line>
+          <text x="14" y="126" class="t-xs accent">下面那条路是解码：同一个预测器、同一个方向相反的切分。它一旦和编码方给出不同的概率，还原立刻错位。</text>
+          <text x="14" y="144" class="t-xs faint">所以「预测下一符号」和「无损压缩」不是两件相似的事，而是同一张概率表的正反两面。</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption>先看上面的三个方块：原文 → 概率表 → 短码。再顺着虚线看下面那条回程：解压器必须逐符号重算同一套概率。中间那个方框是全站后面所有内容的雏形。</figcaption>
+  </div>
+
+  <details class="math-detail">
+    <summary>展开：为什么「好的概率」不能瞎选，以及码长怎么真的做出来</summary>
+    <div class="math-detail__body prose">
+      <p><strong>为什么长度必须是对数。</strong>我们要求两件事同时成立：① 概率越大的符号不该更长；② 两个独立事件一起发生，付出的长度要相加。而概率满足 p(p₁p₂) = p₁ × p₂ 是相乘的。能把「相乘」变成「相加」的函数只有对数，所以长度只能长成 <code>−log₂ p</code> 的样子（差一个常数底数，底数 2 就是选比特为单位）。</p>
+      <p><strong>码长怎么落地。</strong>给频繁符号短码、罕见符号长码，并要求任何一个码都不是另一个码的开头（前缀码），解码时就不用等分隔符。比如 A→0、B→10、C→1100、D→1101：A 平均 46 次出现只花 46 比特，D 出现 3 次就花 14 比特。这套码的平均长度是 1.34 比特/符号，比信息熵 1.25 高一点——高出来的那部分就是<strong>整数取整损失</strong>。把整条序列一起编码进一个区间（算术编码），长度才能贴着 H 走，这也是现代压缩器和大模型输出层的实际做法。</p>
+      <p><strong>地板不由我们决定。</strong>对给定的数据源，H 是它自身规律强度的属性；我们能做的只是让自己的概率更接近它。这个「更接近」是可以精确度量的，多付的比特数叫 KL 散度——本站在 M02 里用「交叉熵 = 信息熵 + KL 散度」的形式把它请出来。</p>
+      <p><strong>「英语的熵到底是多少」有争议</strong> <span class="badge badge--debate">存在争议</span>：一派沿香农的 n 阶近似外推，认为足够长的上下文能把每字母的代价压到 1 比特量级；另一派指出「英语熵」依赖语料与书写规范（大小写、空格、拼写错误都改变数值），不是一个定义良好的常数。本站只使用「上下文越长、码长越短」这个没有争议的部分。</p>
+    </div>
+  </details>
+
+  <div class="callout callout--key">
+    <p><strong>一句话记住这一节：</strong>把「预测下一个符号的概率」这件事做到多准，就等于把数据压到多小；单位是比特/符号，两者之差只来自取整和记法。</p>
+  </div>
+</seg>
+
+<seg name="demo">
+  <p>下面的序列是我们造的合成数据（不是真实语料）：每次点 A/B/C/D 之一押「下一个符号」，猜中记 1 比特、猜错记 3 比特 <span class="badge badge--simplify">已简化</span>（真实做法是分配概率、按 −log₂ p 付长度，见机制段第 ② 步），然后盯着那四条累计线——「定长」「地板」「模型」「你」分得越开，说明这段数据里可挖的规律越多。</p>
+</seg>
+
+<seg name="misconception">
+  <details class="myth">
+    <summary>「压缩就是把不要紧的细节扔掉，所以压缩率和照片调低画质是一回事。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>日常语言里「压缩」同时指两件完全不同的事：把 JPEG 质量调低（扔掉人眼不介意的部分），和把文件夹压成 zip（一个字节都不能少）。中文都叫「压缩」，很少有人区分。</p>
+      <p class="myth__truth">正确说法：本节全部讨论的是<strong>无损</strong>压缩。它不删任何内容，只做一件事——把常见的写法换短、把罕见的写法换长，于是平均长度下降。开头那个「删元音还能读懂」其实是<strong>有损</strong>：它靠的是读者脑补，还原不回原文。真正无损的做法是把「元音大概出现在哪里」的概率算准，然后照样把每个元音都送过去，只是花更少的比特。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「随机噪声压不动，是因为里面没有信息，没什么可留的。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>「信息」在日常用语里等于「有用的内容」，噪声自然被当成零。这个直觉太顺了，几乎没人会去检查。</p>
+      <p class="myth__truth">正确说法：在信息论里，恰恰相反——<strong>越随机，信息量越大</strong>。信息量衡量的是「有多少种可能结果被排除了」：一段纯随机符号每个都完全不可预测，所以每个都携带最大惊讶度，需要 2 比特（4 个符号时）。它压不动不是因为空，而是因为它太满：没有任何一条规律可以拿来省话。真正能压的是冗余，不是意义。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「下一词预测就是死记硬背语料，和压缩八竿子打不着；大模型只是会说套话。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>「预测下一个」听起来很浅，像自动补全；而「压缩」听起来只是省磁盘。两者在宣传里从不一起出现，读者自然把它们归到不同阵营。</p>
+      <p class="myth__truth">正确说法：它们在数学上是同一件事——见机制段第 ④ 步（编码器与解码器必须共用同一套概率）。而且「背下来」在这条链上换不到任何好处：只在训练集上算得准的表，对新数据一个比特也省不下。能持续省比特的只有<strong>可复用的规律</strong>。这也是为什么有人直接把「压缩英文文本」当作 AI 能力的测量口径（Hutter Prize：参赛者要压一个 100 MB 的维基文本集合 [2026-10]）。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「既然压缩率就是能力，那把模型做得越大，压缩率一定越高，所以『压缩即智能』是定论。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>机制段这条等价链太干净了，人们会顺手把它推过头，变成「只要压得好就是聪明」；加上规模定律的媒体报道总把 loss 下降说成能力的直接指标。</p>
+      <p class="myth__truth">正确说法：分两派讲清楚 <span class="badge badge--debate">存在争议</span>。支持的一派认为：任何能在未见数据上省比特的系统，必然抽取了数据的可泛化结构，所以压缩得分是能力的下界式测量。反对的一派认为：在人类文本上「预测得准」可以靠统计共现与模板刷出来，而推理、事实一致性这些能力对不上任何单一压缩分数；把压缩当智能会系统性高估流利度、低估可靠性。本站采用的<strong>窄结论</strong>是：压缩质量是能力的<strong>必要条件</strong>且可测量（大得没道理、数据喂不够都压不动），但不把它当作能力的充分定义。规模的代价与收益在 M08 讨论。</p>
+    </div>
+  </details>
+</seg>
+
+<seg name="takeaway">
+  <blockquote class="takeaway__line">预测得多准，就能压得多小：能力是省下来的比特。</blockquote>
+
+  <div class="quiz">
+    <p class="quiz__q">自测：为什么一段纯随机符号，任何压缩软件都压不动（甚至会让文件变大）？</p>
+    <label class="quiz__opt"><input type="radio" name="q-m01" data-right="1"><span>因为它的每个符号都无法预测，最优码长就等于原始位宽——没有冗余可省</span></label>
+    <label class="quiz__opt"><input type="radio" name="q-m01"><span>因为随机数据里没有信息，压缩器找不到值得保留的内容</span></label>
+    <label class="quiz__opt"><input type="radio" name="q-m01"><span>因为压缩算法是为文字设计的，换成图片或其他格式就能压住它</span></label>
+    <div class="quiz__fb">
+      <p data-for="no"><strong>再推一步：</strong>压缩省下的每一个比特，都来自一次成功的预测（机制段第 ④ 步）。随机符号的不可能性砍不动，任何猜测都只能停在「四个各 1/4」，于是平均码长 = log₂ 4 = 2 比特 = 定长基准，压缩率 1.00 倍。另外两个选项错在：①「没信息」刚好说反了——不可预测的信息量最大（第 2 条误区）；②「换个格式就能压」也不行，压不动来自数据本身没有规律，和它是图片还是文字无关。换成图片、音频也一样：真随机的部分一比特都省不下来。</p>
+      <p data-for="ok"><strong>对了。</strong>你已经抓住这条链的全部要点：概率 → 码长（−log₂ p）→ 平均（信息熵）→ 压缩率。据此就能用自己的话说清「模型能力 ≈ 对数据的压缩质量」：谁把下一个符号的概率算得更准，谁就付更少比特，而算得准的部分必须能推广到新数据上（第 ⑧ 步）。带着这个单位去 M02：那里它叫交叉熵与困惑度，是模型真正的打分方式。</p>
+    </div>
+    <p class="quiz__result" aria-live="polite"></p>
+  </div>
+
+  <ul class="nextlinks">
+    <li><a href="#m02">M02 概率、信息熵与损失：把「平均码长」变成可优化的损失函数</a></li>
+    <li><a href="#m08">M08 预训练与规模定律：更多参数和数据换来多少比特</a></li>
+    <li><a href="#m10">M10 解码与采样：有了概率分布之后，怎么挑一个词元出来</a></li>
+  </ul>
+</seg>

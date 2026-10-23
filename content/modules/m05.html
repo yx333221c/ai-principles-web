@@ -1,0 +1,334 @@
+<meta title="神经网络与反向传播" tagline="一堆线性变换 + 一个「非线性开关」">
+
+<seg name="hook">
+  <p class="hook">一个能认出手写数字的程序，内部有几百万个可以拧的旋钮。它并不知道哪个旋钮该往哪边拧、该拧多少，可它每一轮都能把这几百万个旋钮同时挪开一点点，让认错的情况少一点点。这一「一点点」是谁算出来的，又是怎么算出来的？</p>
+  <p class="demo__note">我们假设你手上已经有三件工具：M02 的损失、M03 的矩阵与向量、M04 的梯度与学习率。这一模块把这三件接成一台能自己学习的机器。</p>
+</seg>
+
+<seg name="intuition">
+  <p>把一次训练想成一<strong>起事故的追责</strong>。损失是那个「最终客诉」，它落在流水线最末端的工位上。最末端的工位直接对客诉负责，然后往上游摊：这次错里，有多少要算到上道工序交来的半成品上，有多少算到我自己这次操作上。</p>
+  <p>关键在于每个工位<strong>只需要知道两件事</strong>：第一，下游传回来的那个数（这次要负多少）；第二，我自己这一步的「转换比例」——我多收一点输入，输出会变多少。把这两个数一乘，就得到我该往前摊多少。于是不需要任何一个人看懂整条流水线，追责就走完了全程。这就是<span class="term" data-def="按计算图从输出往回推每个参数该负多少责任的算法；每步只做一次乘法。" data-en="backpropagation">反向传播</span>（backpropagation）。</p>
+  <p>再叠一层含义：如果某道工序的转换比例是 0——你再怎么改它的输入，输出纹丝不动——那么传到这里就归零，上游所有工位一并摊不到任何责任。整条流水线的「能不能学」，就取决于每一环的这个比例是不是零。</p>
+
+  <div class="callout callout--warn">
+    <p><strong>这个类比对下面三件事不成立，请一并记住：</strong></p>
+    <ul>
+      <li><strong>传回来的不是「责任」，是斜率。</strong>责任是可加总、可清零的整数记账；<span class="term" data-def="损失对某个量的高小改变有多敏感；等于该方向上的变化率。" data-en="gradient">梯度</span>是连续量，可以是 −0.0007，也可以是 0.3。它不含「过错」的意思，只含「往这个方向挪一点，损失会降多少」。</li>
+      <li><strong>分摊是按乘积，不是按主观过错大小。</strong>一个工位的梯度等于下游梯度<strong>乘</strong>上它自己的局部导数。局部导数为 0，下游再大的梯度传过来也变成 0；局部导数是 0.01，责任就被削掉一百倍。谁「功劳大」在这套算术里没有位置。</li>
+      <li><strong>流水线是直的，计算图不是。</strong>一个工位的产出可以被下游三个工位同时领用，那它要负的责任是三<strong>条路径乘积之和</strong>（多路相加），而不是沿某一条线传下去。真实网络里几乎每个<span class="term" data-def="模型内部可训练的数值。" data-en="parameter">参数</span>都同时被多条路径牵连。</li>
+    </ul>
+  </div>
+</seg>
+
+<seg name="mechanism">
+  <h4>先看这台机器由哪两种零件组成</h4>
+  <p>网络只有两种运算：一种能把很多数<strong>混合</strong>在一起（线性变换），一种能把一条曲线<strong>折弯</strong>（激活函数）。学什么、能学多复杂，全押在这两种零件的排列上。我们一层层拆开。</p>
+
+  <ol class="steps">
+    <li data-step="1"><strong>一个「神经元」就是一行线性变换。</strong>它把这一层的输入各乘一个<span class="term" data-def="网络里乘在输入上的系数，训练得到的就是这组数。" data-en="weight">权重</span>再相加，最后加一个偏置。<code>x</code> 是输入向量（形状 <code>[n]</code>），<code>w</code> 是这一行的权重（同样 <code>[n]</code>），<code>b</code> 是标量偏置。</li>
+    <li data-step="1"><strong>网络就是把这些行排成层。</strong>一层有 m 个神经元，就是 <code>m</code> 行同时算，写成一式 <code>z = Wx + b</code>，其中 <code>W</code> 形状 <code>[m × n]</code>、结果 <code>z</code> 形状 <code>[m]</code>。所谓「深度」，就是层数。</li>
+    <li data-step="2"><strong>把激活函数拿掉，深度立刻作废。</strong>两层线性连着算：<code>y = W₂(W₁x + b₁) + b₂</code>，展开就是 <code>y = (W₂W₁)x + (W₂b₁ + b₂)</code>——一个<em>矩阵乘积</em>就替代了整叠层。层数 100 和层数 1 能表达的函数<strong>一模一样</strong>。这是「非线性开关」存在的全部理由。</li>
+    <li data-step="2"><strong>激活函数是逐元素的折弯开关。</strong>它一个数一个数地作用：<code>a = φ(z)</code>。加了它，两层之间就不再能合并，深度才开始买到东西。</li>
+    <li data-step="3"><strong>为什么折弯能拟合复杂函数。</strong>一个 ReLU 神经元在输入空间里切出一道「折痕」，折痕两侧斜率不同；把多个这样的折痕按权重叠加，就能拼出一段段斜率各异的折线。直线永远画不出台阶，而足够多的折线段可以逼近任意一条连续曲线（隐藏层为一层的经典结论，Cybenko（1989）[2026-10]）。表达力来自「折弯 + 叠起来」，不来自「多乘几次矩阵」。</li>
+    <li data-step="4"><strong>三种常见形状，各自带着一种毛病。</strong>Sigmoid 与 Tanh 两头都<strong>饱和</strong>（曲线躺平 → 局部导数趋 0 → 梯度一层层被削，走到浅层已接近 0，即梯度消失）；ReLU 负半轴<strong>斜率恒为 0</strong>，一旦某个神经元的输入总落在负半轴，它就再也不更新，俗称「死亡」。</li>
+    <li data-step="5"><strong>前向传播 = 沿计算图把值算出来。</strong><span class="term" data-def="把一次计算拆成一张有向图：每个节点是一步最小运算，每条边传一个数。" data-en="compute graph">计算图</span>把一次预测写成「一步一节点」的图。前向就是从输入出发，按拓扑顺序逐节点求值，一直算到损失。</li>
+    <li data-step="6"><strong>反向传播 = 同一个图倒着走一遍。</strong>规则只有一句：<em>每个节点把自己收到的「上游梯度」乘上自己的「局部导数」，再发给自己的每个输入</em>。局部导数只涉及这个节点自己，跟全网络有多大无关。</li>
+    <li data-step="7"><strong>这就是它能工程化的原因。</strong>写一个框架不需要会解优化题，只需要给每种算子配两小段代码：正着算值（forward）、局部求导（backward）。框架记下前向的访问顺序，再倒序调用 backward，把乘法自动接好线——这套自动接线就叫<span class="term" data-def="按计算图自动、逐节点套用链式法则，无需人工推完整导数公式。" data-en="automatic differentiation">自动微分</span>。求导公式是人写的，链子不是。</li>
+    <li data-step="8"><strong>一次参数更新是三步循环。</strong>前向算出损失 → 反向算出每个参数的梯度 → 每个参数沿梯度反方向挪一小步（学习率来自 M04）。三步重复几十万次，就是「训练」。每个参数只跟自己的梯度打交道，谁也不需要理解全局。</li>
+  </ol>
+
+  <div class="math-block math">
+    z <span class="op">=</span> w<span class="sub">1</span>x<span class="sub">1</span> <span class="op">+</span> w<span class="sub">2</span>x<span class="sub">2</span> <span class="op">+</span> … <span class="op">+</span> w<span class="sub">n</span>x<span class="sub">n</span> <span class="op">+</span> b
+    <span class="reads">「把 n 个输入各乘上自己的权重再全加起来，最后加一个常数 b。」这一行算完就是一个神经元的输出（还没折弯）。</span>
+  </div>
+  <div class="math-block math">
+    y <span class="op">=</span> W<span class="sub">2</span><span class="bigg">(</span>W<span class="sub">1</span>x <span class="op">+</span> b<span class="sub">1</span><span class="bigg">)</span> <span class="op">+</span> b<span class="sub">2</span>
+      <span class="op">=</span> <span class="bigg">(</span>W<span class="sub">2</span>W<span class="sub">1</span><span class="bigg">)</span>x <span class="op">+</span> <span class="bigg">(</span>W<span class="sub">2</span>b<span class="sub">1</span> <span class="op">+</span> b<span class="sub">2</span><span class="bigg">)</span>
+    <span class="reads">「没有激活函数时，两层线性变换连乘，等于一个合并后的一次线性变换。」左边写了 4 个参数块，右边只有 2 个——层数在这一行里蒸发了。<span class="badge badge--simplify">已简化</span> 这里只算两层，也不谈数值精度；结论对任意层数同样成立。</span>
+  </div>
+
+  <div class="figure" data-fig="m05-linear-collapse-2">
+    <div class="figure__inner">
+      <svg viewBox="0 0 640 126" class="dgm" role="img" aria-labelledby="f5lc-t">
+        <title id="f5lc-t">上图三个线性层串起来，下图一个合并后的线性层给出完全相同的输出</title>
+        <desc>上行：x 经 W1、W2、W3 三个方框到 y；下行：x 经单个方框 W3W2W1 到 y。两行输出相同。</desc>
+        <defs>
+          <marker id="m05-arw-f" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L8 4 L0 8 z" fill="var(--c-fg-muted)"></path>
+          </marker>
+        </defs>
+        <text x="10" y="14" class="t-sm faint">有激活函数时，每一层都不能被合并</text>
+        <g data-step="4">
+        <rect class="box box--a" x="10" y="26" width="40" height="26" rx="5"></rect><text x="30" y="43" class="t-sm" text-anchor="middle">x</text>
+        <line x1="50" y1="39" x2="88" y2="39" stroke="var(--c-fg-muted)" stroke-width="1.6" marker-end="url(#m05-arw-f)"></line>
+        <rect class="box" x="92" y="26" width="62" height="26" rx="5"></rect><text x="123" y="43" class="t-sm" text-anchor="middle">W<tspan baseline-shift="sub">1</tspan></text>
+        <line x1="154" y1="39" x2="192" y2="39" stroke="var(--c-fg-muted)" stroke-width="1.6" marker-end="url(#m05-arw-f)"></line>
+        <rect class="box" x="196" y="26" width="62" height="26" rx="5"></rect><text x="227" y="43" class="t-sm" text-anchor="middle">W<tspan baseline-shift="sub">2</tspan></text>
+        <line x1="258" y1="39" x2="296" y2="39" stroke="var(--c-fg-muted)" stroke-width="1.6" marker-end="url(#m05-arw-f)"></line>
+        <rect class="box" x="300" y="26" width="62" height="26" rx="5"></rect><text x="331" y="43" class="t-sm" text-anchor="middle">W<tspan baseline-shift="sub">3</tspan></text>
+        <line x1="362" y1="39" x2="400" y2="39" stroke="var(--c-fg-muted)" stroke-width="1.6" marker-end="url(#m05-arw-f)"></line>
+        <rect class="box box--g" x="404" y="26" width="40" height="26" rx="5"></rect><text x="424" y="43" class="t-sm" text-anchor="middle">y</text>
+        <text x="460" y="43" class="t-xs muted">三次折弯，每次都能改变形状</text>
+        </g>
+
+        <text x="10" y="72" class="t-sm faint">没有激活函数时，同一张图可以这样改写</text>
+        <g data-step="2">
+        <rect class="box box--a" x="10" y="84" width="40" height="26" rx="5"></rect><text x="30" y="101" class="t-sm" text-anchor="middle">x</text>
+        <line x1="50" y1="97" x2="106" y2="97" stroke="var(--c-fg-muted)" stroke-width="1.6" marker-end="url(#m05-arw-f)"></line>
+        <rect class="box box--w" x="110" y="84" width="120" height="26" rx="5"></rect><text x="170" y="101" class="t-sm" text-anchor="middle">W<tspan baseline-shift="sub">3</tspan>W<tspan baseline-shift="sub">2</tspan>W<tspan baseline-shift="sub">1</tspan></text>
+        <line x1="230" y1="97" x2="286" y2="97" stroke="var(--c-fg-muted)" stroke-width="1.6" marker-end="url(#m05-arw-f)"></line>
+        <rect class="box box--g" x="290" y="84" width="40" height="26" rx="5"></rect><text x="310" y="101" class="t-sm" text-anchor="middle">y</text>
+        </g>
+        <text x="346" y="101" class="t-xs warm">同一个函数，层数 3 → 1</text>
+      </svg>
+    </div>
+    <figcaption>上下两排的输出对每个 x 都相同。差别只在上排：真实网络在每个 W 之间夹一个 φ，于是这些 W 再也没法乘到一起。</figcaption>
+  </div>
+
+  <div class="figure" data-fig="m05-activation-shapes-3">
+    <div class="figure__inner">
+      <svg viewBox="0 0 640 172" class="dgm" role="img" aria-labelledby="f5act-t">
+        <title id="f5act-t">Sigmoid、Tanh、ReLU 三种激活函数的形状，以及它们各自的问题</title>
+        <desc>三个并排小坐标系，各画一条曲线：左为 S 形的 Sigmoid，中为过零点的 S 形 Tanh，右为负半轴贴零、正半轴斜上的 ReLU。每个面板下方标注该函数的毛病。</desc>
+        <text x="10" y="14" class="t-sm faint">横轴 = 进入这个开关的值 z，纵轴 = 开关吐出的 φ(z)</text>
+
+        <g data-step="4">
+          <line class="grid-l" x1="30" y1="98" x2="180" y2="98"></line>
+          <line class="grid-l" x1="105" y1="28" x2="105" y2="98"></line>
+          <polyline fill="none" stroke="var(--c-accent)" stroke-width="2" points="30,94.7 42.5,92.7 55,89.7 67.5,85.3 80,79.2 92.5,71.5 105,63 117.5,54.5 130,46.8 142.5,40.8 155,36.3 167.5,33.3 180,31.3"></polyline>
+          <text x="30" y="116" class="t-sm">Sigmoid</text>
+          <text x="30" y="130" class="t-xs muted">输出挤在 0 与 1 之间</text>
+          <text x="30" y="142" class="t-xs warm">两端躺平 → 局部导数趋 0</text>
+        </g>
+        <g data-step="4">
+          <line class="grid-l" x1="245" y1="98" x2="395" y2="98"></line>
+          <line class="grid-l" x1="320" y1="28" x2="320" y2="98"></line>
+          <polyline fill="none" stroke="var(--c-accent)" stroke-width="2" points="245,97.8 257.5,97.5 270,96.7 282.5,94.7 295,89.7 307.5,79.2 320,63 332.5,46.8 345,36.3 357.5,31.3 370,29.3 382.5,28.5 395,28.2"></polyline>
+          <text x="245" y="116" class="t-sm">Tanh</text>
+          <text x="245" y="130" class="t-xs muted">以 0 为中心，−1 到 1</text>
+          <text x="245" y="142" class="t-xs warm">同样两端饱和</text>
+        </g>
+        <g data-step="4">
+          <line class="grid-l" x1="460" y1="98" x2="610" y2="98"></line>
+          <line class="grid-l" x1="535" y1="28" x2="535" y2="98"></line>
+          <polyline fill="none" stroke="var(--c-accent)" stroke-width="2" points="460,98 472.5,98 485,98 497.5,98 510,98 522.5,98 535,98 547.5,86.5 560,75 572.5,63.5 585,52 597.5,40.5 610,29"></polyline>
+          <text x="460" y="116" class="t-sm">ReLU = max(0, z)</text>
+          <text x="460" y="130" class="t-xs muted">正半轴斜率恒 1，不算指数</text>
+          <text x="460" y="142" class="t-xs bad">负半轴斜率恒 0 → 可能死亡</text>
+        </g>
+        <text x="10" y="164" class="t-xs faint">饱和 / 死亡都会让某个权重的梯度变 0：它这一轮就不动。深层网络里这种缩小是逐层连乘的。</text>
+      </svg>
+    </div>
+    <figcaption>只看曲线陡不陡：越平的地方，「改一点输入换来多少输出」越接近 0，梯度就在那里被吃掉。三条曲线的平段位置各不相同。</figcaption>
+  </div>
+
+  <h4>反向传播：一次只做一次乘法</h4>
+  <p>链式法则我们中学就见过：<em>整体的比例 = 各环节比例的连乘</em>。反向传播做的事，是把这个连乘拆到图上，每个节点只算其中一次乘法，并且<strong>复用</strong>下游已经算好的部分。这就是它比「对整个网络手写出导数公式」便宜得多的原因。</p>
+
+  <div class="math-block math">
+    <span class="frac"><span class="num">∂L</span><span class="den">∂u</span></span> <span class="op">=</span>
+    <span class="frac"><span class="num">∂L</span><span class="den">∂v</span></span>
+    <span class="op">·</span>
+    <span class="frac"><span class="num">∂v</span><span class="den">∂u</span></span>
+    <span class="reads">「u 该负多少责任，等于 v 该负的责任，乘上 v 对 u 有多敏感。」u 是某个上游节点，v 是紧接它下游的那个节点——只看这一对相邻节点，不跨越任何距离。</span>
+  </div>
+  <div class="math-block math">
+    <span class="frac"><span class="num">∂L</span><span class="den">∂w<span class="sub">i</span></span></span> <span class="op">=</span>
+    <span class="frac"><span class="num">∂L</span><span class="den">∂z</span></span>
+    <span class="op">·</span> x<span class="sub">i</span>
+      <span class="op">,</span>&#160;&#160;
+    <span class="frac"><span class="num">∂L</span><span class="den">∂z</span></span> <span class="op">=</span>
+    <span class="frac"><span class="num">∂L</span><span class="den">∂a</span></span>
+    <span class="op">·</span> φ′(z)
+    <span class="reads">「权重 wᵢ 的梯度 = 这一行输出的梯度 × 喂给它的那个输入 xᵢ」；而「这一行输出的梯度 = 激活后的梯度 × 激活函数在这一点的斜率」。整张网络的backward，都由这两种形状反复拼出来。</span>
+  </div>
+
+  <div class="figure" data-fig="m05-compute-graph-1">
+    <div class="figure__inner">
+      <svg viewBox="0 0 640 252" class="dgm" role="img" aria-labelledby="f5cg-t">
+        <title id="f5cg-t">一个 2 输入、2 隐藏神经元、1 输出的网络的计算图，实线是前向传播的数值，橙色虚线是反向传播的梯度回流</title>
+        <desc>左侧 x1、x2 两个输入节点，中间两个神经元节点，右侧输出 y 与损失 L，目标 t 从上方接入 L。橙色虚线箭头由 L 指向左，逐段标注梯度值；第二个神经元因 ReLU 关闭而梯度为 0。</desc>
+        <defs>
+          <marker id="m05-arw-a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L8 4 L0 8 z" fill="var(--c-fg-muted)"></path>
+          </marker>
+          <marker id="m05-arw-b" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L8 4 L0 8 z" fill="var(--c-warn)"></path>
+          </marker>
+        </defs>
+
+        <text x="10" y="14" class="t-sm faint">实线 = 前向（值往右流）· 橙色虚线 = 反向（梯度往左流）</text>
+
+        <!-- 输入 -->
+        <g data-step="5">
+          <rect class="box box--a" x="20" y="40" width="60" height="26" rx="5"></rect>
+          <text x="50" y="57" class="t-sm" text-anchor="middle">x₁ = 1.0</text>
+          <rect class="box box--a" x="20" y="108" width="60" height="26" rx="5"></rect>
+          <text x="50" y="125" class="t-sm" text-anchor="middle">x₂ = 0.5</text>
+        </g>
+
+        <!-- 前向连线 x → 隐藏 -->
+        <g data-step="5">
+          <line x1="80" y1="50" x2="194" y2="50" stroke="var(--c-fg-muted)" stroke-width="1.5" marker-end="url(#m05-arw-a)"></line>
+          <line x1="80" y1="58" x2="194" y2="121" stroke="var(--c-fg-muted)" stroke-width="1.5" marker-end="url(#m05-arw-a)"></line>
+          <line x1="80" y1="116" x2="194" y2="58" stroke="var(--c-fg-muted)" stroke-width="1.5" marker-end="url(#m05-arw-a)"></line>
+          <line x1="80" y1="126" x2="194" y2="126" stroke="var(--c-fg-muted)" stroke-width="1.5" marker-end="url(#m05-arw-a)"></line>
+          <text x="112" y="42" class="t-xs muted">w₁₁ = 0.5</text>
+          <text x="126" y="90" class="t-xs muted">w₂₁ = −0.4</text>
+          <text x="112" y="142" class="t-xs muted">w₁₂ = −0.6</text>
+          <text x="150" y="120" class="t-xs muted">w₂₂ = 0.2</text>
+        </g>
+
+        <!-- 隐藏神经元 -->
+        <g data-step="1">
+          <rect class="box box--g" x="198" y="34" width="100" height="34" rx="6"></rect>
+          <text x="248" y="48" class="t-xs muted" text-anchor="middle">Σ → ReLU</text>
+          <text x="248" y="63" class="t-sm" text-anchor="middle">z₁=0.3 a₁=0.3</text>
+          <rect class="box box--w" x="198" y="110" width="100" height="34" rx="6"></rect>
+          <text x="248" y="124" class="t-xs muted" text-anchor="middle">Σ → ReLU</text>
+          <text x="248" y="139" class="t-sm" text-anchor="middle">z₂=−0.5 a₂=0</text>
+        </g>
+
+        <!-- 隐藏 → 输出 → 损失 -->
+        <g data-step="5">
+          <line x1="298" y1="46" x2="344" y2="78" stroke="var(--c-fg-muted)" stroke-width="1.5" marker-end="url(#m05-arw-a)"></line>
+          <line x1="298" y1="128" x2="344" y2="94" stroke="var(--c-fg-muted)" stroke-width="1.5" marker-end="url(#m05-arw-a)"></line>
+          <rect class="box box--a" x="348" y="72" width="86" height="30" rx="6"></rect>
+          <text x="391" y="91" class="t-sm" text-anchor="middle">y = 0.24</text>
+          <line x1="434" y1="87" x2="480" y2="87" stroke="var(--c-fg-muted)" stroke-width="1.5" marker-end="url(#m05-arw-a)"></line>
+          <text x="304" y="64" class="t-xs muted">v₁ = 0.8</text>
+          <text x="304" y="118" class="t-xs muted">v₂ = 0.7</text>
+        </g>
+        <g data-step="5">
+          <rect class="box" x="484" y="20" width="96" height="26" rx="6"></rect>
+          <text x="532" y="37" class="t-sm" text-anchor="middle">目标 t = 1</text>
+          <line x1="532" y1="46" x2="532" y2="68" stroke="var(--c-fg-muted)" stroke-width="1.5" marker-end="url(#m05-arw-a)"></line>
+          <rect class="box box--b" x="484" y="72" width="96" height="30" rx="6"></rect>
+          <text x="532" y="91" class="t-sm" text-anchor="middle">L = 0.289</text>
+        </g>
+
+        <!-- 反向：L → y → 隐藏 → 权重 -->
+        <g data-step="6">
+          <line x1="484" y1="78" x2="438" y2="78" stroke="var(--c-warn)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#m05-arw-b)"></line>
+          <text x="440" y="72" class="t-xs warm">∂L/∂y = −0.76</text>
+          <line x1="352" y1="74" x2="302" y2="52" stroke="var(--c-warn)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#m05-arw-b)"></line>
+          <text x="306" y="30" class="t-xs warm">×0.8 = ∂L/∂a₁ −0.608</text>
+          <line x1="198" y1="40" x2="84" y2="46" stroke="var(--c-warn)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#m05-arw-b)"></line>
+          <text x="86" y="26" class="t-xs warm">×1.0 = ∂L/∂w₁₁ −0.608</text>
+          <text x="86" y="200" class="t-xs warm">×0.5 = ∂L/∂w₂₁ −0.304</text>
+          <line x1="198" y1="134" x2="84" y2="132" stroke="var(--c-warn)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#m05-arw-b)"></line>
+        </g>
+        <g data-step="4">
+          <line x1="352" y1="98" x2="302" y2="122" stroke="var(--c-err)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#m05-arw-b)"></line>
+          <text x="300" y="158" class="t-xs bad">ReLU′(−0.5) = 0 → 梯度到这就断</text>
+          <text x="112" y="168" class="t-xs bad">∂L/∂w₁₂ = ∂L/∂w₂₂ = 0：这一轮不更新</text>
+        </g>
+
+        <text x="10" y="222" class="t-sm muted">沿路只出现两种运算：乘以下游传回来的数、乘上自己这一步的局部导数。没有任何一处需要「看懂整张图」。</text>
+        <text x="10" y="240" class="t-xs faint">数值取自下方手算例子（损失取 L = ½(y − t)²，暂无偏置）。第二个神经元演示的就是机制段第 ④ 步说的「负半轴死亡」。</text>
+      </svg>
+    </div>
+    <figcaption>从左往右读前向：x → 两个神经元 → y → L。再看橙色虚线，方向完全反过来：L 把 −0.76 交给 y，y 把它乘上自己的局部导数交给下游两路。到第二个神经元时局部导数是 0，梯度整条支路归零——责任分摊在这里演成了「查不到这个工位」。</figcaption>
+  </div>
+
+  <p>下面把上图的反向过程逐行写成数字。我们从一个具体网络出发：输入 <code>x₁ = 1.0</code>、<code>x₂ = 0.5</code>；隐藏层权重 <code>w₁₁ = 0.5, w₂₁ = −0.4</code>（第一个神经元）与 <code>w₁₂ = −0.6, w₂₂ = 0.2</code>（第二个）；输出层权重 <code>v₁ = 0.8, v₂ = 0.7</code>；激活用 ReLU；目标 <code>t = 1</code>；损失 <code>L = ½(y − t)²</code>。</p>
+
+  <table class="tbl tbl--scroll">
+    <caption class="sr-only">手算反向传播：每个环节的局部导数、上游梯度与最终梯度</caption>
+    <thead>
+      <tr><th>环节（倒着走）</th><th>本环节的局部导数</th><th>上游传来的梯度</th><th>该环节的梯度 ∂L/∂·</th><th>这一步在算什么</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>L</code></td><td>—</td><td>起点</td><td><code>1</code></td><td>损失对自己当然完全负责</td></tr>
+      <tr><td><code>y = 0.24</code></td><td><code>∂L/∂y = y − t = −0.76</code></td><td><code>1</code></td><td><code>−0.76</code></td><td>差值本身，一步乘法都不用</td></tr>
+      <tr><td><code>v₁ = 0.8</code></td><td><code>∂y/∂v₁ = a₁ = 0.3</code></td><td><code>−0.76</code></td><td><code>−0.228</code></td><td>乘上自己领用的那个输入</td></tr>
+      <tr><td><code>a₁ = 0.3</code></td><td><code>∂a₁/∂z₁ = ReLU′(0.3) = 1</code></td><td><code>−0.76</code></td><td><code>−0.608</code></td><td>闸门开着（斜率 1），原样传过去</td></tr>
+      <tr><td><code>w₁₁ = 0.5</code></td><td><code>∂z₁/∂w₁₁ = x₁ = 1.0</code></td><td><code>−0.608</code></td><td><code>−0.608</code></td><td>又乘一次领用的输入</td></tr>
+      <tr><td><code>w₂₁ = −0.4</code></td><td><code>∂z₁/∂w₂₁ = x₂ = 0.5</code></td><td><code>−0.608</code></td><td><code>−0.304</code></td><td>同一个上游，不同输入 → 不同责任</td></tr>
+      <tr><td><code>z₂ = −0.5</code></td><td><code>∂a₂/∂z₂ = ReLU′(−0.5) = 0</code></td><td><code>−0.532</code></td><td><code>0</code></td><td>闸门关死：上游再大也乘没了</td></tr>
+      <tr><td><code>w₁₂, w₂₂</code></td><td><code>x₁, x₂</code></td><td><code>0</code></td><td><code>0</code></td><td>这一轮这两个权重一动不动</td></tr>
+      <tr><td>更新 <code>w₁₁</code></td><td><code>η = 0.5</code></td><td><code>−0.608</code></td><td><code>w₁₁ ← 0.804</code></td><td>重新前向算一遍：L 从 0.289 降到 0.134</td></tr>
+    </tbody>
+  </table>
+  <p><span class="badge badge--simplify">已简化</span> 最后一行只更新 <code>w₁₁</code> 一个参数（其他保持原值）来说明「更新之后损失确实变小」；真实训练每一步同时更新全部参数，所以损失的下降量对不上单参数的预测，这是正常的。偏置在这个例子里全取 0，也省掉了。</p>
+
+  <div class="math-block math">
+    w <span class="op">←</span> w <span class="op">−</span> η
+    <span class="frac"><span class="num">∂L</span><span class="den">∂w</span></span>
+    <span class="reads">「参数减去学习率乘以它的梯度」——梯度是负 0.608，所以 w₁₁ 被加上 0.304。这一行完全属于 M04，反向传播只负责把那个 ∂L/∂w 算出来。</span>
+  </div>
+
+  <details class="math-detail">
+    <summary>展开：为什么 Sigmoid 会把梯度吃掉，以及「多路梯度相加」是怎么出现的</summary>
+    <div class="math-detail__body prose">
+      <p><strong>饱和为什么是连乘级别的伤害。</strong>Sigmoid 的局部导数是 <code>σ(z)·(1 − σ(z))</code>，它的最大值就是 z = 0 时的 0.25，永远不到 1。把上表里那个开着闸门的位置换成 Sigmoid，<code>z₁ = 0.3</code> 处 <code>σ′ ≈ 0.244</code>，于是 <code>∂L/∂w₁₁</code> 从 −0.608 缩到约 −0.149。20 层连乘，即使每层都给最好的 0.25，乘到第 1 层就是 0.25²⁰ ≈ 10⁻¹²：浅层参数收到的梯度是 0，它就再也不动。Tanh 同理（它最陡也只有 1，且饱和段更宽）。</p>
+      <p><strong>为什么 ReLU 通常能扛住深度。</strong>正半轴斜率恒为 1，梯度不被压缩，只被 0/1 门控。代价就是那条死亡支路：只要某个神经元的加权输入对所有训练样本都落在负半轴，它所有入边的梯度恒为 0，这个神经元就此退出。</p>
+      <p><strong>多路相加。</strong>如果同一个 <code>a₁</code> 同时喂给下游三个神经元，那么 <code>∂L/∂a₁ = ∂L/∂v₁·a₁ + ∂L/∂v₂·a₁ + ∂L/∂v₃·a₁</code>——三条路径各自的乘积之和。框架把它实现成「每个节点维护一个梯度累加器，反向时 += 而不是 =」。这也是为什么同一个 batch 里多条样本的梯度要取平均：本质还是相加。</p>
+      <p><strong>为什么它便宜。</strong>前向已经把每个中间值算出来并存着了，反向只是把它们取出来做乘法。整个反向的乘加次数约为前向的两倍——这是结构上的粗略比例，不是某个模型的实测数字。<span class="badge badge--simplify">已简化</span> 真实实现还要考虑显存复用、检查点重算与并行切分。</p>
+    </div>
+  </details>
+
+  <div class="callout callout--key">
+    <p>反向传播里没有新数学：它只有链式法则，加上一个聪明安排——<strong>把连乘从右往左拆开，让每一步的结果都给下一步复用</strong>。深度学习的工程可行性，就落在这个「复用」上。</p>
+  </div>
+</seg>
+
+<seg name="demo">
+  <h4>手搭一个 3-1-1 的小网络，看责任怎么摊</h4>
+  <p>下面的计算图是固定的，权重由你亲手给。先点「前向计算」把值一路算到损失，再点「反向传播」，看梯度沿橙色虚线一个节点一个节点倒着点亮：每点亮一次，就是某一次乘法。颜色越深，代表那个节点本轮收到的梯度越大。</p>
+  <p class="demo__note">这个网络的训练目标是一条阶跃：输入 x₃ 为正就该输出 +1，为负就该输出 −1。它是教学用的合成任务，不是任何真实数据集。</p>
+</seg>
+
+<seg name="misconception">
+  <details class="myth">
+    <summary>「神经元就是在模拟人脑的神经元。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>「神经网络」这个名字本身就来自早期的类比，而教科书画的图正是一堆圆圈用线连起来——看起来确实像脑的示意图。</p>
+      <p class="myth__truth">正确说法：本文的「神经元」是一个<strong>数学对象</strong>：一行加权求和加一个逐元素折弯函数。它没有细胞膜、没有放电时序、不释放递质，也没有任何一条性质是从生物细胞推导出来的。「层」同样不是脑区——分层只是为了把计算图切成便于反向复用的段落，人脑并不按这样的层次组织。今天更诚实的叫法是「单元」或「一层线性变换」。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「参数越多越容易过拟合，所以深度是个负担，浅一点更稳。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>「过拟合 = 参数太多」是入门优化课里最好记的一句话，于是深度自然被当成风险；而且传统统计模型确实是变量越多越不稳。</p>
+      <p class="myth__truth">正确说法：这里要分清两件事——<strong>表达力</strong>和<strong>训练难度</strong>。上面第 ③ 步已经给出：没有激活函数，100 层等价于 1 层，参数再多也只是同一个线性函数；有了非线性，深度能用很少的参数换来极大的表达力（若干层折线就能拼出复杂形状，而浅层要逼近同一形状往往得多几个数量级的神经元）。过拟合属于「泛化」问题，靠数据量、正则化与早停处理（M08 会正面讲它），不是靠砍深度解决。实践中真正被深度带来的是梯度通路问题，答案是残差连接，而不是回退到浅层。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「反向传播要人先推导出整个网络的求导公式，然后交给网络。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>数学课上我们习惯了「先手算导数再代数值」；一些科普材料也把反向传播写成一张巨大的偏导数矩阵，看起来像要人去填。</p>
+      <p class="myth__truth">正确说法：没有人对整张网络写过一个求导公式。每个算子（一次乘法、一次加法、一次 ReLU、一次 softmax）只<strong>自己</strong>提供两样东西：怎么算值、怎么算自己这一小步的局部导数。框架记录这次前向走过的节点顺序，倒序调用这些局部导数并把乘法接起来——这就是自动微分。改网络结构时，你不需要新推导任何东西，因为局部导数根本不知道你的网络有几层。</p>
+    </div>
+  </details>
+</seg>
+
+<seg name="takeaway">
+  <blockquote class="takeaway__line">梯度沿计算图逐级回乘，每一环只交出自己那一步的斜率。</blockquote>
+
+  <div class="quiz">
+    <p class="quiz__q">自测：把一个 20 层网络里所有激活函数全部删掉（只留线性变换），把层数从 20 加到 200，会发生什么？</p>
+    <label class="quiz__opt"><input type="radio" name="q-m05" data-right="1"><span>白加：整个网络始终等于一个线性变换，表达能力一层都没有多</span></label>
+    <label class="quiz__opt"><input type="radio" name="q-m05"><span>层数越多越灵活，只是梯度更容易消失，所以要调小学习率</span></label>
+    <label class="quiz__opt"><input type="radio" name="q-m05"><span>会算不动：层数一多，前向传播的数值就发散</span></label>
+    <div class="quiz__fb">
+      <p data-for="no"><strong>回到机制段第 ③ 步再看一行：</strong><code>y = W₂₀(W₁₉(…(W₁x)))</code> 里没有任何东西挡住连乘，20 个权重矩阵可以先乘成一个 <code>W = W₂₀…W₁</code>，前向、反向都退化成这一层。所以问题不是「梯度太小」也不是「算不动」，而是这个网络<strong>压根没变得更能干</strong>——它仍然只能画直线和平面。梯度消失要有「饱和的激活函数」才成立（第 ④ 步），没有激活函数时连 φ′ 这个乘数都不存在。</p>
+      <p data-for="ok"><strong>对了，这正是第 ②③ 步的结论。</strong>非线性是唯一能让「深度」买到表达力的东西：多个 φ 把空间切成一段段折线，每段的高度由一组权重独立决定，合起来才能逼近复杂函数。带着这个结论去动手演示：把激活函数切成「无」，看那条输出曲线怎样塌成一条直线。然后去 M06，看同样的梯度问题在序列上会变成什么。</p>
+    </div>
+    <p class="quiz__result" aria-live="polite"></p>
+  </div>
+
+  <details class="math-detail">
+    <summary>延伸阅读（2 条，标注难度）</summary>
+    <div class="math-detail__body prose">
+      <p><strong>入门：</strong>Rumelhart、Hinton 与 Williams 发表于 Nature 的论文 <a href="https://doi.org/10.1038/323533a0" rel="noopener noreferrer">Learning representations by back-forward errors</a>（1986）[2026-10]，四页纸，把「按误差回推责任」讲成一句话的算法。</p>
+      <p><strong>进阶：</strong>微积分教材里的链式法则 + 本站演示。真正需要额外补课的不是求导，而是矩阵对矩阵求导的<strong>形状约定</strong>（分子布局 / 分母布局）——各家资料不一致，读时先看它的 <code>∂L/∂W</code> 与 <code>W</code> 是否同形状（本站按同形状）。</p>
+    </div>
+  </details>
+
+  <ul class="nextlinks">
+    <li><a href="#m04">M04 微积分与优化：梯度算出来之后，怎么走那一步</a></li>
+    <li><a href="#m06">M06 CNN、RNN：同一套反向传播在序列上出了什么问题</a></li>
+    <li><a href="#m07">M07 注意力与 Transformer：把这套机制装进可以读取上下文的骨架</a></li>
+  </ul>
+</seg>

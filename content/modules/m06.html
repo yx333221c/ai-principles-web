@@ -1,0 +1,242 @@
+<meta title="CNN、RNN 与序列建模的瓶颈" tagline="Transformer 之前的世界">
+
+<seg name="hook">
+  <p class="hook">2014 年，做机器翻译的人遇到一件尴尬事：句子一长，模型就把开头丢了——原文写「她」，译文写「他」。把整句倒过来喂进去，同样的错误立刻少了很多。为什么倒一倒能救，把「记忆」加大却不能？</p>
+  <p class="demo__note">「倒过来喂」不是段子，是序列转导那篇论文（Sutskever 等人，2014）[2026-10] 里明写的做法。本模块只需要 M05：网络怎么靠梯度学会调整自己。</p>
+</seg>
+
+<seg name="intuition">
+  <p>我们先把两种结构各换成一个能握在手里的东西。</p>
+  <p><strong>RNN 像一个人边读边在一张小纸条上做笔记。</strong>读到第 1 个词，写几行；读第 2 个词时，他手里只有「刚写的那张纸条」和「眼前这一个词」，于是把旧笔记擦掉重写。读完 100 个词，他交出的仍然是<strong>一张</strong>纸条。这张纸条叫<span class="term" data-def="RNN 逐步携带下去的中间向量，宽度固定，是下一步计算的输入之一。" data-en="hidden state">隐藏状态</span>。</p>
+  <p><strong>CNN 像拿一个小放大镜在图片上滑动。</strong>镜框只罩住 3×3 个格子，但同一副镜片被推到所有位置共用；看完一层换一层更深的镜片，视野就一圈圈扩大——扩大后的视野叫<span class="term" data-def="某个输出位置在原始输入上能看到多远的范围。" data-en="receptive field">感受野</span>。</p>
+
+  <div class="callout callout--warn">
+    <p><strong>这两个类比对下面几件事不成立，务必记住：</strong></p>
+    <ul>
+      <li><strong>纸条不是「容量太小所以写不下」。</strong>把纸条加宽四倍，长句错误并不会等比例变好。真正卡住的是<strong>学习信号</strong>：模型要靠误差反过来修正「当初怎么处理第 1 个词」，而这个信号在擦写纸条时一步步连乘，传到开头已接近 0（机制段第 ⑤ 步）。「记不住」是结果，不是原因。</li>
+      <li><strong>放大镜不是在「扫视」。</strong>滑动不是先看左上、再看右下；同一副镜片<strong>同时</strong>作用在所有位置上。这一句就是 CNN 能并行而 RNN 不能并行的全部区别。</li>
+      <li><strong>擦掉重写也不是「原文被扔掉」。</strong>每一步都留着可求导的中间结果，「消失」的不是内容，而是输出对早期选择的<strong>敏感性</strong>。</li>
+    </ul>
+  </div>
+</seg>
+
+<seg name="mechanism">
+  <h4>两种结构，各卡在不同的地方</h4>
+  <ol class="steps">
+    <li data-step="1"><strong>CNN 只有两条规则：只看局部，且同一套<span class="term" data-def="乘在输入上的固定系数，训练后不再改变。" data-en="weight">权重</span>到处复用。</strong>一个 3×3 的<span class="term" data-def="卷积里那个被复用的小权重矩阵。" data-en="convolution kernel">卷积核</span>只有 9 个权重，却要在 28×28 图像的每个位置上都算一遍。「权重在位置间共享」写进梯度之后，猫在左上角和在右下角给出同一个判断，这叫<span class="term" data-def="输入平移，输出跟着平移，判断内容不变。" data-en="translation equivariance">平移等变</span>。</li>
+    <li data-step="2"><strong>视野靠堆层数扩大，不靠把镜片做大。</strong>两层 3×3 叠起来，第二层实际看到的是 5×5；L 层就是 2L+1。想让第 1 列的信息影响第 101 列的输出，得堆约 50 层——距离还是换成了层数。</li>
+    <li data-step="3"><strong>RNN 是把同一组权重在时间上反复施加。</strong>把每一步摊开画出来，它就是一个深度等于序列长度、且每层权重完全相同的深网络。所以「长句子」在 RNN 里等价于「极深的网络」。</li>
+    <li data-step="4"><strong>瓶颈一：串行。</strong>第 t 步的输入里有第 t−1 步的输出，所以它必须等。一整句话在 GPU 上只能一个词一个词地排队算，成千上万个并行单元大部分时间在干等；批处理只能救回一部分，长度本身救不回来。</li>
+    <li data-step="5"><strong>瓶颈二：路径长度。</strong>要让第 100 个位置的误差回头修改「当初怎么处理第 1 个词」，梯度得沿链条回传 99 段，每段乘一次同一个矩阵。乘数大于 1 就爆炸，小于 1 就消失，两者都让学不动。</li>
+    <li data-step="6"><strong>LSTM / GRU 把关键路径上的连乘改成加法。</strong>它们另开一条「常开」的<span class="term" data-def="LSTM 里那条只被加减、不被反复重写的内部状态。" data-en="cell state">细胞状态</span>，再用<span class="term" data-def="由数据决定、取值 0 到 1 之间的逐元素开关。" data-en="gate">门</span>控制写多少、留多少。长距离信号因此能活着传回来，但路径仍然要一站站走，串行也一点没省。</li>
+    <li data-step="7"><strong>要同时解决「路径长」和「串行」，就需要任意两个位置直接相连。</strong>一条边连通一切，路径长度恒为 1，所有位置一次算完。这正是下一模块<span class="term" data-def="按相关性为上下文各部分动态分配加权。" data-en="attention">注意力</span>出现的动机——它不是为了更「像人」，是为了把 99 段路压成 1 段。</li>
+  </ol>
+
+  <div class="figure" data-fig="m06-path-length-1">
+    <div class="figure__inner">
+      <svg viewBox="0 0 640 296" class="dgm" role="img" aria-labelledby="f6pl-t">
+        <title id="f6pl-t">上栏：RNN 把同一组权重在时间上重复 100 次，梯度回传要走 99 段；下栏：注意力让首尾两个位置直接相连，路径长度为 1</title>
+        <desc>上栏是一排首尾相连的方块，方块之间是单向箭头；一条橙色折线从最右方块回指最左方块，标注 99 段。下栏同样一排方块但彼此不相连，一条蓝色弧线从最右方块直接跨到最左方块，标注 1 段。</desc>
+
+        <text x="10" y="16" class="t-sm faint">A · RNN：只能沿链条一站一站走</text>
+        <g data-step="3">
+          <rect class="box" x="10" y="26" width="44" height="26" rx="5"></rect><text x="32" y="43" class="t-sm" text-anchor="middle">h<tspan baseline-shift="sub">1</tspan></text>
+          <rect class="box" x="70" y="26" width="44" height="26" rx="5"></rect><text x="92" y="43" class="t-sm" text-anchor="middle">h<tspan baseline-shift="sub">2</tspan></text>
+          <rect class="box" x="130" y="26" width="44" height="26" rx="5"></rect><text x="152" y="43" class="t-sm" text-anchor="middle">h<tspan baseline-shift="sub">3</tspan></text>
+          <rect class="box" x="190" y="26" width="44" height="26" rx="5"></rect><text x="212" y="43" class="t-sm" text-anchor="middle">h<tspan baseline-shift="sub">4</tspan></text>
+          <text x="252" y="44" class="t-lg muted">⋯</text>
+          <rect class="box" x="286" y="26" width="52" height="26" rx="5"></rect><text x="312" y="43" class="t-sm" text-anchor="middle">h<tspan baseline-shift="sub">99</tspan></text>
+          <rect class="box box--a" x="356" y="26" width="52" height="26" rx="5"></rect><text x="382" y="43" class="t-sm" text-anchor="middle">h<tspan baseline-shift="sub">100</tspan></text>
+          <line class="arrow" x1="54" y1="39" x2="70" y2="39"></line>
+          <line class="arrow" x1="114" y1="39" x2="130" y2="39"></line>
+          <line class="arrow" x1="174" y1="39" x2="190" y2="39"></line>
+          <line class="arrow" x1="234" y1="39" x2="286" y2="39"></line>
+          <line class="arrow" x1="338" y1="39" x2="356" y2="39"></line>
+          <text x="420" y="43" class="t-xs muted">同一组 W<tspan baseline-shift="sub">h</tspan> 重复 100 次</text>
+        </g>
+        <g data-step="5">
+          <line class="line--w" x1="382" y1="60" x2="382" y2="80"></line>
+          <line class="line--w" x1="382" y1="80" x2="32" y2="80"></line>
+          <line class="line--w" x1="32" y1="80" x2="32" y2="94"></line>
+          <polygon class="warm" points="32,96 27,86 37,86"></polygon>
+          <text x="120" y="76" class="t-sm warm">梯度回传：99 段连乘 × W<tspan baseline-shift="sub">h</tspan></text>
+          <text x="96" y="112" class="t-xs muted">λ=0.9 时 0.9⁹⁹ ≈ 2.9×10⁻⁵：开头那个词收不到改正意见</text>
+        </g>
+        <g data-step="4">
+          <text x="10" y="115" class="t-xs bad">✕ 第 t 步必须等第 t−1 步：整句串行，GPU 并行单元空转</text>
+        </g>
+
+        <text x="10" y="146" class="t-sm faint">B · 注意力：任意两个位置直接相连</text>
+        <g data-step="7">
+          <rect class="box" x="10" y="156" width="44" height="26" rx="5"></rect><text x="32" y="173" class="t-sm" text-anchor="middle">x<tspan baseline-shift="sub">1</tspan></text>
+          <rect class="box" x="70" y="156" width="44" height="26" rx="5"></rect><text x="92" y="173" class="t-sm" text-anchor="middle">x<tspan baseline-shift="sub">2</tspan></text>
+          <rect class="box" x="130" y="156" width="44" height="26" rx="5"></rect><text x="152" y="173" class="t-sm" text-anchor="middle">x<tspan baseline-shift="sub">3</tspan></text>
+          <rect class="box" x="190" y="156" width="44" height="26" rx="5"></rect><text x="212" y="173" class="t-sm" text-anchor="middle">x<tspan baseline-shift="sub">4</tspan></text>
+          <text x="252" y="174" class="t-lg muted">⋯</text>
+          <rect class="box" x="286" y="156" width="52" height="26" rx="5"></rect><text x="312" y="173" class="t-sm" text-anchor="middle">x<tspan baseline-shift="sub">99</tspan></text>
+          <rect class="box box--g" x="356" y="156" width="52" height="26" rx="5"></rect><text x="382" y="173" class="t-sm" text-anchor="middle">x<tspan baseline-shift="sub">100</tspan></text>
+          <path class="line--a" d="M382 152 C 300 118 110 118 32 152"></path>
+          <polygon class="accent" points="32,154 27,144 37,144"></polygon>
+          <text x="150" y="126" class="t-sm accent">1 段直达 · 路径长度与距离无关</text>
+          <text x="420" y="173" class="t-xs muted">100 个位置一次矩阵乘算完</text>
+        </g>
+        <g data-step="7">
+          <text x="10" y="204" class="t-xs good">✓ 没有先后依赖：并行 · 但代价是 n×n 的关系表（M07 第 ③ 步）</text>
+        </g>
+        <text x="10" y="232" class="t-xs muted">两栏的唯一差别是「一次计算里，两个位置之间隔几跳」。跳数就是梯度连乘的次数。</text>
+        <text x="10" y="252" class="t-xs faint">已简化：省略偏置、激活函数的逐位置差异，以及层与层之间的残差通路。</text>
+        <text x="10" y="272" class="t-xs faint">方框代表每个位置的状态，不代表词；真实模型里它们是 512 个左右的数。</text>
+      </svg>
+    </div>
+    <figcaption>从上栏左侧读到右侧是「前向」，橙色折线反着走回左侧是「回传」，它经过几段就要乘几次同一个矩阵。下栏只看那条蓝色弧线：无论跨多远，它只有一跳。左侧步骤条上的编号可点，会高亮对应环节。</figcaption>
+  </div>
+
+  <div class="math-block math">
+    h<span class="sub">t</span> <span class="op">=</span> tanh<span class="bigg">(</span>W<span class="sub">h</span> h<span class="sub">t−1</span> <span class="op">+</span> W<span class="sub">x</span> x<span class="sub">t</span> <span class="op">+</span> b<span class="bigg">)</span>
+    <span class="reads">新的纸条 = 把旧纸条乘上一个固定矩阵、再叠上当前词乘另一个固定矩阵，最后逐格压进 −1 到 1。</span>
+  </div>
+  <p>维度写清楚，因为「形状对不对得上」是最容易卡住的地方：<code>W_h ∈ [d × d]</code>、<code>W_x ∈ [d × e]</code>、隐藏状态 <code>h ∈ [d]</code>、输入 <code>x ∈ [e]</code>。d 是纸条宽度，e 是每个词的表示宽度，两者都是训练前定死的超参数——纸条宽多少并不是「记住多少」的自由度，它只是矩阵的边长。</p>
+
+  <div class="math-block math">
+    <span class="frac"><span class="num">∂ loss</span><span class="den">∂ h<span class="sub">1</span></span></span>
+    <span class="op">=</span>
+    <span class="frac"><span class="num">∂ loss</span><span class="den">∂ h<span class="sub">100</span></span></span>
+    <span class="op">·</span>
+    <span class="bigg">∏</span><span class="sub">t=2…100</span>
+    <span class="bigg">(</span>W<span class="sub">h</span><span class="sup">⊤</span><span class="bigg">)</span>
+    <span class="op">≈</span>
+    <span class="bigg">(</span>W<span class="sub">h</span><span class="sup">⊤</span><span class="bigg">)</span><span class="sup">99</span>
+    <span class="op">∼</span> λ<span class="sup">99</span>
+    <span class="badge badge--simplify">已简化：把逐位置的 tanh′ 与真实雅可比吸收进一个标量 λ</span>
+    <span class="reads">回传的误差要先乘 99 次同一个矩阵的转置；连乘 99 次，这就是全部机制。</span>
+  </div>
+  <p>把矩阵连乘的尺度用一个数 λ（读作 lambda，指 <code>W<sub>h</sub></code> 最大的那个<span class="term" data-def="矩阵作用时唯一不被改变方向的那些向量所对应的缩放倍数。" data-en="eigenvalue">特征值</span>）来代表，就能算出后果：λ = 0.9 时 <code>0.9⁵⁰ ≈ 0.005</code>，λ = 0.5 时 <code>0.5¹⁰⁰ ≈ 7.9×10⁻³¹</code>；反过来 λ = 1.1 时 <code>1.1⁵⁰ ≈ 117</code>，一次更新就能把权重踢飞。前者叫<span class="term" data-def="连乘使梯度指数级趋近 0，浅层与远距离参数几乎不更新。" data-en="vanishing gradient">梯度消失</span>，后者叫<span class="term" data-def="连乘使梯度指数级增大，参数被一步推出可行范围。" data-en="exploding gradient">梯度爆炸</span>。爆炸有土办法按住（把超过阈值的梯度整体缩回去，见 Pascanu 等人的 ICML 2013 论文 [2026-10]），消失没有——0 乘以任何阈值还是 0。</p>
+
+  <div class="figure" data-fig="m06-receptive-field-1">
+    <div class="figure__inner">
+      <svg viewBox="0 0 640 186" class="dgm" role="img" aria-labelledby="f6rf-t">
+        <title id="f6rf-t">同一张输入上，1 层 3×3 卷积输出位置看到 3×3，2 层看到 5×5，3 层看到 7×7：感受野靠堆叠扩大</title>
+        <desc>三个相同的 7×7 方格网并排，代表同一张输入。每个网中央分别有 3×3、5×5、7×7 的高亮区域，正中一格用深色标出。下方标注层数与视野尺寸。</desc>
+
+        <!-- 面板 A：1 层 -->
+        <g data-step="1">
+          <rect class="box" x="24" y="32" width="84" height="84" rx="4"></rect>
+          <path class="grid-l" d="M36 32V116M48 32V116M60 32V116M72 32V116M84 32V116M96 32V116M24 44H108M24 56H108M24 68H108M24 80H108M24 92H108M24 104H108"></path>
+          <rect x="48" y="56" width="36" height="36" fill="var(--c-heat-2)" opacity=".55"></rect>
+          <rect x="60" y="68" width="12" height="12" fill="var(--c-heat-3)"></rect>
+          <text x="66" y="132" class="t-sm" text-anchor="middle">1 层</text>
+          <text x="66" y="146" class="t-xs muted" text-anchor="middle">视野 3×3</text>
+        </g>
+
+        <!-- 面板 B：2 层 -->
+        <g data-step="2">
+          <rect class="box" x="232" y="32" width="84" height="84" rx="4"></rect>
+          <path class="grid-l" d="M244 32V116M256 32V116M268 32V116M280 32V116M292 32V116M304 32V116M232 44H316M232 56H316M232 68H316M232 80H316M232 92H316M232 104H316"></path>
+          <rect x="244" y="44" width="60" height="60" fill="var(--c-heat-2)" opacity=".4"></rect>
+          <rect x="268" y="68" width="12" height="12" fill="var(--c-heat-3)"></rect>
+          <text x="274" y="132" class="t-sm" text-anchor="middle">2 层</text>
+          <text x="274" y="146" class="t-xs muted" text-anchor="middle">视野 5×5</text>
+        </g>
+
+        <!-- 面板 C：3 层 -->
+        <g data-step="2">
+          <rect class="box" x="440" y="32" width="84" height="84" rx="4"></rect>
+          <path class="grid-l" d="M452 32V116M464 32V116M476 32V116M488 32V116M500 32V116M512 32V116M440 44H524M440 56H524M440 68H524M440 80H524M440 92H524M440 104H524"></path>
+          <rect x="440" y="32" width="84" height="84" fill="var(--c-heat-2)" opacity=".3"></rect>
+          <rect x="476" y="68" width="12" height="12" fill="var(--c-heat-3)"></rect>
+          <text x="482" y="132" class="t-sm" text-anchor="middle">3 层</text>
+          <text x="482" y="146" class="t-xs muted" text-anchor="middle">视野 7×7</text>
+        </g>
+
+        <text x="120" y="60" class="t-xs muted">▉ 深色 = 输出位置自己那一格</text>
+        <text x="120" y="76" class="t-xs muted">▨ 高亮 = 它能追溯到的输入范围</text>
+        <text x="330" y="60" class="t-xs faint">镜片自始至终只有一副（9 个权重），</text>
+        <text x="330" y="76" class="t-xs faint">所以参数不随位置增加；距离用层数换。</text>
+        <text x="10" y="168" class="t-xs faint">已简化：3×3 核、步长 1、无填充，故第 L 层视野边长 = 2L+1；换核大小数字会变，规律不变。</text>
+      </svg>
+    </div>
+    <figcaption>三张网是<strong>同一张输入</strong>，只有中央高亮范围不同——那是该层输出位置能追溯到的输入区域，即感受野。高亮边长依次是 3、5、7，即第 L 层看到 2L+1。镜片（权重）自始至终只有一副，被反复复用，所以参数不随位置增长。</figcaption>
+  </div>
+
+  <div class="math-block math">
+    c<span class="sub">t</span> <span class="op">=</span> f<span class="sub">t</span> <span class="op">⊙</span> c<span class="sub">t−1</span> <span class="op">+</span> i<span class="sub">t</span> <span class="op">⊙</span> g<span class="sub">t</span>
+    <span class="badge badge--simplify">已简化：省略隐藏状态侧的两个门与候选项的展开</span>
+    <span class="reads">细胞状态先被遗忘门按份保留，再加上新写进来的内容——保留是乘法、写入是加法，而不是整条重写。</span>
+  </div>
+  <p>关键在 <code>+</code>：<code>∂c<sub>t</sub>/∂c<sub>t−1</sub> = f<sub>t</sub></code>，而 f 由数据算出、可以主动接近 1。连乘因此变成「一串接近 1 的数相乘」，比「一串任意大小的矩阵相乘」体面得多。但这条路仍然是一站一站走，第 t 步仍然等第 t−1 步，长距离的<strong>路径</strong>没有被缩短，只是没被乘死（Hochreiter 与 Schmidhuber，1997 [2026-10]）。</p>
+
+  <table class="tbl tbl--scroll">
+    <thead><tr><th>结构</th><th>一次计算里做什么</th><th>位置 1 ↔ n 的路径长度</th><th>并行性</th><th>为反向传播要留的激活</th></tr></thead>
+    <tbody>
+      <tr><td>CNN</td><td>同一套局部权重同时作用在所有位置</td><td>约 L 层（3×3 时 ≈ ½n）</td><td>位置间完全并行</td><td>每层一张特征图，与序列长度无关</td></tr>
+      <tr><td>RNN / LSTM</td><td>同一套权重在时间上重复 n 次</td><td><strong>n − 1</strong></td><td>完全串行</td><td>n × d，每步都得留着</td></tr>
+      <tr><td>注意力（M07）</td><td>所有位置两两建立关系</td><td><strong>1</strong></td><td>一次矩阵乘，全部并行</td><td>n × n 的分数表（这是它的代价）</td></tr>
+    </tbody>
+  </table>
+
+  <details class="math-detail">
+    <summary>展开：显存和墙钟时间为什么是两笔不同的账</summary>
+    <div class="math-detail__body prose">
+      <p><strong>串行是时间账。</strong>反向传播要沿同一条链反着走，所以一个长度为 n 的句子至少需要 n 次前后依赖的矩阵乘。GPU 的并行单元在算第 t 步时无法提前算第 t+1 步——它连输入是什么都还不知道。把 batch 加大能填满单元，但墙钟时间仍由 n 决定，这就是「大语料训练慢」的主因。</p>
+      <p><strong>激活是空间账。</strong>RNN 每一步都要把 <code>h<sub>t</sub></code> 留着，因为求 <code>∂loss/∂W<sub>h</sub></code> 时每一项都要用到它，显存随 n 线性增长。注意力把每对位置的分数都存下来，显存随 n 平方增长。<strong>所以「注意力解决了序列建模」这句话要分开看：它买掉的是串行，买回来的是平方显存。</strong>后续所有加速工作（键值缓存、分块、滑窗）都是在还这笔账，见 M10。</p>
+      <p><strong>为什么加大隐藏状态救不了学习信号。</strong>d 变大只是让 W<sub>h</sub> 变成更大的方阵，连乘次数由 n 决定，一次没少；特征值谱只是更宽了，仍同时存在「远大于 1」和「远小于 1」的方向。这就是直觉段那句「纸条容量不是关键」的严格版本。</p>
+    </div>
+  </details>
+</seg>
+
+<seg name="demo">
+  <h4>把连乘亲手乘一遍</h4>
+  <p>下面这个演示只做一件事：给定每步的缩放系数 λ 和距离 n，把 |梯度| = λⁿ 画出来，并把「注意力捷径：路径长度恒为 1」叠在旁边当对照。先别切对数轴——你会在<strong>线性</strong>轴上亲眼看见 0.005 和 0 长得一模一样。</p>
+</seg>
+
+<seg name="misconception">
+  <details class="myth">
+    <summary>「RNN 忘记长句子，是因为隐藏状态太小，装不下那么多词。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>「容量」是人最熟悉的解释框架——记不住就怪脑子小、内存小；而且 d 确实写在配置里，看起来就像一个可以调的「记忆槽位数」。</p>
+      <p class="myth__truth">正确说法：加大 d 只是把 <code>W<sub>h</sub></code> 换成更大的方阵，梯度回传的<strong>连乘次数</strong>一次都没减少，λ 也同时拥有更大和更小的方向。学习信号传不到开头，这是路径问题，不是仓库问题。反证很硬：把 d 翻几倍，长距离指代的错误率基本不动；而把序列倒过来喂（不改任何容量）就有明显改善——路径长度变了，容量一点没变。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「CNN 是图像专用器件，跟文字、语音没关系。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>教材几乎都拿 MNIST 手写数字讲卷积，「3×3 滤镜提取边缘」的说法跟着图像一起被记住了。</p>
+      <p class="myth__truth">正确说法：卷积的定义只有两条——<strong>局部连接 + 权重在位置上共享</strong>。这条模式在 1 维时间轴上同样成立，语音里的短时特征、文本里的 n-gram 相邻关系、蛋白质序列的局部模体都用过它。图像只是「共享权重恰好对应平移不变」的那一个特例。M11 处理图像时用的 ViT，切块后走的也是「局部先聚合、再交给注意力」这条老路。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「LSTM 已经解决了长依赖问题，Transformer 不过是算得更快而已。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>LSTM 名字里的「长短期记忆」听起来就是这个问题的答案，而它确实把 RNN 从「几乎训不动」带到「能训 300 步」，于是被讲成了终结者。</p>
+      <p class="myth__truth">正确说法：门控把关键路径上的连乘改成了接近 1 的加法，这是<strong>缓解</strong>，不是消除——路径仍然是 n−1 跳，误差仍要一站站传回来；而且第 t 步等第 t−1 步的串行一点没改，代价是参数量与调框难度都上去了。注意力改变的是<strong>拓扑</strong>：任意两位置一跳直达，同时顺带把串行拆掉。两件一起解决，才有 2017 年之后的规模变化（Vaswani 等人，2017 [2026-10]）。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「RNN 慢是因为当年的工程实现没优化好，硬件跟上就好了。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>「慢」在软件里通常确实是实现问题，换个库、加个缓存就好了；而且推理时确实可以把上一步结果缓存起来，看起来「并行过」。</p>
+      <p class="myth__truth">正确说法：这个依赖是<strong>数学定义</strong>写死的，不是调度失误：<code>h<sub>t</sub></code> 的表达式里有 <code>h<sub>t−1</sub></code>，先有鸡才有蛋。缓存（推理时只算新词）省掉了重复前向，但训练仍然要把整条链按顺序走两遍。硬件并行度再高，也不能同时算一个还没诞生结果的输入。</p>
+    </div>
+  </details>
+</seg>
+
+<seg name="takeaway">
+  <blockquote class="takeaway__line">学不到，不是记不住，而是梯度走不完那 99 段路。</blockquote>
+
+  <div class="quiz">
+    <p class="quiz__q">自测：一个 RNN 在长句子上学不好「开头的性数要管到结尾」，最省事的正确解释是哪个？</p>
+    <label class="quiz__opt"><input type="radio" name="q-m06" data-right="1"><span>误差回传到开头要连乘约 99 次同一个矩阵，信号被压到接近 0</span></label>
+    <label class="quiz__opt"><input type="radio" name="q-m06"><span>隐藏状态维度太小装不下，把 d 加大就能记住</span></label>
+    <label class="quiz__opt"><input type="radio" name="q-m06"><span>训练轮数不够，多跑几轮它就学会回头看开头了</span></label>
+    <div class="quiz__fb">
+      <p data-for="no"><strong>回到机制段第 ⑤ 步再想一次：</strong>加大 d 只是把 <code>W<sub>h</sub></code> 换成更大的方阵，连乘<strong>次数</strong>由距离决定，一次也没少；多跑几轮同理——信号本身接近 0，重复 0 还是 0。判断标准只有一条：这条路上要乘几个小于 1 的数。</p>
+      <p data-for="ok"><strong>对了。</strong>你刚才用的是本模块唯一那把尺子：<strong>路径长度 = 梯度连乘次数</strong>。用它量 CNN（要靠堆层数缩短距离）、量 RNN（n−1）、量 LSTM（仍是 n−1，只是乘数接近 1），都能得出正确答案。带着这把尺子去 M07：注意力把长度压成 1，代价是那张 n×n 的表。</p>
+    </div>
+    <p class="quiz__result" aria-live="polite"></p>
+  </div>
+
+  <ul class="nextlinks">
+    <li><a href="#m07">M07 注意力与 Transformer：把 99 段路压成 1 段的具体做法</a></li>
+    <li><a href="#m05">M05 神经网络与反向传播：梯度为什么要沿链连乘</a></li>
+  </ul>
+</seg>

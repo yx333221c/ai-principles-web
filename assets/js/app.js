@@ -629,6 +629,10 @@
     try { mountDemos(); } catch (e) { console.error('[AIP demos]', e); }
     try { initDebugQuery(); } catch (e) { console.error('[AIP debug]', e); }
   }
-  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', boot);
-  else boot();
+  /* ---------------- 启动 ----------------
+     注意时序：本文件以 defer 加载，先于 demo-kit.js 与各 demo 脚本执行，
+     此时 AIP.demos 注册表还是空的。因此必须等 DOMContentLoaded
+     （defer 脚本全部执行完之后才触发）再 boot，否则 mountall 找不到工厂。 */
+  if (doc.readyState === 'complete') boot();
+  else addEventListener('DOMContentLoaded', boot, { once: true });
 })();

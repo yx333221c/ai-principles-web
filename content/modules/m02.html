@@ -1,0 +1,233 @@
+<meta title="概率、信息熵与损失" tagline="一切学习都始于「猜得不准」">
+
+<seg name="hook">
+  <p class="hook">同一份考卷，模型昨天报出的「错误分数」是 2.0，今天是 1.5。你不知道这算不算进步。换个说法：昨天它平均在 4 个答案里蒙，今天在 2.8 个里蒙——进步一眼可见。一个「错误分数」里，怎么会藏着一个「选项个数」？</p>
+  <p class="demo__note">只需要 M01 的结论：模型在做的事，是猜下一个词元。</p>
+</seg>
+
+<seg name="intuition">
+  <p>把预测想成<strong>猜价格节目里的押注</strong>。规则只有三条。第一，你手里有 100% 的筹码，必须<strong>全部</strong>分到三个答案上，一分不留。第二，开奖后，押在正确答案上的那份钱按 <span class="math">1/p</span> 翻倍返还。第三，押在别处的那些归零。</p>
+  <p>于是「押多少」变成一件很微妙的事。押对时翻的倍数是 <code>1/p</code>；对这个倍数取以 2 为底的对数，读出的就是「这一轮让财富翻了几次倍」。p = 1 时翻 1 倍，等于没赚；p = 1/8 时翻 8 倍，等于翻了 3 次。</p>
+  <p>关键的不对称藏在第三条里：想多赢，就得把筹码压得更集中；可一旦压错的恰好是开出的那个答案，<code>1/p</code> 会瞬间暴涨。<strong>越自信的错，罚得越重。</strong>把很多轮的翻倍次数取个平均，得到的那个数就是本站要讲的<span class="term" data-def="分类任务的损失：按真实频率加权的平均惊讶度，单位是比特。" data-en="cross-entropy">交叉熵</span>。</p>
+
+  <div class="callout callout--warn">
+    <p><strong>这个类比对下面三件事不成立，请把边界一起记住：</strong></p>
+    <ul>
+      <li><strong>「筹码必须分完」不是策略，是定义。</strong>模型没有筹码，也不关心输赢。它先输出一堆<span class="term" data-def="softmax 之前的实数分数，可正可负，本身没有归一化含义。" data-en="logit">未归一化得分</span>，再由 softmax 强行压成份额之和等于 1 的<span class="term" data-def="给每个可能结果分配一个 0 到 1 之间的份额，且所有份额加起来正好是 1。" data-en="probability distribution">概率分布</span>。分满是数学要求，不是谨慎。</li>
+      <li><strong>押错不会真的出局。</strong>训练里每一轮的惩罚只落在「这一句」上，取平均之后继续下一句。一次押得极错只是让那一格的<span class="term" data-def="参数该往哪个方向挪、挪多少的指引；越陡的惩罚给出越大的梯度。" data-en="gradient">梯度</span>更大，不会把模型清零，也不会让整轮训练作废。</li>
+      <li><strong>这里没有「赚得多」。</strong>这个数只看倍数，不看本金：1 元变 2 元，和 100 万变成 200 万，在它眼里是同一个值。所以它衡量的是<strong>意外程度</strong>，不是实际得失。</li>
+    </ul>
+  </div>
+</seg>
+
+<seg name="mechanism">
+  <h4>先把三件事分开：一个答案的惊讶度、一个分布的熵、用错分布的代价</h4>
+  <p>我们要走的路只有一条：<strong>概率 → 惊讶度 → 平均 → 再指数回去</strong>。四步做完，「错误分数」和「选项个数」就会露出它们是同一个东西的两面。</p>
+
+  <ol class="steps">
+    <li data-step="1"><strong>模型输出的是分布，不是答案。</strong>词表里每个候选词元都拿到一个份额，全体相加等于 1。分布不回答「哪个最可能」，它回答「每个各占多少」——这是它比「猜一个答案」信息量大得多的原因，也是它能被求导的原因。</li>
+    <li data-step="2"><strong>单个结果的惊讶度 = −log₂ p。</strong>概率取倒数就是翻的倍数，对数读出「2 的几次方」，单位叫<span class="term" data-def="信息量的单位，对应二选一的歧义被消掉一次；用 log₂ 计量自然得到。" data-en="bit">比特</span>。确定发生的事（p=1）惊讶度 0；八分之一概率的事惊讶度 3 bit。</li>
+      <div class="math-block math">
+        I<span class="bigg">(</span>x<span class="bigg">)</span> <span class="op">=</span> −log<span class="sub">2</span> p<span class="bigg">(</span>x<span class="bigg">)</span>
+        <span class="reads">读作：一个结果的惊讶度，等于它的概率取倒数、再取以 2 为底的对数；概率越小，这个数越大。</span>
+      </div>
+    <li data-step="3"><strong>把惊讶度按真实频率加权平均，就是熵。</strong>如果世界的真实频率是 <code>q</code>，那么「平均每条消息带来多少意外」是下面这个期望，记作<span class="term" data-def="一个分布自身的平均惊讶度，是编码它所需平均比特数的下限。" data-en="entropy">熵</span> <code>H(q)</code>。它是<strong>数据本身的属性</strong>：再好的模型也压不到它以下。</li>
+      <div class="math-block math">
+        H<span class="bigg">(</span>q<span class="bigg">)</span> <span class="op">=</span> −<span class="bigg">∑</span><span class="sub">i</span> q<span class="sub">i</span> <span class="op">·</span> log<span class="sub">2</span> q<span class="sub">i</span>
+        <span class="reads">读作：熵是「每个结果的惊讶度」按「它真实出现的频率」加权后的总和，也就是世界自带的平均意外量。</span>
+      </div>
+    <li data-step="4"><strong>用错分布，就要付出额外的编码长度。</strong>世界按 <code>q</code> 发牌，你却按模型的 <code>p</code> 编码：平均每条多花 <code>KL(q‖p)</code> 个比特，总花费就是<span class="term" data-def="按真实分布取平均、用模型分布计算的惊讶度；分类任务的损失函数。" data-en="cross-entropy">交叉熵</span>。三者关系是一个等式，不是三个并列的名词。</li>
+      <div class="math-block math">
+        H<span class="bigg">(</span>q, p<span class="bigg">)</span> <span class="op">=</span> −<span class="bigg">∑</span><span class="sub">i</span> q<span class="sub">i</span> <span class="op">·</span> log<span class="sub">2</span> p<span class="sub">i</span> <span class="op">=</span> H<span class="bigg">(</span>q<span class="bigg">)</span> <span class="op">+</span> KL<span class="bigg">(</span>q <span class="op">‖</span> p<span class="bigg">)</span>
+        <span class="reads">读作：交叉熵 = 世界自己的熵 + 因为用错分布而多花的那部分（相对熵 KL）；注意求和里乘的是真实频率 q、取对数用的是模型给的 p。</span>
+      </div>
+      <div class="math-block math">
+        KL<span class="bigg">(</span>q <span class="op">‖</span> p<span class="bigg">)</span> <span class="op">=</span> <span class="bigg">∑</span><span class="sub">i</span> q<span class="sub">i</span> <span class="op">·</span> log<span class="sub">2</span> <span class="frac"><span class="num">q<span class="sub">i</span></span><span class="den">p<span class="sub">i</span></span></span>
+        <span class="reads">读作：相对熵是「真实频率除以你用的频率」再按真实频率取平均；只有 q 和 p 完全相同时它才等于 0，而且它不对称，KL(q‖p) 和 KL(p‖q) 一般不相等。</span>
+      </div>
+    <li data-step="5"><strong>因为只差一个常数，最小化交叉熵就等于最小化 KL。</strong>数据集一旦定下来，<code>H(q)</code> 就固定不动，与模型参数无关。<span class="badge badge--simplify">已简化</span> 真实的下一词预测里标签是「某一个词元」，此时 <code>H(q) = 0</code>，两个量严格相等，训练时省掉那一项不会改变任何一步参数更新。</li>
+    <li data-step="6"><strong>困惑度 = 2 的交叉熵次方 = 等效均匀选项数。</strong>指数运算把「比特」换算回「几个选项」：交叉熵 3 bit 就是 2³ = 8，意思是这个模型的平均表现，等价于在 8 个等可能答案里蒙一个。</li>
+      <div class="math-block math">
+        perplexity <span class="op">=</span> 2<span class="sup">H(q, p)</span> <span class="op">=</span> 2<span class="sup">H(q) + KL(q‖p)</span>
+        <span class="reads">读作：困惑度是交叉熵以 2 为底取指数；它等于「模型实际表现得像在有几种等可能选项之间瞎选」的那个数。</span>
+      </div>
+      <div class="math-block math">
+        <span class="bigg">∵</span> H<span class="bigg">(</span>q<span class="bigg">)</span> <span class="op">=</span> 常数
+        <span class="op">⟹</span> min H<span class="bigg">(</span>q, p<span class="bigg">)</span> <span class="op">=</span> min KL<span class="bigg">(</span>q <span class="op">‖</span> p<span class="bigg">)</span>
+        <span class="reads">读作：因为真实分布那一项是常数，所以「把交叉熵降下来」和「把 KL 降下来」是同一件事，只是纵轴平移了一格。</span>
+      </div>
+  </ol>
+
+  <div class="figure" data-fig="m02-entropy-bars-1">
+    <div class="figure__inner">
+      <svg viewBox="0 0 640 250" class="dgm" role="img" aria-labelledby="m02fig1-t">
+        <title id="m02fig1-t">一条算式走完四格：模型给的份额 p 变成惊讶度 −log₂p，取真实标签那一格得到交叉熵，再取 2 的幂得到等效选项数 5</title>
+        <desc>四个面板从左到右：三根概率柱（0.60、0.20、0.20）；三根惊讶度柱（0.74、2.32、2.32 比特）；只保留真实标签那一根柱（2.32 比特）；五根等高的等效柱。面板之间用箭头连接，底部有一条说明自信的错代价更大的注。</desc>
+        <text x="18" y="18" class="t-sm faint">① 模型给的份额</text>
+        <g data-step="1">
+          <line class="line" x1="22" y1="190" x2="120" y2="190"></line>
+          <rect x="30" y="130" width="22" height="60" rx="3" fill="var(--c-heat-1)"></rect>
+          <rect x="58" y="170" width="22" height="20" rx="3" fill="var(--c-heat-3)"></rect>
+          <rect x="86" y="170" width="22" height="20" rx="3" fill="var(--c-heat-1)"></rect>
+          <text x="41" y="126" class="t-xs" text-anchor="middle">.60</text>
+          <text x="69" y="166" class="t-xs accent" text-anchor="middle">.20</text>
+          <text x="97" y="166" class="t-xs" text-anchor="middle">.20</text>
+          <text x="41" y="204" class="t-xs muted" text-anchor="middle">咖啡</text>
+          <text x="69" y="204" class="t-xs muted" text-anchor="middle">茶</text>
+          <text x="97" y="204" class="t-xs muted" text-anchor="middle">水</text>
+          <text x="69" y="222" class="t-xs accent" text-anchor="middle">开出的是它</text>
+        </g>
+        <line class="arrow" x1="124" y1="150" x2="162" y2="150"></line>
+
+        <text x="166" y="18" class="t-sm faint">② 惊讶度</text>
+        <g data-step="2">
+          <line class="line" x1="170" y1="190" x2="268" y2="190"></line>
+          <line class="line" x1="170" y1="157" x2="268" y2="157" stroke-dasharray="3 3"></line>
+          <line class="line" x1="170" y1="124" x2="268" y2="124" stroke-dasharray="3 3"></line>
+          <text x="272" y="160" class="t-xs faint">1 bit</text>
+          <text x="272" y="127" class="t-xs faint">2 bit</text>
+          <rect x="178" y="165" width="22" height="25" rx="3" fill="var(--c-heat-1)"></rect>
+          <rect x="206" y="113" width="22" height="77" rx="3" fill="var(--c-heat-3)"></rect>
+          <rect x="234" y="113" width="22" height="77" rx="3" fill="var(--c-heat-1)"></rect>
+          <text x="189" y="161" class="t-xs" text-anchor="middle">0.74</text>
+          <text x="217" y="109" class="t-xs accent" text-anchor="middle">2.32</text>
+          <text x="245" y="109" class="t-xs" text-anchor="middle">2.32</text>
+        </g>
+        <line class="arrow" x1="296" y1="150" x2="334" y2="150"></line>
+
+        <text x="338" y="18" class="t-sm faint">③ 交叉熵</text>
+        <g data-step="3">
+          <line class="line" x1="342" y1="190" x2="404" y2="190"></line>
+          <rect x="356" y="113" width="26" height="77" rx="3" fill="var(--c-heat-3)"></rect>
+          <text x="369" y="109" class="t-sm accent" text-anchor="middle">2.32</text>
+          <text x="342" y="204" class="t-xs muted">只计入开出的那一格</text>
+          <text x="342" y="222" class="t-xs faint">平均 = 期望惊讶度</text>
+        </g>
+        <line class="arrow" x1="410" y1="150" x2="448" y2="150"></line>
+
+        <text x="452" y="18" class="t-sm faint">④ 2<tspan baseline-shift="sup">2.32</tspan> ≈ 5</text>
+        <g data-step="6">
+          <line class="line" x1="456" y1="190" x2="624" y2="190"></line>
+          <rect x="462" y="113" width="18" height="77" rx="3" fill="var(--c-heat-2)"></rect>
+          <rect x="488" y="113" width="18" height="77" rx="3" fill="var(--c-heat-2)"></rect>
+          <rect x="514" y="113" width="18" height="77" rx="3" fill="var(--c-heat-2)"></rect>
+          <rect x="540" y="113" width="18" height="77" rx="3" fill="var(--c-heat-2)"></rect>
+          <rect x="566" y="113" width="18" height="77" rx="3" fill="var(--c-heat-2)"></rect>
+          <text x="456" y="204" class="t-xs muted">5 个等可能答案，每个 .20</text>
+          <text x="456" y="222" class="t-xs faint">惊讶度全都 2.32 bit</text>
+        </g>
+        <text x="18" y="240" class="t-xs muted">把 0.20 换成 0.02，同一句话的损失立刻从 2.32 bit 跳到 5.64 bit：这就是「越自信的错，罚得越重」。</text>
+      </svg>
+    </div>
+    <figcaption>从左往右读，四格就是同一条算式的四个阶段：份额 → 取对数 → 只留真实标签那一格（长期则按频率加权）→ 取 2 的幂。第三格的柱高与第四格的柱高完全相同，因为它们是同一个数的两种单位；第五格的柱子根数就是「等效选项数」。</figcaption>
+  </div>
+
+  <h4>手算第一遍：真实标签是「茶」</h4>
+  <p>模型对「他早上喝一杯__」给出三个份额：咖啡 0.60、茶 0.20、水 0.20。开出的答案是<strong>茶</strong>。按第 ② 步与第 ③ 步，只有开出的那一格计入平均。</p>
+  <table class="tbl">
+    <thead>
+      <tr><th>候选答案</th><th>模型份额 p</th><th>惊讶度 −log₂p</th><th>是真实标签？</th><th>对损失的贡献</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>咖啡</td><td>0.60</td><td>0.74 bit</td><td>否</td><td>0</td></tr>
+      <tr><td><strong>茶</strong></td><td>0.20</td><td>2.32 bit</td><td><strong>是</strong></td><td><strong>1 × 2.32 = 2.32 bit</strong></td></tr>
+      <tr><td>水</td><td>0.20</td><td>2.32 bit</td><td>否</td><td>0</td></tr>
+      <tr><td>交叉熵 H(q,p)</td><td colspan="3">= 2.32 bit</td><td>这一句的损失</td></tr>
+      <tr><td>困惑度 2<sup>2.32</sup></td><td colspan="3">= 5.00 个选项</td><td>等效于 5 选 1 瞎蒙</td></tr>
+    </tbody>
+  </table>
+  <p>核对一下第 ④ 步的等式：真实分布是「茶必定发生」，它自己的熵 <code>H(q) = 0</code>，所以交叉熵 2.32 bit <strong>全部</strong>是 KL——一点不冤，全是模型自己猜偏的代价。</p>
+
+  <h4>手算第二遍：把很多句话放在一起取平均</h4>
+  <p>同一个填空题跑 100 次，统计出真实频率 <code>q = (0.50, 0.30, 0.20)</code>；模型的分布仍是 <code>p = (0.60, 0.20, 0.20)</code>。这次每一格都要按频率加权。</p>
+  <table class="tbl">
+    <thead>
+      <tr><th>候选答案</th><th>真实频率 q</th><th>模型份额 p</th><th>惊讶度 −log₂p</th><th>贡献 q × 惊讶度</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>咖啡</td><td>0.50</td><td>0.60</td><td>0.74 bit</td><td>0.37 bit</td></tr>
+      <tr><td>茶</td><td>0.30</td><td>0.20</td><td>2.32 bit</td><td>0.70 bit</td></tr>
+      <tr><td>水</td><td>0.20</td><td>0.20</td><td>2.32 bit</td><td>0.46 bit</td></tr>
+      <tr><td><strong>交叉熵 H(q,p)</strong></td><td colspan="4"><strong>= 1.53 bit</strong> ← 这就是<span class="term" data-def="衡量预测与真实差多少的单一数值，本站用交叉熵作为分类任务的损失。" data-en="loss">损失</span></td></tr>
+      <tr><td>熵 H(q)（地板价）</td><td colspan="4">= 1.49 bit → 任何模型都压不到它以下</td></tr>
+      <tr><td>KL(q‖p)</td><td colspan="4">= 1.53 − 1.49 = 0.04 bit → 模型的分布只差一点点</td></tr>
+      <tr><td>困惑度 2<sup>1.53</sup></td><td colspan="4">= 2.89 个选项；若模型押的分布恰好等于 q，则为 2<sup>1.49</sup> = 2.80</td></tr>
+    </tbody>
+  </table>
+  <p>两遍算完，「错误分数」和「选项个数」的关系就露出来了：交叉熵是<strong>平均意外</strong>，困惑度是它的<strong>指数形式</strong>。中间那个 KL，才是模型真正该被惩罚的部分——它扣掉了数据本身不可预测的那一份。</p>
+
+  <div class="callout callout--key">
+    <p><strong>必须记住的一条换算：</strong>困惑度 8 ⇔ 交叉熵 3 bit ⇔ 平均表现等价于在 8 个等可能答案里蒙一个 ⇔ 蒙对率 1/8 = 12.5%。反过来，如果一个模型的困惑度是 8，它并不是「只在 8 个词里选」，而是<strong>它的平均不确定性和 8 选一差不多大</strong>。</p>
+  </div>
+
+  <div class="callout callout--note">
+    <p>给这两个单位一个真实量级。词表大小从 3.2 万（2023 年的主流开源模型）涨到 12.8 万量级（2024 年之后）[2026-10]：如果一个模型对全部候选词元<strong>均匀瞎猜</strong>，交叉熵就是 log₂ 128000 ≈ 17 bit，困惑度正好等于词表大小 128000。而公开报告的预训练收敛损失常见 1.7～2.2 个 nat（约 2.5～3.2 bit）[2026-10]，换算成困惑度就是 5～9。<strong>所以「困惑度 8」不是抽象数字，它落在现代模型的真实量级里。</strong></p>
+  </div>
+
+  <details class="math-detail">
+    <summary>展开：为什么押注的「翻倍率」平均值正好是交叉熵，以及 nat 与 bit 的换算</summary>
+    <div class="math-detail__body prose">
+      <p><strong>押注一侧。</strong>假设每轮你把全部财富按 <code>p</code> 分给三个答案，开出的答案给 <code>1/p</code> 的赔率。跑 <code>n</code> 轮之后财富倍数是各轮倍数的乘积 <code>∏ (1/p<sub>开出的那个</sub>)</code>。取对数把乘积变成求和：对数财富 = <code>Σ −log₂ p</code>。当 n 足够大，各答案的出现频率趋于 <code>q</code>，于是<strong>每轮平均的对数财富增长</strong>就是 <code>−Σ q<sub>i</sub> log₂ p<sub>i</sub></code>，即交叉熵。最大化长期对数财富 = 最小化交叉熵。这条路径在信息论里叫最优赌注（Kelly 准则）与编码长度的对偶。<span class="badge badge--simplify">已简化</span> 这里省掉了「各轮独立同分布」「可以无限次重下注」两个前提，真实语料的前后词元是相关的，所以只有逐词元平均时才近似成立。</p>
+      <p><strong>单位一侧。</strong>本站全程用 <code>log₂</code>，单位是 bit。工程实现里用的是自然对数 <code>ln</code>，单位叫 nat，PyTorch 的交叉熵损失返回的就是 nat。换算是 <code>1 nat = 1/ln2 ≈ 1.4427 bit</code>，困惑度相应写成 <code>exp(损失)</code> 而不是 <code>2^损失</code>。选底数只换单位，不换结论：底数换成 2 是为了让「困惑度 = 等效选项数」这条等式一眼可读。<span class="badge badge--simplify">已简化</span> 本页所有数字都是 bit。</p>
+      <p><strong>形状一侧。</strong>交叉熵对某个模型份额 <code>p<sub>j</sub></code> 的导数是 <code>−q<sub>j</sub>/p<sub>j</sub></code>，再穿过 softmax 变成「预测与真实的差」。这就是为什么损失能求导、能反传（M05）：惊讶度里的对数不是装饰，它把「乘法赔率」摊平成可加的惩罚，又把极小概率的惩罚拉得非常陡。</p>
+    </div>
+  </details>
+</seg>
+
+<seg name="demo">
+  <h4>把上面那条算式拖一遍</h4>
+  <p>左边三根柱是概率，中间三根是它们的惊讶度，右边是困惑度还原出的等效选项数；真实分布一换，中间那根「地板价」线和高低就分开了——这对应机制段的第 ③ 与第 ④ 步。</p>
+</seg>
+
+<seg name="misconception">
+  <details class="myth">
+    <summary>「损失低就等于准确率高。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>训练日志里只有一行 loss 在往下掉，准确率往往不上屏幕；而两者在简单任务上的确经常同向变化，于是「越低越准」成了最容易得到的经验。</p>
+      <p class="myth__truth">正确说法：准确率只数「谁排第一」，交叉熵惩罚的是「你把多少份额押在了错的答案上」。一个模型可以 top-1 准确率更高但损失更高（它的分布更平，第一名的份额不够大）；也可以损失很低却仍然答错——它只是没把足够的概率给正确答案，而错误答案恰好也没被它压到第一名之外。两者不一致的那种情形叫<span class="term" data-def="模型的自信程度与它实际正确率是否匹配；不匹配就是过度自信。" data-en="calibration">校准</span>失准，是安全评估里独立于准确率的一条指标（M13）。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「交叉熵是模型对世界的信念强度，数值越小就越『相信』。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>「熵」这个字在日常语言里常被当成「内在状态」的名词来用，加上「损失」听起来像一种心理量，于是很自然地想往模型内部找对应的「相信」。</p>
+      <p class="myth__truth">正确说法：交叉熵是一个<strong>长度</strong>，单位是比特——按模型给出的编码方案，把世界真实发来的消息编完，平均每条要花多少比特。它由两个分布共同决定：模型给的 <code>p</code> 和数据的真实频率 <code>q</code>。换一批测试文本，同一个模型的交叉熵就变了，所以它不是模型的内在属性，而是<strong>模型与这批数据之间的匹配代价</strong>。它甚至不知道「对错」，只知道「意外」。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「困惑度低，说明模型读懂了这段文字。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>困惑度常被当作「语言能力的分数」引用，而评测集通常是通顺、规范、可预测性很高的文本，两者一起营造出「低分 = 读懂」的印象。</p>
+      <p class="myth__truth">正确说法：困惑度只度量<strong>分布匹配</strong>，而下一词预测里有大量位置的正确答案是「把前文抄下来」或「补完一个套话」。一个把上下文复读得很好的模型，困惑度可以非常低，却对文本里唯一的提问束手无策。反过来，一段模型从未见过的规范文本，困惑度会显著升高，但这不代表模型变笨了。这也是为什么能力评估（M13）要用任务正确率而不是困惑度。</p>
+    </div>
+  </details>
+  <details class="myth">
+    <summary>「熵、交叉熵、KL 是同一个东西的三个名字。」</summary>
+    <div class="myth__body">
+      <p><strong>为何会有这个误解：</strong>三个公式长得几乎一样，都是「概率 × 对数概率」再求和；而且教程里经常混着写，读者只能当成同义词。</p>
+      <p class="myth__truth">正确说法：它们回答三个不同的问题。熵 <code>H(q)</code> 只涉及一个分布，是<strong>世界本身</strong>的平均意外（地板价）。交叉熵 <code>H(q,p)</code> 涉及两个分布，是<strong>用 p 去编码 q</strong> 的实际花费，也是训练时的损失。KL 是<strong>多花的那部分</strong>：<code>KL = 交叉熵 − 熵</code>，只有两个分布完全相同时才是 0。训练里最小化交叉熵之所以等价于最小化 KL，纯粹是因为评测数据的熵是个与参数无关的常数——把常数换一批数据就变了，所以「A 模型损失比 B 低」在数据集不同时毫无意义，而「KL 谁更小」才是可比的。</p>
+    </div>
+  </details>
+</seg>
+
+<seg name="takeaway">
+  <blockquote class="takeaway__line">损失是平均惊讶度，困惑度是它的等效选项数。</blockquote>
+
+  <div class="quiz">
+    <p class="quiz__q">自测：一个模型的交叉熵是 3 bit。下面哪句话是对「3」的正确解读？</p>
+    <label class="quiz__opt"><input type="radio" name="q-m02" data-right="1"><span>它的平均不确定性相当于在 8 个等可能答案里蒙一个</span></label>
+    <label class="quiz__opt"><input type="radio" name="q-m02"><span>它的平均不确定性相当于在 3 个等可能答案里蒙一个</span></label>
+    <label class="quiz__opt"><input type="radio" name="q-m02"><span>它的错误率是 3%，因为困惑度低到个位就基本不会错</span></label>
+    <div class="quiz__fb">
+      <p data-for="no"><strong>再想一步：</strong>bit 这个单位本身就是「2 的几次方」。3 个比特对应 2³ = 8 个等可能选项，不是 3 个；而困惑度是<strong>意外程度</strong>的换算，跟错误率不是同一个量。手算一遍：如果模型把概率均分给 8 个答案，每个是 1/8，开出的那个惊讶度是多少？</p>
+      <p data-for="ok"><strong>对了。</strong>这就是第 ⑥ 步的全部要点：perp = 2<sup>H</sup>，交叉熵 3 bit ⇔ 困惑度 8 ⇔ 蒙对率 1/8。但要把它的前半句也记住：这只是<strong>分布匹配的等效选项数</strong>，不是正确率，也不是理解程度。带着这个数去看 M10：温度与核采样改的正是这个分布的形状，困惑度会随温度一起变。</p>
+    </div>
+    <p class="quiz__result" aria-live="polite"></p>
+  </div>
+
+  <ul class="nextlinks">
+    <li><a href="#m01">M01 模式与压缩：为什么「预测得准」就是「压得动」</a></li>
+    <li><a href="#m10">M10 解码与采样：分布算出来了，怎么挑一个词元</a></li>
+    <li><a href="#m08">M08 预训练与规模定律：这条损失曲线随规模怎么降</a></li>
+  </ul>
+</seg>
