@@ -79,7 +79,7 @@ for (const cs of CASES) {
   });
 
   const page = probe.PAGE || '';
-  const pageBad = /HSCROLL|LOW|CONTRAST/.test(page);
+  const pageBad = /HSCROLL|FIGLOW|LOWFILL|CONTRAST/.test(page);
   if (pageBad) problems++;
   const errs = con.split(/\r?\n/).filter(l => /Uncaught|TypeError|ReferenceError|挂载失败|\[demo /.test(l));
   if (errs.length) problems += errs.length;
@@ -89,6 +89,6 @@ for (const cs of CASES) {
   console.log('  演示 ' + (rows.length ? '\n  ' + rows.join('\n  ') : '13/13 全部通过'));
   errs.slice(0, 4).forEach(l => console.log('  console: ' + l.replace(/^.*?CONSOLE.*?\]\s*/, '').trim().slice(0, 150)));
 }
-console.log('\n' + (problems ? problems + ' 项需要处理' : '三种视口/主题下全部通过'));
+console.log('\n' + (problems ? problems + ' 项需要处理' : '三种视口/主题下全部通过（含图解对比度扫描）'));
 fs.rmSync(TMP, { recursive: true, force: true });
 process.exit(problems ? 1 : 0);

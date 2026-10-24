@@ -1261,7 +1261,7 @@
                     <line class="line" x1="20" y1="60" x2="300" y2="60"></line>
                     <line class="line" x1="20" y1="164" x2="300" y2="164"></line>
                     <line class="line" x1="20" y1="112" x2="300" y2="112" stroke-width="1" stroke-dasharray="3 4"></line>
-                    <polyline class="line" stroke="var(--c-warn)" stroke-width="2" points="24,164 51.2,61 78.4,161.9 105.6,63.1 132.8,160 160,65 187.2,158.1 214.4,66.9 241.6,156.2 268.8,68.6 296,154.5"></polyline>
+                    <polyline class="line--w" points="24,164 51.2,61 78.4,161.9 105.6,63.1 132.8,160 160,65 187.2,158.1 214.4,66.9 241.6,156.2 268.8,68.6 296,154.5"></polyline>
                     <text x="20" y="182" class="t-xs faint">横轴 = 步数（0…10）　纵轴 = 陡峭方向位移</text>
                     <text x="20" y="196" class="t-xs faint">10 步全部换边撞壁；沿平坦方向只推进 29%</text>
                   </g>
@@ -1271,7 +1271,7 @@
                     <line class="line" x1="340" y1="60" x2="620" y2="60"></line>
                     <line class="line" x1="340" y1="164" x2="620" y2="164"></line>
                     <line class="line" x1="340" y1="112" x2="620" y2="112" stroke-width="1" stroke-dasharray="3 4"></line>
-                    <polyline class="line" stroke="var(--c-ok)" stroke-width="2" points="344,164 371.2,61 398.4,69.3 425.6,161.3 452.8,146.5 480,64.9 507.2,84.7 534.4,156.6 561.6,133 588.8,70.2 616,96.5"></polyline>
+                    <polyline class="line--g" points="344,164 371.2,61 398.4,69.3 425.6,161.3 452.8,146.5 480,64.9 507.2,84.7 534.4,156.6 561.6,133 588.8,70.2 616,96.5"></polyline>
                     <text x="340" y="182" class="t-xs faint">同样的两壁、同样的比例尺</text>
                     <text x="340" y="196" class="t-xs faint">换边次数减半（5/10）；平坦方向推进 98%</text>
                   </g>
@@ -2096,25 +2096,28 @@
           
                   <text x="260" y="16" class="t-sm faint">③ 分数矩阵（行=Q，列=K）</text>
                   <g data-step="3">
-                    <!-- 3x3 网格，下三角为因果掩码允许区 -->
-                    <rect class="box" x="260" y="26" width="34" height="30" fill="var(--c-heat-2)"></rect>
-                    <rect class="box" x="294" y="26" width="34" height="30" fill="var(--c-bg-sunken)"></rect>
-                    <rect class="box" x="328" y="26" width="34" height="30" fill="var(--c-bg-sunken)"></rect>
-                    <rect class="box" x="260" y="56" width="34" height="30" fill="var(--c-heat-1)"></rect>
-                    <rect class="box" x="294" y="56" width="34" height="30" fill="var(--c-heat-3)"></rect>
-                    <rect class="box" x="328" y="56" width="34" height="30" fill="var(--c-bg-sunken)"></rect>
-                    <rect class="box" x="260" y="86" width="34" height="30" fill="var(--c-heat-1)"></rect>
-                    <rect class="box" x="294" y="86" width="34" height="30" fill="var(--c-heat-0)"></rect>
-                    <rect class="box" x="328" y="86" width="34" height="30" fill="var(--c-heat-3)"></rect>
+                    <!-- 3x3 网格，下三角为因果掩码允许区。
+                         用 .cell 而非 .box：.box 的 fill 是 CSS 声明，优先级高于这里的
+                         fill 属性，会把热力编码整片压掉。 -->
+                    <rect class="cell" x="260" y="26" width="34" height="30" fill="var(--c-heat-2)"></rect>
+                    <rect class="cell" x="294" y="26" width="34" height="30" fill="var(--c-bg-sunken)"></rect>
+                    <rect class="cell" x="328" y="26" width="34" height="30" fill="var(--c-bg-sunken)"></rect>
+                    <rect class="cell" x="260" y="56" width="34" height="30" fill="var(--c-heat-1)"></rect>
+                    <rect class="cell" x="294" y="56" width="34" height="30" fill="var(--c-heat-3)"></rect>
+                    <rect class="cell" x="328" y="56" width="34" height="30" fill="var(--c-bg-sunken)"></rect>
+                    <rect class="cell" x="260" y="86" width="34" height="30" fill="var(--c-heat-1)"></rect>
+                    <rect class="cell" x="294" y="86" width="34" height="30" fill="var(--c-heat-0)"></rect>
+                    <rect class="cell" x="328" y="86" width="34" height="30" fill="var(--c-heat-3)"></rect>
                     <text x="277" y="45" class="t-xs" text-anchor="middle">1.0</text>
                     <text x="311" y="45" class="t-xs faint" text-anchor="middle">✕</text>
                     <text x="345" y="45" class="t-xs faint" text-anchor="middle">✕</text>
                     <text x="277" y="75" class="t-xs" text-anchor="middle">.2</text>
-                    <text x="311" y="75" class="t-xs" text-anchor="middle">.8</text>
+                    <!-- heat-3 两格上的数字要用反色墨：亮色主题下它是深蓝，正文黑字只有 1.96:1 -->
+                    <text x="311" y="75" class="t-xs" text-anchor="middle" style="fill:var(--c-on-heat-hi)">.8</text>
                     <text x="345" y="75" class="t-xs faint" text-anchor="middle">✕</text>
                     <text x="277" y="105" class="t-xs" text-anchor="middle">.3</text>
                     <text x="311" y="105" class="t-xs" text-anchor="middle">.1</text>
-                    <text x="345" y="105" class="t-xs" text-anchor="middle">.6</text>
+                    <text x="345" y="105" class="t-xs" text-anchor="middle" style="fill:var(--c-on-heat-hi)">.6</text>
                     <text x="260" y="130" class="t-xs muted">✕ = 被因果掩码屏蔽（−∞ → 权重 0）</text>
                   </g>
                   <line class="arrow" x1="362" y1="70" x2="400" y2="70"></line>

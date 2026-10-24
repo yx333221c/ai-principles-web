@@ -19,6 +19,10 @@
 .dgm .on-accent { fill:var(--c-accent-ink) }
 
 .dgm .box      { fill:var(--c-bg-elev); stroke:var(--c-line-strong); stroke-width:1.5 }
+/* 需要在元素上自带 fill 的格子（热力矩阵等）用 .cell 而不是 .box：
+   .box 的 fill 是 CSS 声明，优先级高于 presentation attribute，
+   会把元素上的 fill="var(--c-heat-N)" 静默压掉，热力编码整片失效。 */
+.dgm .cell     { stroke:var(--c-line); stroke-width:1 }
 .dgm .box--a   { stroke:var(--c-accent); fill:color-mix(in srgb,var(--c-accent) 8%,var(--c-bg-elev)) }
 .dgm .box--w   { stroke:var(--c-warn);  fill:color-mix(in srgb,var(--c-warn) 10%,var(--c-bg-elev)) }
 .dgm .box--g   { stroke:var(--c-ok);    fill:color-mix(in srgb,var(--c-ok) 10%,var(--c-bg-elev)) }
@@ -28,6 +32,7 @@
 .dgm .line   { stroke:var(--c-line-strong); stroke-width:1.5; fill:none }
 .dgm .line--a{ stroke:var(--c-accent); stroke-width:2; fill:none }
 .dgm .line--w{ stroke:var(--c-warn); stroke-width:2; fill:none }
+.dgm .line--g{ stroke:var(--c-ok); stroke-width:2; fill:none }
 .dgm .line--dash{ stroke-dasharray:5 4 }
 .dgm .arrow  { stroke:var(--c-fg-muted); stroke-width:1.6; fill:none; marker-end:url(#arw) }
 .dgm .arrow--a { stroke:var(--c-accent); marker-end:url(#arw-a) }

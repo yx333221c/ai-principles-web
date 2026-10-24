@@ -50,6 +50,46 @@ const back = J.modules.filter(m => m.prereq.some(p => IDS.indexOf(p) >= IDS.inde
 (back.length ? bad('前置依赖倒序/成环: ' + back.map(m => m.id).join(',')) : ok('prereq DAG 顺序自洽'));
 (IDS.every((v, i) => v === 'm' + String(i + 1).padStart(2, '0')) ? ok('ids 连续') : bad('ids 乱序'));
 
+/* diagram.css 里 .dgm 系的声明。用来抓一类静默失效：
+   元素写 fill="var(--c-heat-2)" 但同时带 class="box"，而 CSS 的 .dgm .box{fill:…}
+   优先级高于 presentation attribute，热力编码被整片压掉（m07 矩阵、m04 轨迹都中过）。
+   只有「CSS 声明了该属性且值不同」才算问题，值相同只是冗余。 */
+const dgmRules = (() => {
+  const css = rd('assets/css/diagram.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  const byClass = {}, byTag = {};
+  for (const m of css.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+    const decls = {};
+    for (const d of m[2].split(';')) {
+      const i = d.indexOf(':');
+      if (i > 0) decls[d.slice(0, i).trim()] = d.slice(i + 1).trim().replace(/\s+/g, '');
+    }
+    for (const s of m[1].split(',')) {
+      const t = s.trim();
+      let mm = t.match(/^\.dgm\s+\.([a-zA-Z0-9_-]+)$/);
+      if (mm) Object.assign(byClass[mm[1]] = byClass[mm[1]] || {}, decls);
+      mm = t.match(/^\.dgm\s+([a-z]+)$/);
+      if (mm) Object.assign(byTag[mm[1]] = byTag[mm[1]] || {}, decls);
+    }
+  }
+  return { byClass, byTag };
+})();
+function shadowedProps(tag, attrs) {
+  const out = [];
+  const cls = (attrs.match(/class="([^"]*)"/) || [])[1] || '';
+  const rules = [byTagOf(tag)].concat(cls.split(/\s+/).map(c => dgmRules.byClass[c]).filter(Boolean));
+  for (const prop of ['fill', 'stroke']) {
+    const av = (attrs.match(new RegExp('\\b' + prop + '="([^"]*)"')) || [])[1];
+    if (av == null) continue;
+    for (const r of rules) {
+      if (r && r[prop] && r[prop] !== av.replace(/\s+/g, '')) {
+        out.push(tag + '[' + cls + '] 的 CSS ' + prop + ':' + r[prop] + ' 压掉了属性 ' + prop + '="' + av + '"');
+      }
+    }
+  }
+  return out;
+}
+const byTagOf = (tag) => dgmRules.byTag[tag] || null;
+
 console.log('== 3. 内容六段与写作红线（' + built.length + '/13 已产出）==');
 const segOf = (src, name) => {
   const x = src.match(new RegExp('<seg\\s+name="' + name + '"[^>]*>([\\s\\S]*?)<\\/seg>'));
@@ -99,6 +139,11 @@ built.forEach(m => {
     }
     const hard = [...b.matchAll(/(?:fill|stroke|color|background)\s*[:=]\s*["']?(#[0-9a-fA-F]{3,8}|rgba?\()/g)];
     if (hard.length) bad(m.id + ' 图解#' + (i + 1) + ' 硬编码颜色 ' + hard.length + ' 处（暗色主题会瞎）');
+    /* 属性被自身 class 的 CSS 压掉 → 编码静默失效 */
+    for (const el of b.matchAll(/<(rect|text|polyline|line|circle|path)\b([^>]*)>/g)) {
+      const hits = shadowedProps(el[1], el[2]);
+      if (hits.length) bad(m.id + ' 图解#' + (i + 1) + ' ' + hits[0]);
+    }
   });
 
   /* 图注前缀：写作规范 §5 要求「怎么看：」开头。
