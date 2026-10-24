@@ -20,6 +20,12 @@
       "misconception": "常见误区",
       "takeaway": "带走一句"
     },
+    "statusShort": {
+      "skeleton": "仅骨架",
+      "drafted": "待核对",
+      "reviewed": "已过自动核对",
+      "published": "已定稿"
+    },
     "statusMeaning": {
       "skeleton": "只有结构占位，无正文",
       "drafted": "正文已写，未过自检/渲染验证",

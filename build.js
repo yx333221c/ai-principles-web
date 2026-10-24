@@ -169,24 +169,59 @@ function buildDemoScripts() {
 }
 
 /* ---------------- 5. 组装 ---------------- */
+/* 站点说明只由数据推导，不含构建时钟：
+   带日期的戳会让每次构建都弄脏工作树（不可复现），而且「构建于今天」
+   会让读者误以为内容刚被复核过——内容新鲜度该由 §14 的逐条 [YYYY-MM] 表达。
+   状态取所有模块里最弱的一环（木桶），而不是内部 phase 标识：
+   读者关心「这篇能不能信」，不关心版本号。 */
+const totalMin = DATA.modules.reduce((a, m) => a + (m.estMinutes || 0), 0);
+/* statusEnum 在顶层（不在 site 下）。缺失时降级为不显示状态，而不是崩溃——
+   构建器崩掉会让 --stdout 的陈旧比对误报成「构建器报错」。 */
+const RANK = Array.isArray(DATA.statusEnum) && DATA.statusEnum.length ? DATA.statusEnum : null;
+const SHORT = (DATA.site && DATA.site.statusShort) || {};
+let statusNote = '';
+if (!RANK) {
+  warn('modules.json 缺少 statusEnum，侧栏不显示内容状态');
+} else if (!DATA.modules.length) {
+  /* 空列表会让 reduce 直接返回种子（最强档），等于凭空宣称「已定稿」——
+     这正是本站最忌讳的不可验证声明，所以宁可不显示。 */
+  warn('modules.json 没有任何模块，侧栏不显示内容状态');
+} else {
+  /* 种子必须是【最强】档，让任何更弱的模块把它替换掉。
+     若用 RANK[0]（最弱档）起步，就没有模块能比它更弱，结果会恒为 skeleton。 */
+  const weakest = DATA.modules.reduce((w, m) =>
+    RANK.indexOf(m.status) < RANK.indexOf(w) ? m.status : w, RANK[RANK.length - 1]);
+  if (!SHORT[weakest]) warn(`statusShort 缺少 "${weakest}" 的短标签`);
+  else statusNote = ` · 内容${SHORT[weakest]}`;
+}
+const SITE_NOTE = `${DATA.modules.length} 个模块 · 约 ${Math.round(totalMin / 60)} 小时${statusNote}` +
+  `<br>设计文档见 <a href="./DESIGN.md">DESIGN.md</a>`;
+
 const shell = fs.readFileSync(path.join(ROOT, 'templates/shell.html'), 'utf8');
 const out = shell
-  .replace('<!-- @BUILD_TIME -->', new Date().toISOString().slice(0, 10))
+  .replace('<!-- @SITE_NOTE -->', SITE_NOTE)
   .replace('<!-- @SIDEBAR -->', buildSidebar())
   .replace('<!-- @MODMAP -->', buildModmap())
   .replace('<!-- @MODULES -->', buildModules())
   .replace('<!-- @DEMO_SCRIPTS -->', buildDemoScripts())
   .replace('<!-- @TOTAL_MODULES -->', String(DATA.modules.length));
 
-if (out.includes('@SIDEBAR') || out.includes('@MODULES')) {
+if (out.includes('@SIDEBAR') || out.includes('@MODULES') || /<!-- @/.test(out)) {
   warn('模板占位符未被替换，检查 templates/shell.html');
 }
 
-fs.writeFileSync(path.join(ROOT, 'index.html'), out);
-console.log(`built index.html  (${(out.length / 1024).toFixed(1)} KB, ${DATA.modules.length} modules)`);
+/* --stdout 只输出 HTML 本身（供 selfcheck 做陈旧比对），人类可读的日志走 stderr，
+   否则会混进被捕获的 HTML 里。 */
+const QUIET = process.argv.includes('--stdout');
+if (QUIET) {
+  process.stdout.write(out);
+} else {
+  fs.writeFileSync(path.join(ROOT, 'index.html'), out);
+  console.log(`built index.html  (${(out.length / 1024).toFixed(1)} KB, ${DATA.modules.length} modules)`);
+}
 if (errors.length) {
   console.error('\n构建问题 ' + errors.length + ' 项：');
   [...new Set(errors)].forEach((e) => console.error('  · ' + e));
   process.exit(1);
 }
-console.log('无问题');
+if (!QUIET) console.log('无问题');

@@ -169,6 +169,19 @@ else {
     bad('has-content seg=' + realSeg + '，已产出 ' + built.length + ' 模块应为 ' + wantReal);
   c(/class="sectionnav"/g) === 13 ? ok('13 sectionnav') : bad('sectionnav=' + c(/class="sectionnav"/g));
   c(/class="modcard"/g) === 13 ? ok('13 modcard') : bad('modcard=' + c(/class="modcard"/g));
+  /* index.html 是生成物：改了内容/模板却没重跑 build.js，线上就会是旧版。
+     把构建器再跑一遍（--stdout 不写盘）与仓库里的结果逐字节比对。 */
+  (function () {
+    const { spawnSync } = require('child_process');
+    const r = spawnSync(process.execPath, [path.join(ROOT, 'build.js'), '--stdout'],
+      { encoding: 'utf8', cwd: ROOT, maxBuffer: 64 * 1024 * 1024 });
+    if (r.status !== 0) { warn('构建器报错，跳过陈旧比对（见 build.js 输出）'); return; }
+    if (r.stdout === h) ok('index.html 与内容/模板同步（重建结果逐字节一致）');
+    else {
+      const rebuilt = r.stdout.length, cur = h.length;
+      bad(`index.html 已过期：重建会得到 ${rebuilt} 字节而当前 ${cur} 字节 —— 请跑 node build.js`);
+    }
+  })();
   const allIds = [...h.matchAll(/\sid="([^"]+)"/g)].map(m => m[1]);
   const dup = allIds.filter((v, i) => allIds.indexOf(v) !== i);
   dup.length ? bad('重复 id: ' + [...new Set(dup)].join(',')) : ok('无重复 id（' + allIds.length + '）');
@@ -181,8 +194,10 @@ else {
   const scripts = [...new Set([...h.matchAll(/demos\/([a-z0-9-]+)\.js/g)].map(m => m[1]))];
   const orphan = J.modules.map(m => m.demo.id).filter(d => has('assets/js/demos/' + d + '.js') && !scripts.includes(d));
   orphan.length ? bad('已实现但未引用的 demo: ' + orphan.join(',')) : ok('demo 脚本引用完整（' + scripts.length + ' 个）');
-  /<!-- @(MODULES|SIDEBAR|MODMAP|DEMO_SCRIPTS|TOTAL_MODULES|BUILD_TIME)/.test(h)
-    ? bad('index.html 有未替换占位符') : ok('构建占位符均已替换');
+  /* 通用匹配而非枚举名单：枚举会随模板演进过时（曾漏掉 @SITE_NOTE、
+     还留着已删除的 @BUILD_TIME），任何未替换的 <!-- @X --> 都该被发现 */
+  const leftover = [...new Set([...h.matchAll(/<!--\s@([A-Z_]+)/g)].map(m => m[1]))];
+  leftover.length ? bad('index.html 有未替换占位符: ' + leftover.join(', ')) : ok('构建占位符均已替换');
   /* 无 JS 可读：正文必须在 HTML 里 */
   c(/class="hook"/g) >= built.length ? ok('正文内联在 HTML（无 JS 可读）') : bad('正文未内联，违反 §10.4');
   /* 外链依赖：本站应零外部「资源」请求；引用文献的 <a href> 是允许的 */
