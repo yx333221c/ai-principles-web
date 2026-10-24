@@ -63,7 +63,7 @@
 | 站点外壳与结构 | `templates/shell.html` + 三套 CSS 令牌与布局 + `app.js` 交互层 | ✅ 完成 |
 | 构建管线 | `build.js`（`modules.json` + 内容片段 → `index.html`） | ✅ 完成 |
 | 内容 | 13 个模块的正文、图解、演示 | ✅ 完成，状态 `reviewed`（未经专家复核） |
-| 验证 | `selfcheck.js`（静态规则）+ `verify-demos.js`（三视口真实浏览器） | ✅ 全绿 |
+| 验证 | `selfcheck.js`（静态规则）+ `verify-math.js`（可计算断言复算）+ `verify-demos.js`（三视口真实浏览器） | ✅ 全绿 |
 | 部署 | GitHub Pages | ⬜ 待开启（纯静态，随时可开） |
 
 ### 1.5 非目标（明确不做）
@@ -456,7 +456,8 @@ ai-principles-web/
 │   └── m01.html ... m13.html
 ├── docs/                         # 作者契约、写作规范、术语表
 ├── scripts/
-│   ├── selfcheck.js              # 静态规则自检
+│   ├── selfcheck.js              # 静态规则自检（含构建陈旧比对）
+│   ├── verify-math.js            # 内容里可计算断言的独立复算
 │   └── verify-demos.js           # 无头浏览器渲染验证（三视口）
 ├── .nojekyll                     # GitHub Pages 免 Jekyll 处理
 └── .gitignore

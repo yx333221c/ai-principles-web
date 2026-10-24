@@ -83,6 +83,80 @@ near('m13 N=500 p=0.95 标准误', Math.sqrt(0.95 * 0.05 / 500), 0.0097, 0.0005)
 near('m13 区分度 4p(1−p) 在 p=0.5 取最大', 4 * 0.5 * 0.5, 1, 0);
 near('m13 p=0.95 时区分度仅 0.19', 4 * 0.95 * 0.05, 0.19, 0.005);
 
+/* ---------------- M04 梯度下降（图解面板与误区里的量化断言）----------------
+   地形与演示一致：碗形两轴 a=3；峡谷横陡 a=3 / 纵平 a=0.05；起点 (-1.75, 1.45) */
+const L2 = (x, y) => 1.5 * x * x + 0.025 * y * y;
+const G2 = (x, y) => [3 * x, 0.05 * y];
+function traj(lr, beta, steps) {
+  let x = -1.75, y = 1.45, vx = 0, vy = 0;
+  const xs = [x], ys = [y];
+  for (let i = 0; i < steps; i++) {
+    const [gx, gy] = G2(x, y);
+    if (beta > 0) { vx = beta * vx + gx; vy = beta * vy + gy; x -= lr * vx; y -= lr * vy; }
+    else { x -= lr * gx; y -= lr * gy; }
+    xs.push(x); ys.push(y);
+  }
+  return { xs, ys, L: L2(x, y) };
+}
+const flips = (a) => { let c = 0; for (let i = 1; i < a.length; i++) if (Math.sign(a[i]) !== Math.sign(a[i - 1])) c++; return c; };
+const prog = (ys) => (1 - Math.abs(ys[ys.length - 1]) / 1.45) * 100;
+const t66 = traj(0.66, 0, 10), m66 = traj(0.66, 0.9, 10);
+near('m04 无动量十步换边 10/10', flips(t66.xs), 10, 0);
+near('m04 动量十步换边 5/10（减半而非抹平）', flips(m66.xs), 5, 0);
+near('m04 无动量十步沿谷底推进 29%', prog(t66.ys), 29, 1);
+near('m04 动量十步沿谷底推进 98%', prog(m66.ys), 98, 1);
+near('m04 无动量第十步损失 3.09', t66.L, 3.09, 0.02);
+near('m04 动量第十步损失 0.411', m66.L, 0.411, 0.01);
+/* β 的代价是反应迟钝，不是弹飞：β=0.98 在 lr=0.50 下发散不了，只是收不下去 */
+const t98 = traj(0.50, 0.98, 200), t90 = traj(0.50, 0.90, 200);
+near('m04 β=0.98 末 40 步仍换边 17 次', flips(t98.xs.slice(-40)), 17, 0);
+near('m04 β=0.98 摆幅约 ±0.4', (Math.max(...t98.xs.slice(-40)) - Math.min(...t98.xs.slice(-40))) / 2, 0.41, 0.03);
+near('m04 β=0.98 损失卡在 1.8e-2', t98.L, 1.82e-2, 2e-3);
+near('m04 β=0.90 同 lr 收敛到 1.5e-9', t90.L, 1.52e-9, 2e-10);
+/* 碗形实测临界：动量放宽稳定域（2(1+β)/a），不是收紧 */
+function deadBowl(lr, beta) {
+  let x = -1.75, y = 1.45, vx = 0, vy = 0;
+  for (let i = 0; i < 200; i++) {
+    if (beta > 0) { vx = beta * vx + 3 * x; vy = beta * vy + 3 * y; x -= lr * vx; y -= lr * vy; }
+    else { x -= lr * 3 * x; y -= lr * 3 * y; }
+    if (!isFinite(x) || Math.abs(x) > 6 || Math.abs(y) > 6) return true;
+  }
+  return false;
+}
+const critOf = (beta) => { for (let lr = 0.01; lr <= 1.5; lr += 0.005) if (deadBowl(+lr.toFixed(3), beta)) return +lr.toFixed(3); return null; };
+near('m04 实测碗形 SGD 临界 lr≈0.67', critOf(0), 0.67, 0.006);
+near('m04 实测碗形 β=0.9 临界 lr≈1.20', critOf(0.9), 1.20, 0.01);
+says('m04 文中给出「减半不是抹平」', 'm04', /「减半」不是「抹平」/);
+says('m04 文中给出 10/10 降到 5/10', 'm04', /10\/10 降到 5\/10/);
+says('m04 文中给出 98% 而非 29%', 'm04', /98% 而非 29%/);
+says('m04 文中给出损失 3.09 与 0.411', 'm04', /3\.09、右图是 0\.411/);
+says('m04 文中给出稳定条件（strip 后 &lt; 变空格）', 'm04', /稳定条件是 lr·a 2\(1\+β\)/);
+says('m04 文中给出 β=0.9 要到 lr≈1.20', 'm04', /β=0\.9 要到 lr≈1\.20 才发散/);
+says('m04 文中给出换边 17 次', 'm04', /换边 17 次/);
+
+/* 三方绑定：本文件上面的 L2/G2 是演示地形的【副本】。若有人改了演示而没改这里，
+   near() 会拿旧副本复算并继续通过。所以再断言演示源码里的梯度定义仍是这些系数——
+   内容文字、本文件复算、演示源码三者任一改动都会被抓到。 */
+const demoSrc = fs.readFileSync(path.join(ROOT, 'assets/js/demos/m04-loss-terrain.js'), 'utf8');
+const anchor = (label, re) => {
+  n++;
+  if (!re.test(demoSrc)) { fail++; console.log('  FAIL ' + label + '  ← 演示源码与复算用的地形不一致'); }
+};
+/* 计数式锚点：只要求「匹配到一次」的锚点是弱的——碗形与峡谷共用同一
+   起点，改掉其中一处仍能通过。断言出现次数，才真正锁住「本脚本复算用的
+   地形 == 演示里的地形」。 */
+const anchorCount = (label, re, want) => {
+  n++;
+  const got = (demoSrc.match(re) || []).length;
+  if (got !== want) { fail++; console.log('  FAIL ' + label + '  期望 ' + want + ' 处，实为 ' + got + ' 处'); }
+};
+anchor('演示碗形梯度仍是 ∇L=(3x,3y)', /grad:\s*\(x,\s*y\)\s*=>\s*\[\s*3\s*\*\s*x,\s*3\s*\*\s*y\s*\]/);
+anchor('演示峡谷梯度仍是 ∇L=(3x,0.05y)', /grad:\s*\(x,\s*y\)\s*=>\s*\[\s*3\s*\*\s*x,\s*0\.05\s*\*\s*y\s*\]/);
+anchor('演示峡谷损失仍是 1.5x²+0.025y²', /loss:\s*\(x,\s*y\)\s*=>\s*1\.5\s*\*\s*x\s*\*\s*x\s*\+\s*0\.025\s*\*\s*y\s*\*\s*y/);
+anchor('演示步数上限仍是 200', /MAXSTEP\s*=\s*200/);
+anchor('演示逃逸半径仍是 6', /ESC\s*=\s*6/);
+anchorCount('演示碗形与峡谷起点都是 (-1.75,1.45)', /start:\s*\[\s*-1\.75,\s*1\.45\s*\]/g, 2);
+
 console.log(fail
   ? 'verify-math: ' + fail + '/' + n + ' 条断言与内容不符，必须修'
   : 'verify-math: ' + n + ' 条可计算断言全部与内容一致');
