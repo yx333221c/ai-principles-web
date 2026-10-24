@@ -289,6 +289,26 @@ const cssAll = (['layout', 'components', 'diagram'].map(n => rd('assets/css/' + 
 const usedTok = [...new Set([...cssAll.matchAll(/var\((--[a-z0-9-]+)/g)].map(m => m[1]))];
 const undef = usedTok.filter(u => !base.includes(u + ':'));
 undef.length ? bad('未定义令牌: ' + undef.join(',')) : ok('全部 ' + usedTok.length + ' 个被引用令牌均有定义');
+/* 契约里手写的 SVG 类清单必须与 diagram.css 一致。
+   手抄的清单一定会漂移（本轮就发现契约把 class 与 fill= 写成「或」关系，
+   正是这个歧义让 m07 九个格子的热力编码被静默压掉）。 */
+(function () {
+  if (!has('docs/authoring-contract.md')) return;
+  const cdoc = rd('docs/authoring-contract.md').replace(/<!--[\s\S]*?-->/g, '');
+  const dcss = rd('assets/css/diagram.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  const real = new Set([...dcss.matchAll(/\.dgm\s+\.([a-zA-Z0-9_-]+)/g)].map(m => m[1]));
+  /* 取契约「写法 A」那一行反引号里以 | 分隔的清单。
+     必须要求至少一个 |：否则正则会先匹配到文档里别的 class="…" 示例
+     （例如 class="seg"），把整条检查变成噪声。 */
+  const line = (cdoc.match(/class="((?:[a-zA-Z0-9_-]+\s*\|\s*)+[a-zA-Z0-9_-]+)"/) || [])[1] || '';
+  const listed = new Set(line.split('|').map(s => s.trim()).filter(Boolean));
+  if (!listed.size) { warn('契约里找不到 SVG 类清单（格式变了？），无法核对'); return; }
+  const ghost = [...listed].filter(c => !real.has(c));
+  const undocumented = [...real].filter(c => !listed.has(c));
+  if (ghost.length) bad('契约列出的 .dgm 类在 CSS 里不存在: ' + ghost.join(', '));
+  if (undocumented.length) warn('diagram.css 有但契约未列的 .dgm 类: ' + undocumented.join(', '));
+  if (!ghost.length && !undocumented.length) ok(`契约的 SVG 类清单与 CSS 一致（${listed.size} 个）`);
+})();
 /* 反向：CSS 定义了但既没人用、文档也没承诺的类 = 真死代码。
    注意两个例外，否则会把该留的东西误判为死代码：
    ① docs/authoring-contract.md §1.4 把 fig__* 列为作者可选的词汇表，

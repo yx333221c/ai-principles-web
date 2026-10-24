@@ -96,10 +96,22 @@ CDN 在本机不可达，公式一律手写 HTML（结构见 m07）：
 选 B 的正当理由：**SVG 的 `<text>` 不会自动换行**，中文标签一多就必须手工算坐标、极易溢出。
 纯结构图（方块 + 箭头 + 少量标签）用 A；带中文术语表/矩阵/多行说明的用 B。
 
-**颜色纪律（两种实现都适用，硬性）**：禁止硬编码颜色。
-- SVG 内只能用 `class="box|box--a|box--w|box--g|box--b|line|line--a|arrow|muted|faint|t-sm|t-xs|accent|good|bad|warm"` 或 `fill="var(--c-…)"`。
+**颜色纪律（两种实现都适用，硬性）**：禁止硬编码颜色（`#hex`、`rgb()`）。只能用下面两种写法之一。
+
+⚠️ **class 与 `fill=`/`stroke=` 属性不能混用在同一个元素上。**
+SVG 的 presentation attribute 优先级**低于任何 CSS 规则**，所以
+`<rect class="box" fill="var(--c-heat-2)">` 会渲染成 `.box` 的 fill，属性被**静默丢弃**——
+不报错、不警告，自检的对比度检查也发现不了（覆盖后的颜色对比度往往更好）。
+m07 的注意力矩阵九个格子就是这样把整片热力编码压成一片灰的。
+
+- **写法 A：只用 class**（适合固定语义的框线）
+  `class="box | box--a | box--w | box--g | box--b | box--sun | line | line--a | line--w | line--g | line--dash | arrow | arrow--a | grid-l | accent | good | bad | warm | muted | faint | dim | on-accent | cell | t-sm | t-xs | t-lg | t-mono"`
+- **写法 B：只用 `fill="var(--c-…)"` / `stroke="var(--c-…)"` 属性，且该元素不带任何声明了 fill/stroke 的 class**
+  需要逐元素取色（热力矩阵、数据条）时走这条，用 `class="cell"`（只声明 stroke）或干脆不加 class。
+- 需要「自带 fill + 统一描边」时，用 `.dgm .cell`；要新语义就往 `diagram.css` 加类，别在元素上混用。
 - HTML 构图只能用 `fig__*` 与 `badge--*` 等既有类。
-- 违反的后果：暗色主题下文字/色块直接看不见。自检会抓这一条。
+- 违反的后果：暗色主题下文字/色块直接看不见，或颜色编码被静默抹平。
+  selfcheck 会抓硬编码颜色，也会抓「元素的 fill/stroke 属性被自身 class 的 CSS 声明压掉」。
 
 SVG 里的下标用 `<tspan baseline-shift="sub">`（**不是** `<tsml>`，那不是 SVG 标签）。
 
