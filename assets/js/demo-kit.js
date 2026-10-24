@@ -57,6 +57,14 @@
     const step = t <= 0.001 ? 0 : t < 0.25 ? 1 : t < 0.6 ? 2 : 3;
     return 'var(--c-heat-' + step + ')';
   }
+  /** 画在 heatFill 色块【上面】的文字该用什么墨。
+   *  阈值必须与 heatFill 同源：第 3 档在亮色主题是很深的蓝、在暗色主题是很浅的
+   *  紫，两种情况下正文色（近黑/近白）都会糊掉（实测 1.96:1），所以那一档要换成
+   *  随主题翻转的反色墨。CSS 侧用同名令牌 --c-on-heat-hi 解决过同一个问题。 */
+  function heatInk(t) {
+    t = clamp(t, 0, 1);
+    return t < 0.6 ? 'var(--c-fg)' : 'var(--c-on-heat-hi)';
+  }
 
   /* ---------------- 控件生成（一律用原生元素，保证键盘可达，§6.3）---------------- */
   function field(labelText, input, outEl) {
@@ -261,7 +269,7 @@
   }
 
   AIP.DK = {
-    el, stage, rng, clamp, lerp, fmt, heatFill, range, select, checkbox, toggle, button,
+    el, stage, rng, clamp, lerp, fmt, heatFill, heatInk, range, select, checkbox, toggle, button,
     readout, scales, axis, define, SVGNS
   };
 })(window.AIPrinciples);

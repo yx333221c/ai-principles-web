@@ -718,6 +718,108 @@
         }
       }
       if (clash) f.push('CLASH' + clash + '|' + pairs.join(';'));
+
+      /* SVG 文字压在色块上的对比度。
+         HTML 侧的 contrastSweep 只看 background-color，看不见这种情形——
+         m01 的条内标签就是靠这个盲区溜过去的（黑字压 heat-3 深蓝 = 1.96:1）。
+         做法：把每个 rect 的解析后填充色与几何收集起来，对每个文字取其中心点，
+         找【最上层】包含该点的矩形，比对两者对比度。 */
+      const parseCol = (c) => {
+        const cv = doc.createElement('canvas'); cv.width = cv.height = 1;
+        const x2 = cv.getContext('2d'); x2.fillStyle = '#010203'; x2.fillStyle = c;
+        const v = x2.fillStyle;
+        if (v === '#010203') return null;
+        if (v.charAt(0) === '#') {
+          const t = v.slice(1);
+          return [parseInt(t.slice(0, 2), 16), parseInt(t.slice(2, 4), 16), parseInt(t.slice(4, 6), 16), 1];
+        }
+        const mm = v.match(/rgba?\(([^)]+)\)/);
+        if (!mm) return null;
+        const pp = mm[1].split(/[,\s/]+/).filter(s => s !== '').map(Number);
+        const alpha = pp.length > 3 ? pp[3] : 1;
+        /* 全透明不算一种颜色：getComputedStyle 对未设 background 的元素返回
+           rgba(0,0,0,0)。不拦掉它，向上找底色的 || 链会在它这里停下，
+           半透明色块就被合成到纯黑上，产生 1.42 这类假阳性。 */
+        if (alpha === 0) return null;
+        return [pp[0], pp[1], pp[2], alpha];
+      };
+      const relum = (c) => {
+        const s = c.slice(0, 3).map(v => { const x = v / 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); });
+        return 0.2126 * s[0] + 0.7152 * s[1] + 0.0722 * s[2];
+      };
+      /* 半透明色块要合成到画布真实底色上，而不是假设白色 */
+      const pageBg = parseCol(getComputedStyle(svg).backgroundColor)
+        || parseCol(getComputedStyle(host).backgroundColor)
+        || parseCol(getComputedStyle(doc.body).backgroundColor)
+        || [255, 255, 255, 1];
+      /* low/worstL 必须显式声明：漏掉声明会退化成隐式全局，
+         计数跨演示累积，第一个演示的问题会被算到后面每个演示头上 */
+      let low = 0, worstL = '';
+      const rects = [];
+      /* 沿祖先链累积 opacity：卡片整体淡出时，文字与色块的实际渲染色都是淡的，
+         拿未淡化的颜色比会误判（m12 帧 0 就是整排卡片淡出） */
+      const effAlpha = (el) => {
+        let a = 1;
+        for (let n = el; n && n.nodeType === 1 && n !== svg; n = n.parentElement) {
+          const o = parseFloat(getComputedStyle(n).opacity);
+          a *= isFinite(o) ? o : 1;
+        }
+        return a;
+      };
+      const hexOf = (c) => '#' + c.slice(0, 3).map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+      /* 单次按文档序遍历同时收集矩形与文字：SVG 是画家算法，
+         只有排在文字【之前】的矩形才是它的背景；之后的矩形是盖在文字上的
+         高亮带与光标条，当成背景算就会误报。 */
+      [...svg.querySelectorAll('rect, text')].forEach((node) => {
+        if (String(node.tagName).toLowerCase() === 'rect') {
+          const cs = getComputedStyle(node);
+          const col = parseCol(cs.fill);
+          if (!col) return;
+          /* 有效不透明度 = 填充自身 alpha × 自身与祖先 opacity；
+             只看前者会把 opacity:0.07 的淡色遮罩当成实心背景 */
+          const eff = col[3] * effAlpha(node);
+          if (eff < 0.5) return;
+          col[3] = eff;
+          let b; try { b = node.getBBox(); } catch (e) { return; }
+          const m = inv.multiply(node.getScreenCTM());
+          if (!m) return;
+          rects.push({
+            x0: m.a * b.x + m.c * b.y + m.e, y0: m.b * b.x + m.d * b.y + m.f,
+            x1: m.a * (b.x + b.width) + m.c * (b.y + b.height) + m.e,
+            y1: m.b * (b.x + b.width) + m.d * (b.y + b.height) + m.f,
+            col: col, cls: (node.getAttribute('class') || 'rect') + ''
+          });
+          return;
+        }
+        const t = node;
+        if (!t.textContent.trim()) return;
+        let b, ctm;
+        try { b = t.getBBox(); ctm = t.getScreenCTM(); } catch (e) { return; }
+        if (!ctm) return;
+        const m = inv.multiply(ctm);
+        const cx = m.a * (b.x + b.width / 2) + m.c * (b.y + b.height / 2) + m.e;
+        const cy = m.b * (b.x + b.width / 2) + m.d * (b.y + b.height / 2) + m.f;
+        let bg = null, hitCls = '';
+        for (const r of rects) {          // rects 只含更早的矩形，天然满足画家算法
+          if (cx >= r.x0 && cx <= r.x1 && cy >= r.y0 && cy <= r.y1) { bg = r.col; hitCls = r.cls.replace(/[\s,，]+/g, '-'); }
+        }
+        if (!bg) return;
+        const fgRaw = parseCol(getComputedStyle(t).fill);
+        if (!fgRaw) return;
+        /* 半透明背景先合成到画布真实底色，再与淡出的前景比较 */
+        const bgEff = bg[3] >= 0.999 ? bg : [0, 1, 2].map(k => bg[k] * bg[3] + pageBg[k] * (1 - bg[3])).concat([1]);
+        const ta = effAlpha(t);
+        const fg = ta >= 0.999 ? fgRaw : [0, 1, 2].map(k => fgRaw[k] * ta + bgEff[k] * (1 - ta)).concat([1]);
+        const a = relum(fg), c = relum(bgEff);
+        const ratio = (Math.max(a, c) + 0.05) / (Math.min(a, c) + 0.05);
+        if (ratio < 4.5) {
+          low++;
+          /* 诊断串只用 | 分隔：验证器按空白切 token，空格会把一个 flag 劈开 */
+          if (!worstL) worstL = t.textContent.trim().replace(/[\s,，]+/g, '').slice(0, 8) + '@' + ratio.toFixed(2) +
+            '|fg=' + hexOf(fg) + '|bg=' + hexOf(bgEff) + '|on=' + (hitCls || '?');
+        }
+      });
+      if (low) f.push('LOWFILL' + low + '|' + worstL);
       out.push(key + '{' + f.join(',') + '}');
     });
 

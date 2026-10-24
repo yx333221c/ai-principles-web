@@ -69,7 +69,9 @@ for (const cs of CASES) {
     const bad = [];
     if (flags === undefined) bad.push('探针没看到这个演示');
     else if (flags !== '') flags.split(',').forEach(f => {
-      if (/^OVER/.test(f)) bad.push('文字越界 ' + f);
+      if (/^OVER/.test(f)) bad.push('文字越出 viewBox ' + f);
+      else if (/^CLASH/.test(f)) bad.push('文字互相叠印 ' + f);
+      else if (/^LOWFILL/.test(f)) bad.push('文字压在色块上对比度不足 ' + f);
       else bad.push({ NOTLIVE: '未挂载', NOSVG: '无画布', NOVB: '无 viewBox', NOCTRL: '无控件',
         NOHINT: '无 hint', NORESET: '无重置', PLACEHOLDER: '残留占位', NOCtm: '无 CTM' }[f] || f);
     });

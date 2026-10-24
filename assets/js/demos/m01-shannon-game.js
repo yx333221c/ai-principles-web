@@ -189,8 +189,12 @@
         /* 方块越浅 = 模型当时越意外（惊讶度映到热力档，4 bit 为「全浅」） */
         const heat = DK.clamp(1 - (api._stepModel[t] || 0) / 4, 0, 1);
         g.appendChild(DK.el('rect', { x: x, y: y, width: w, height: h, rx: 3, fill: DK.heatFill(heat) }));
+        /* 同上：格子底色可能是 heat-3，符号文字要用反色墨。
+           必须走 style 而不是 fill 属性——CSS 的 .demo-svg text{fill:…}
+           优先级高于 SVG presentation attribute，用属性会被静默覆盖。 */
         g.appendChild(DK.el('text', {
-          x: x + w / 2, y: y + h - 3, class: 't-sm', 'text-anchor': 'middle', text: SYM[api._seq[t]]
+          x: x + w / 2, y: y + h - 3, class: 't-sm', 'text-anchor': 'middle',
+          style: 'fill:' + DK.heatInk(heat), text: SYM[api._seq[t]]
         }));
       } else {
         g.appendChild(DK.el('rect', {
@@ -229,8 +233,12 @@
         stroke: s.lastGuess === j ? 'var(--c-warn)' : (s.lastTruth === j ? 'var(--c-ok)' : 'var(--c-line-strong)'),
         'stroke-width': (s.lastGuess === j || s.lastTruth === j) ? 2 : .6
       }));
+      /* 条内标签必须用反色墨：heat-3 在亮色主题是很深的蓝，
+         默认的 var(--c-fg) 压上去只有 1.96:1。
+         走 style 而非 fill 属性：CSS 的 .demo-svg text{fill:…} 优先级更高。 */
       gb.appendChild(DK.el('text', {
         x: G.barX + 24, y: y + 14, class: 't-xs',
+        style: 'fill:' + DK.heatInk(modelP[j] / maxP),
         text: (modelP[j] * 100).toFixed(0) + '% → −log₂p ' + DK.fmt(neglog2(modelP[j]), 2) + ' bit'
       }));
     }
