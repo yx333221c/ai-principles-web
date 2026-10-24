@@ -43,24 +43,28 @@
   });
 
   const rnd = DK.rng(11);
-  /* 随机初始位置限制在 x<340，避免标签越过分隔线压到右侧读数区 */
-  const START = TARGET.map(p => ({
-    ix: DK.clamp(p.ix + (rnd() - .5) * 300, 40, 330),
-    iy: DK.clamp(p.iy + (rnd() - .5) * 260, 52, 380),
-    tx: DK.clamp(p.tx + (rnd() - .5) * 300, 40, 330),
-    ty: DK.clamp(p.ty + (rnd() - .5) * 260, 52, 380)
-  }));
-  const DIS_S = DISTRACT.map(() => ({
-    x: DK.clamp(CX + (rnd() - .5) * 260, 40, 330),
-    y: DK.clamp(CY + (rnd() - .5) * 240, 52, 380)
-  }));
+  /* 未训练态用网格槽位而不是极坐标抖动：
+     收敛态靠 60° 角分隔保证不碰撞，但 ±150px 的随机抖动会把不同射线的点
+     甩到一起（标签宽约 77px，远超角向余量）。网格列距 104px 稳定容得下标签。
+     只在 y 上抖动（行距 80px、字高 12px，余量大）；x 不抖以免压到右列标签。
+     图与文交错排布，视觉上仍是「混在一起、尚未对齐」。 */
+  const GRID = { x0: 46, dx: 104, y0: 66, dy: 80 };
+  const slot = (n) => ({
+    x: GRID.x0 + (n % 4) * GRID.dx,
+    y: GRID.y0 + Math.floor(n / 4) * GRID.dy + (rnd() - .5) * 30
+  });
+  const START = TARGET.map((p, i) => {
+    const gi = slot(i * 2), ti = slot(i * 2 + 1);
+    return { ix: gi.x, iy: gi.y, tx: ti.x, ty: ti.y };
+  });
+  const DIS_S = DISTRACT.map((t, i) => slot(12 + i));
 
   const lerp2 = (a, b, t) => ({ x: DK.lerp(a.x, b.x, t), y: DK.lerp(a.y, b.y, t) });
   const cos = (ax, ay, bx, by) => (ax * bx + ay * by) / ((Math.hypot(ax, ay) * Math.hypot(bx, by)) || 1);
 
   DK.define('m11-clip-space', {
     title: '图文对齐的嵌入空间',
-    viewBox: [700, 424],
+    viewBox: [700, 436],   // 底部两行图例，最后一行基线 424 + 降部需留白
     state: { step: 0, query: 0, tau: 0.10, push: true },
 
     controls(holder, api) {
@@ -101,10 +105,11 @@
       svg.appendChild(DK.el('text', { x: 12, y: 36, class: 't-xs faint',
         text: '示意数据：坐标为人工编排，「训练」用插值模拟而非真实梯度下降。' }));
 
-      /* 参考圈与中心（原点）——余弦相似度以中心为原点计算 */
+      /* 参考圈与中心——余弦相似度以中心为原点计算。
+         中心点不写「原点」二字：它落在图中央，与网格槽位的标签必然挤在一起，
+         改由底部图例说明，信息不丢、冲突根除。 */
       svg.appendChild(DK.el('circle', { cx: CX, cy: CY, r: R_IMG, class: 'grid', 'stroke-dasharray': '2 5' }));
       svg.appendChild(DK.el('circle', { cx: CX, cy: CY, r: 3, fill: 'var(--c-fg-faint)' }));
-      svg.appendChild(DK.el('text', { x: CX + 7, y: CY + 4, class: 't-xs faint', text: '原点' }));
 
       api.links = DK.el('g'); svg.appendChild(api.links);
       api.nodes = DK.el('g'); svg.appendChild(api.nodes);
@@ -174,6 +179,8 @@
       });
       svg.appendChild(DK.el('text', { x: 12, y: 412, class: 't-xs faint',
         text: '绿点 = 与图配对的句子　红点 = 干扰句子（本不该靠近任何图）　方块 = 图像　虚线 = 配对关系' }));
+      svg.appendChild(DK.el('text', { x: 12, y: 424, class: 't-xs faint',
+        text: '中心点 = 余弦相似度的原点：两点夹角越小越相似，与离中心多远无关' }));
     },
 
     draw(api) {

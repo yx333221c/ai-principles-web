@@ -120,7 +120,8 @@
         api.yt.push({ line, text });
       }
       svg.appendChild(gY);
-      api.yName = DK.el('text', { x: 12, y: T - 8, class: 't-xs faint', text: '' });
+      /* 轴名与头部第二行（y=32）至少留 12px；原先 T-8=40 只差 8px，会叠印 */
+      api.yName = DK.el('text', { x: 12, y: T - 2, class: 't-xs faint', text: '' });
       svg.appendChild(api.yName);
 
       // 1% 参考线

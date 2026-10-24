@@ -191,7 +191,10 @@
         mk('line', { x1: AX0, y1: y, x2: AX1, y2: y, class: v === 0 ? 'grid' : 'grid grid--dash' });
         mk('text', { x: AX0 - 7, y: y + 3, class: 't-xs muted', 'text-anchor': 'end', text: v.toFixed(2) });
       });
-      mk('text', { x: 6, y: P1 - 6, class: 't-xs faint', text: '正确率' });
+      /* 纵轴名竖排贴在轴左侧空白带（x 8–20，刻度文字占 27–45）：
+         横排无论放哪一行都会与顶部说明或 θ 读数叠印 */
+      mk('text', { class: 't-xs faint', 'text-anchor': 'middle',
+        transform: `translate(14 ${(P1 + P0) / 2}) rotate(-90)`, text: '正确率' });
       mk('line', { x1: AX0, y1: P1, x2: AX0, y2: P0, style: 'stroke:var(--c-line-strong);stroke-width:1' });
 
       /* ---------- 曲线（参考 θ+0.2 先画，主曲线压在上面） ---------- */

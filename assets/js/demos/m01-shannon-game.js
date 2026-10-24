@@ -203,7 +203,9 @@
         }));
       }
     }
-    g.appendChild(DK.el('text', { x: 12, y: G.barY - 14, class: 't-xs faint', text: TYPES[s.seqType].desc }));
+    /* 类型说明放在符号条上方的空行（stripY-6=40），与右侧「已揭示」同行不同列；
+       原先放在 y=barY-14=118，与 y=122 的条形面板标题叠在一起 */
+    g.appendChild(DK.el('text', { x: 12, y: G.stripY - 6, class: 't-xs faint', text: TYPES[s.seqType].desc }));
     g.appendChild(DK.el('text', {
       x: 600, y: G.stripY - 6, class: 't-xs', 'text-anchor': 'end',
       text: '已揭示 ' + s.idx + ' / ' + s.sequenceLen + (done ? ' · 本局结束' : ' · 待押') + '（越浅=模型越意外）'

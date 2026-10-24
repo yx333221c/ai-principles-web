@@ -96,10 +96,9 @@
 
       svg.appendChild(DK.el('text', { x: 12, y: 20, class: 't-sm muted',
         text: '横轴 = 被读取的词（key）· 纵轴 = 正在读的词（query）· 一格 = 一个位置给另一个位置的预算' }));
+      /* 头部只能占两行：列号画在 oy-22=52，第三行若留在 y=52 会与列号完全同行 */
       svg.appendChild(DK.el('text', { x: 12, y: 36, class: 't-xs faint',
-        text: '示意数据（合成权重，非真实模型输出）；四种模式本身都是真实存在的现象' }));
-      svg.appendChild(DK.el('text', { x: 12, y: 52, class: 't-xs faint',
-        text: '点任意格子 = 把该 query 行选中，右侧列出它的预算分配' }));
+        text: '示意数据（合成权重，非真实模型输出）；四种模式本身都是真实存在的现象 · 点任意格子 = 选中该 query 行，右侧列出它的预算分配' }));
 
       const gTok = DK.el('g');
       TOK.forEach((t, j) => {

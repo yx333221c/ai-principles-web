@@ -131,6 +131,10 @@
       }
       gL0.appendChild(DK.el('text', { x: 12, y: 386, class: 't-xs faint',
         text: '淡点 = 同一张地图上的其他词元（位置示意，非真实模型输出）' }));
+      /* 投影/距离的数值放这条固定读数行，而不是贴在几何元素旁边——
+         端点、垂足、中点会随拖拽靠近，浮标式标签必然互相叠印 */
+      api._geo = DK.el('text', { x: 12, y: 370, class: 't-xs muted', text: '' });
+      gL0.appendChild(api._geo);
       svg.appendChild(gL0);
 
       api.gL = DK.el('g');
@@ -237,8 +241,6 @@
         stroke: 'var(--c-fg-faint)', 'stroke-width': 1.2, 'stroke-dasharray': '4 3' }));
       g.appendChild(DK.el('line', { x1: L.ox, y1: L.oy, x2: r2(foot[0]), y2: r2(foot[1]),
         stroke: 'var(--c-ok)', 'stroke-width': 4, opacity: .85, 'stroke-linecap': 'round' }));
-      g.appendChild(DK.el('text', { x: r2(foot[0] + 5), y: r2(foot[1] + 14), class: 't-xs good',
-        text: '投影 ' + DK.fmt(proj, 2) + ' × 长 ' + DK.fmt(nb, 1) }));
 
       // 夹角弧（走较小的那一侧）
       let a0 = Math.atan2(a[1], a[0]) * 180 / Math.PI, a1 = Math.atan2(b[1], b[0]) * 180 / Math.PI;
@@ -253,11 +255,13 @@
         y: r2(L.oy - 40 * Math.sin(rad(a0 + delta / 2)) + 3), class: 't-xs accent',
         text: DK.fmt(ang, 0) + '°' }));
 
-      // 端点连线 = 欧氏距离
+      // 端点连线 = 欧氏距离（数值写进底部读数行，不浮在连线中点）
       g.appendChild(DK.el('line', { x1: r2(pa[0]), y1: r2(pa[1]), x2: r2(pb[0]), y2: r2(pb[1]),
         stroke: 'var(--c-fg-faint)', 'stroke-width': 1.2, 'stroke-dasharray': '2 4' }));
-      g.appendChild(DK.el('text', { x: r2((pa[0] + pb[0]) / 2 + 5), y: r2((pa[1] + pb[1]) / 2),
-        class: 't-xs muted', text: '距离 ' + DK.fmt(dist, 2) }));
+      if (api._geo) {
+        api._geo.textContent = '绿色粗段 = 投影 ' + DK.fmt(proj, 2) + '（= 点积 ÷ 长 ' + DK.fmt(nb, 1) + '）' +
+          '　虚线 = 两末端距离 ' + DK.fmt(dist, 2);
+      }
 
       api._handles.cat.setAttribute('cx', r2(P('cat')[0]));
       api._handles.cat.setAttribute('cy', r2(P('cat')[1]));

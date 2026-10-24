@@ -123,7 +123,7 @@
 
   DK.define('m05-microcalc', {
     title: '微积分计算器：手搭 3-1-1 网络，看梯度一格一格倒着流',
-    viewBox: [700, 480],
+    viewBox: [700, 522],
     state: { w1: 1.2, w2: 0.5, w3: -0.8, x1: 1.0, act: 'relu', f: 6 },
 
     /* ---------------- 控件（每个都挂 key，reset 才还原得了） ---------------- */
@@ -230,15 +230,16 @@
         api.nodes[n.k] = { def: n, g: g, rect: rect, lab: lab, val: val, grad: grad };
       });
 
-      /* 帧说明 + 当前激活函数的一句话注记 */
-      api.cap = DK.el('text', { x: 12, y: 322, class: 't-sm', text: '' });
+      /* 帧说明 + 当前激活函数的一句话注记。
+         面板标题画在 PA.y-8，所以这两行必须留在 PA.y-18 以上，否则叠印。 */
+      api.cap = DK.el('text', { x: 12, y: 318, class: 't-sm', text: '' });
       svg.appendChild(api.cap);
-      api.note = DK.el('text', { x: 12, y: 336, class: 't-xs warm', text: '' });
+      api.note = DK.el('text', { x: 12, y: 332, class: 't-xs warm', text: '' });
       svg.appendChild(api.note);
 
       /* 两个小面板 */
-      const PA = { x: 12, y: 350, w: 322, h: 82 };
-      const PB = { x: 366, y: 350, w: 322, h: 82 };
+      const PA = { x: 12, y: 356, w: 322, h: 82 };
+      const PB = { x: 366, y: 356, w: 322, h: 82 };
       api.PA = PA; api.PB = PB;
       defs.appendChild(DK.el('clipPath', { id: 'dkm05-clipA' },
         [DK.el('rect', { x: PA.x + 30, y: PA.y, width: PA.w - 34, height: PA.h })]));
@@ -249,8 +250,9 @@
       buildPanel(svg, api, PB, 'B', 'B 梯度曲线 ∂L/∂w₁(w₁)：正负 = 该往哪拧',
         '权重 w₁ →', 34, 'clipB');
 
+      /* 全局脚注必须排在两面板各自的三行说明（最低到 PA.y+h+52=490）之下 */
       svg.appendChild(DK.el('text', {
-        x: 12, y: 476, class: 't-xs faint',
+        x: 12, y: 508, class: 't-xs faint',
         text: '两条曲线由本演示实时扫描：A 让 x₁ 扫过 −3…+3（其余不变），B 让 w₁ 扫过 −3…+3（其余不变）；B 的纵轴按当前曲线自动缩放。'
       }));
     },
@@ -458,9 +460,9 @@
     if (ghost) gg.appendChild(ghost);
     g.appendChild(gg);
     const sub = DK.el('text', { x: P.x, y: P.y + P.h + 24, class: 't-xs muted', text: '' });
-    const scale = DK.el('text', { x: P.x + P.w, y: P.y + P.h + 24, class: 't-xs faint',
-      'text-anchor': 'end', text: '' });
-    const note2 = DK.el('text', { x: P.x, y: P.y + P.h + 36, class: 't-xs warm', text: '' });
+    /* scale 与 note2 各占一行（原先 scale 右对齐与 sub 同行，长文字必然叠印） */
+    const scale = DK.el('text', { x: P.x, y: P.y + P.h + 38, class: 't-xs faint', text: '' });
+    const note2 = DK.el('text', { x: P.x, y: P.y + P.h + 52, class: 't-xs warm', text: '' });
     g.appendChild(sub); g.appendChild(scale); g.appendChild(note2);
     svg.appendChild(g);
     api.panels[id] = { zero: zero, tline: tline, curve: curve, head: head, dot: dot,

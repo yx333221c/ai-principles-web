@@ -672,6 +672,7 @@
       if (!svgCTM) { f.push('NOCtm'); out.push(key + '{' + f.join(',') + '}'); return; }
       const inv = svgCTM.inverse();
       let over = 0, worst = '';
+      const boxes = [];
       svg.querySelectorAll('text').forEach(t => {
         if (!t.textContent.trim()) return;
         let b, ctm;
@@ -696,8 +697,27 @@
           if (!worst) worst = t.textContent.trim().replace(/\s+/g, '').slice(0, 12) +
             '@' + Math.round(x0) + ',' + Math.round(y0) + '~' + Math.round(x1) + ',' + Math.round(y1);
         }
+        /* 样本串必须既无空格也无逗号：验证器按空白切分 key{...}、再按逗号切分
+           flag，标签文本里的逗号（如刻度 "0.00, 0.25"）会把一个 flag 劈成两半 */
+        boxes.push({ x0, y0, x1, y1, s: t.textContent.trim().replace(/[\s,，]+/g, '').slice(0, 10) });
       });
       if (over) f.push('OVER' + over + '|' + worst);
+
+      /* 文字互相重叠：越界检测看不见「两段文字叠在一起」，
+         而这在手工排坐标的 SVG 里是最常见的故障（m01/m03 就是这么发现的）。 */
+      let clash = 0; const pairs = [];
+      for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i], c = boxes[j];
+        /* 两个方向都要有实质重叠（>2px），避免把紧贴的标签误判成重叠 */
+        const iw = Math.min(a.x1, c.x1) - Math.max(a.x0, c.x0);
+        const ih = Math.min(a.y1, c.y1) - Math.max(a.y0, c.y0);
+        if (iw > 2 && ih > 2) {
+          clash++;
+          /* 分隔符不能含空格：验证器按空白切分 key{...} 令牌 */
+          if (pairs.length < 6) pairs.push(a.s + '×' + c.s + '@' + Math.round(iw) + 'x' + Math.round(ih));
+        }
+      }
+      if (clash) f.push('CLASH' + clash + '|' + pairs.join(';'));
       out.push(key + '{' + f.join(',') + '}');
     });
 
