@@ -309,6 +309,55 @@ undef.length ? bad('未定义令牌: ' + undef.join(',')) : ok('全部 ' + usedT
   if (undocumented.length) warn('diagram.css 有但契约未列的 .dgm 类: ' + undocumented.join(', '));
   if (!ghost.length && !undocumented.length) ok(`契约的 SVG 类清单与 CSS 一致（${listed.size} 个）`);
 })();
+
+/* v0.3 补强：矩阵 .mat / 分段 .cases 的结构守护。
+   不能用非贪婪正则取内层——格子里嵌着 .op/.sub，第一个 </span> 是内层的，
+   会把每个矩阵误数成 1 格（变异测试的基线环节当场抓到）。这里按 span 嵌套深度配对。 */
+(function () {
+  function spanInner(src, openIdx) {
+    const gt = src.indexOf('>', openIdx);
+    if (gt < 0) return null;
+    const re = /<\/?span\b[^>]*>/gi;
+    re.lastIndex = gt + 1;
+    let depth = 1, m;
+    while ((m = re.exec(src))) {
+      if (m[0][1] === '/') { if (--depth === 0) return src.slice(gt + 1, m.index); }
+      else depth++;
+    }
+    return null;
+  }
+  let mats = 0, casesN = 0, matCells = 0, badHere = 0;
+  const mbad = (msg) => { badHere++; bad(msg); };
+  built.forEach(mo => {
+    const f = 'content/modules/' + mo.id + '.html';
+    if (!has(f)) return;
+    const src = rd(f);
+    for (const t of src.matchAll(/<span class="mat"(?=[\s>])/g)) {
+      mats++;
+      const tag = src.slice(t.index, src.indexOf('>', t.index) + 1);
+      const colsM = tag.match(/grid-template-columns:\s*(?:repeat\((\d+),\s*auto\)|auto)/);
+      const cols = colsM ? Number(colsM[1] || 1) : NaN;
+      if (!Number.isFinite(cols)) { mbad(mo.id + ' 矩阵 #' + mats + ' 缺 grid-template-columns（列数无法判定）'); continue; }
+      const inner = spanInner(src, t.index);
+      if (inner == null) { mbad(mo.id + ' 矩阵 #' + mats + ' 标签未闭合'); continue; }
+      const cells = [...inner.matchAll(/<span class="mat__c"(?=[\s>])/g)].length;
+      if (!cells) mbad(mo.id + ' 矩阵 #' + mats + ' 没有 .mat__c 格子');
+      else if (cells % cols !== 0) mbad(mo.id + ' 矩阵 #' + mats + ' 格子数 ' + cells + ' 不是列数 ' + cols + ' 的倍数');
+      else matCells += cells;
+    }
+    for (const t of src.matchAll(/<span class="cases"(?=[\s>])/g)) {
+      casesN++;
+      const inner = spanInner(src, t.index);
+      if (inner == null) { mbad(mo.id + ' 分段 #' + casesN + ' 标签未闭合'); continue; }
+      const rows = [...inner.matchAll(/<span class="case__row"(?=[\s>])/g)].length;
+      if (rows < 2) warn(mo.id + ' 分段 #' + casesN + ' 只有 ' + rows + ' 行（分段函数至少两行才有意义）');
+    }
+  });
+  if (mats || casesN) {
+    if (!badHere) ok('矩阵/分段结构：' + mats + ' 个矩阵（' + matCells + ' 格）列数匹配，' + casesN + ' 个分段均 ≥2 行');
+    else warn('矩阵/分段结构检查因上述错误未完整完成');
+  }
+})();
 /* 反向：CSS 定义了但既没人用、文档也没承诺的类 = 真死代码。
    注意两个例外，否则会把该留的东西误判为死代码：
    ① docs/authoring-contract.md §1.4 把 fig__* 列为作者可选的词汇表，

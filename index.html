@@ -1000,8 +1000,8 @@
           
             <div class="math-block math">
               M <span class="op">·</span> <span class="vec">v</span> <span class="op">=</span>
-              <span class="bigg">[</span><span class="frac"><span class="num">p<span class="op">·</span>x <span class="op">+</span> q<span class="op">·</span>y</span><span class="den">r<span class="op">·</span>x <span class="op">+</span> s<span class="op">·</span>y</span></span><span class="bigg">]</span>
-              <span class="muted">，其中 M = [[p q],[r s]]，<span class="vec">v</span> = (x, y)</span>
+              <span class="mat" style="grid-template-columns:auto"><span class="mat__c">p<span class="op">·</span>x <span class="op">+</span> q<span class="op">·</span>y</span><span class="mat__c">r<span class="op">·</span>x <span class="op">+</span> s<span class="op">·</span>y</span></span>
+              <span class="muted">，其中 M <span class="op">=</span> <span class="mat" style="grid-template-columns:repeat(2,auto)"><span class="mat__c">p</span><span class="mat__c">q</span><span class="mat__c">r</span><span class="mat__c">s</span></span>，<span class="vec">v</span> = (x, y)</span>
               <span class="reads">矩阵乘向量：新坐标的每一行，是矩阵那一行的数字与向量逐项相乘再求和。二维写出来就是两行——第一行决定搬完之后横坐标是多少，第二行决定纵坐标是多少。</span>
             </div>
           
@@ -1015,13 +1015,13 @@
             <details class="math-detail">
               <summary>展开：二维情形怎么手算特征值，以及为什么旋转没有特征方向</summary>
               <div class="math-detail__body prose">
-                <p>对 <code>M = [[p q],[r s]]</code>，把 <code>M·v = λ·v</code> 移项成 <code>(M − λI)·v = 0</code>。要让一个非零的 v 满足它，矩阵 <code>M − λI</code> 必须把某支箭头压成零，也就是把平面压扁——这等价于行列式为 0：</p>
+                <p>对 <code>M =</code> <span class="mat" style="grid-template-columns:repeat(2,auto)"><span class="mat__c">p</span><span class="mat__c">q</span><span class="mat__c">r</span><span class="mat__c">s</span></span>，把 <code>M·v = λ·v</code> 移项成 <code>(M − λI)·v = 0</code>。要让一个非零的 v 满足它，矩阵 <code>M − λI</code> 必须把某支箭头压成零，也就是把平面压扁——这等价于行列式为 0：</p>
                 <div class="math-block math">
                   <span class="bigg">(</span>p <span class="op">−</span> λ<span class="bigg">)</span><span class="bigg">(</span>s <span class="op">−</span> λ<span class="bigg">)</span> <span class="op">−</span> q<span class="op">·</span>r <span class="op">=</span> 0
                   <span class="reads">关于 λ 的一元二次方程：解出来的两个 λ 就是这次变换在两条不变方向上的拉伸倍数；判别式为负时两个解都不是实数，意思是这次搬动没有任何一条直线能保住方向。</span>
                 </div>
-                <p>把旋转 90° 的矩阵 <code>[[0 −1],[1 0]]</code> 代进去：得到 <code>λ² + 1 = 0</code>，实数域内无解。这非常合理——旋转把每一条直线都扳向别处，二维里根本不存在「转 90° 还留在原直线上」的方向。你在演示里把四个滑块调成旋转，会看到椭圆的两个「不变方向」标记直接消失。</p>
-                <p>反过来，对角矩阵 <code>[[2 0],[0 0.5]]</code> 给出 λ = 2 与 λ = 0.5：横轴被拉长一倍，竖轴被压到一半，两条坐标轴本身就是特征方向。一般矩阵只是「先转到某个斜的角度，再照这个倍数拉伸」，所以特征方向常常是斜的——这正是演示图里那两条橙色虚线。</p>
+                <p>把旋转 90° 的矩阵 <span class="mat" style="grid-template-columns:repeat(2,auto)"><span class="mat__c">0</span><span class="mat__c">−1</span><span class="mat__c">1</span><span class="mat__c">0</span></span> 代进去：得到 <code>λ² + 1 = 0</code>，实数域内无解。这非常合理——旋转把每一条直线都扳向别处，二维里根本不存在「转 90° 还留在原直线上」的方向。你在演示里把四个滑块调成旋转，会看到椭圆的两个「不变方向」标记直接消失。</p>
+                <p>反过来，对角矩阵 <span class="mat" style="grid-template-columns:repeat(2,auto)"><span class="mat__c">2</span><span class="mat__c">0</span><span class="mat__c">0</span><span class="mat__c">0.5</span></span> 给出 λ = 2 与 λ = 0.5：横轴被拉长一倍，竖轴被压到一半，两条坐标轴本身就是特征方向。一般矩阵只是「先转到某个斜的角度，再照这个倍数拉伸」，所以特征方向常常是斜的——这正是演示图里那两条橙色虚线。</p>
               </div>
             </details>
           
@@ -1440,6 +1440,11 @@
             <div class="math-block math">
               z <span class="op">=</span> w<span class="sub">1</span>x<span class="sub">1</span> <span class="op">+</span> w<span class="sub">2</span>x<span class="sub">2</span> <span class="op">+</span> … <span class="op">+</span> w<span class="sub">n</span>x<span class="sub">n</span> <span class="op">+</span> b
               <span class="reads">「把 n 个输入各乘上自己的权重再全加起来，最后加一个常数 b。」这一行算完就是一个神经元的输出（还没折弯）。</span>
+            </div>
+            <div class="math-block math">
+              ReLU(z) <span class="op">=</span>
+              <span class="cases"><span class="case__row"><span>z</span><span class="case__cond">当 z &gt; 0</span></span><span class="case__row"><span>0</span><span class="case__cond">当 z ≤ 0</span></span></span>
+              <span class="reads">「折线在 0 处折弯：正数原样放行，负数一律掐成零。」这就是步骤 ② 说的「非线性开关」——等价写法 max(0, z) 里的那个 max，取的就是这两行中较大的一个。</span>
             </div>
             <div class="math-block math">
               y <span class="op">=</span> W<span class="sub">2</span><span class="bigg">(</span>W<span class="sub">1</span>x <span class="op">+</span> b<span class="sub">1</span><span class="bigg">)</span> <span class="op">+</span> b<span class="sub">2</span>
@@ -2142,6 +2147,12 @@
               <span class="reads">「把每个位置的查询，和所有位置的键比一遍相似度，除以维度开根号做缩放，归一化成权重，再用权重把所有值加权求和。」</span>
             </div>
             <p>其中 <code>Q ∈ [n × d<sub>k</sub>]</code>、<code>K ∈ [n × d<sub>k</sub>]</code>、<code>V ∈ [n × d<sub>v</sub>]</code>，n 是词元数。维度必须写清，因为「Q 的列数要等于 K 的列数，softmax 之后的行数要等于 V 的行数」是读者最容易被卡住的地方。</p>
+          
+            <div class="math-block math">
+              s<span class="sub">ij</span><span class="op">′</span> <span class="op">=</span>
+              <span class="cases"><span class="case__row"><span>s<span class="sub">ij</span></span><span class="case__cond">当 j ≤ i</span></span><span class="case__row"><span>−∞</span><span class="case__cond">当 j &gt; i（不许看未来）</span></span></span>
+              <span class="reads">「第 i 个位置的查询想读第 j 个词元：j 在过去就放行（s 就是步骤 ② 算出的分数），j 在未来就设成 −∞。」exp(−∞) = 0，所以 softmax 之后未来位置的权重正好是 0——这就是步骤 ⑤ 的因果掩码。矩阵形式写出来是一个下三角可用的 n×n 表。</span>
+            </div>
           
             <details class="math-detail">
               <summary>展开：为什么要除以 √d，以及为什么 O(n²) 无法回避</summary>

@@ -67,6 +67,33 @@
 .lim { font-size:.72em; vertical-align:-.35em }
 .bigg { font-size:1.5em; vertical-align:-.22em; padding:0 .06em }
 .vec { font-weight:700; font-style:normal }
+
+/* 矩阵：[ ] 用三边边框拼，不依赖字形（缩放的括号字符会随字号失真）。
+   格子是 .mat__c，列数由内联 style 的 grid-template-columns 给出——
+   selfcheck 会核对「列数 × 整数 = 格子数」，错位不会报错但会看漏。 */
+.mat { display:inline-grid; position:relative; vertical-align:middle; text-align:center;
+  padding:.22em .5em; margin:0 .22em; column-gap:.55em; row-gap:.18em;
+  font-family:var(--f-serif); line-height:1.35 }
+.mat::before, .mat::after { content:""; position:absolute; top:0; bottom:0; width:.32em;
+  border:.09em solid currentColor; box-sizing:border-box }
+.mat::before { left:0; border-right:none }
+.mat::after { right:0; border-left:none }
+.mat > .mat__c { padding:0 .05em; white-space:nowrap }
+
+/* 分段函数：左花括号由上下两段边框弧拼成，高度自动等于内容高度。
+   不用 content:"{" + scaleY() 是因为字形纵向拉伸在衬线体上会明显走样。 */
+.cases { display:inline-grid; grid-auto-flow:row; position:relative; vertical-align:middle;
+  margin:0 .2em 0 .5em; padding:.1em .2em .1em .95em; justify-items:start;
+  font-family:var(--f-serif); line-height:1.5 }
+.cases::before, .cases::after { content:""; position:absolute; left:.12em; width:.52em;
+  height:50%; border:.09em solid currentColor; box-sizing:border-box }
+.cases::before { top:0; border-right-color:transparent; border-bottom-color:transparent;
+  border-radius:100% 0 0 0 / 100% 0 0 0 }
+.cases::after { bottom:0; border-right-color:transparent; border-top-color:transparent;
+  border-radius:0 0 100% 0 / 0 0 100% 0 }
+.cases > .case__row { display:grid; grid-template-columns:auto auto; column-gap:.7em;
+  align-items:center; white-space:nowrap }
+.cases > .case__row > .case__cond { font-family:var(--f-sans); font-size:.82em; color:var(--c-fg-muted) }
 .reads { display:block; margin-top:var(--s-2); font-family:var(--f-sans); font-size:var(--t--1);
   color:var(--c-fg-muted); text-align:left }
 .reads::before { content:"读作："; color:var(--c-fg-faint); font-weight:600 }

@@ -179,8 +179,8 @@
 
   <div class="math-block math">
     M <span class="op">·</span> <span class="vec">v</span> <span class="op">=</span>
-    <span class="bigg">[</span><span class="frac"><span class="num">p<span class="op">·</span>x <span class="op">+</span> q<span class="op">·</span>y</span><span class="den">r<span class="op">·</span>x <span class="op">+</span> s<span class="op">·</span>y</span></span><span class="bigg">]</span>
-    <span class="muted">，其中 M = [[p q],[r s]]，<span class="vec">v</span> = (x, y)</span>
+    <span class="mat" style="grid-template-columns:auto"><span class="mat__c">p<span class="op">·</span>x <span class="op">+</span> q<span class="op">·</span>y</span><span class="mat__c">r<span class="op">·</span>x <span class="op">+</span> s<span class="op">·</span>y</span></span>
+    <span class="muted">，其中 M <span class="op">=</span> <span class="mat" style="grid-template-columns:repeat(2,auto)"><span class="mat__c">p</span><span class="mat__c">q</span><span class="mat__c">r</span><span class="mat__c">s</span></span>，<span class="vec">v</span> = (x, y)</span>
     <span class="reads">矩阵乘向量：新坐标的每一行，是矩阵那一行的数字与向量逐项相乘再求和。二维写出来就是两行——第一行决定搬完之后横坐标是多少，第二行决定纵坐标是多少。</span>
   </div>
 
@@ -194,13 +194,13 @@
   <details class="math-detail">
     <summary>展开：二维情形怎么手算特征值，以及为什么旋转没有特征方向</summary>
     <div class="math-detail__body prose">
-      <p>对 <code>M = [[p q],[r s]]</code>，把 <code>M·v = λ·v</code> 移项成 <code>(M − λI)·v = 0</code>。要让一个非零的 v 满足它，矩阵 <code>M − λI</code> 必须把某支箭头压成零，也就是把平面压扁——这等价于行列式为 0：</p>
+      <p>对 <code>M =</code> <span class="mat" style="grid-template-columns:repeat(2,auto)"><span class="mat__c">p</span><span class="mat__c">q</span><span class="mat__c">r</span><span class="mat__c">s</span></span>，把 <code>M·v = λ·v</code> 移项成 <code>(M − λI)·v = 0</code>。要让一个非零的 v 满足它，矩阵 <code>M − λI</code> 必须把某支箭头压成零，也就是把平面压扁——这等价于行列式为 0：</p>
       <div class="math-block math">
         <span class="bigg">(</span>p <span class="op">−</span> λ<span class="bigg">)</span><span class="bigg">(</span>s <span class="op">−</span> λ<span class="bigg">)</span> <span class="op">−</span> q<span class="op">·</span>r <span class="op">=</span> 0
         <span class="reads">关于 λ 的一元二次方程：解出来的两个 λ 就是这次变换在两条不变方向上的拉伸倍数；判别式为负时两个解都不是实数，意思是这次搬动没有任何一条直线能保住方向。</span>
       </div>
-      <p>把旋转 90° 的矩阵 <code>[[0 −1],[1 0]]</code> 代进去：得到 <code>λ² + 1 = 0</code>，实数域内无解。这非常合理——旋转把每一条直线都扳向别处，二维里根本不存在「转 90° 还留在原直线上」的方向。你在演示里把四个滑块调成旋转，会看到椭圆的两个「不变方向」标记直接消失。</p>
-      <p>反过来，对角矩阵 <code>[[2 0],[0 0.5]]</code> 给出 λ = 2 与 λ = 0.5：横轴被拉长一倍，竖轴被压到一半，两条坐标轴本身就是特征方向。一般矩阵只是「先转到某个斜的角度，再照这个倍数拉伸」，所以特征方向常常是斜的——这正是演示图里那两条橙色虚线。</p>
+      <p>把旋转 90° 的矩阵 <span class="mat" style="grid-template-columns:repeat(2,auto)"><span class="mat__c">0</span><span class="mat__c">−1</span><span class="mat__c">1</span><span class="mat__c">0</span></span> 代进去：得到 <code>λ² + 1 = 0</code>，实数域内无解。这非常合理——旋转把每一条直线都扳向别处，二维里根本不存在「转 90° 还留在原直线上」的方向。你在演示里把四个滑块调成旋转，会看到椭圆的两个「不变方向」标记直接消失。</p>
+      <p>反过来，对角矩阵 <span class="mat" style="grid-template-columns:repeat(2,auto)"><span class="mat__c">2</span><span class="mat__c">0</span><span class="mat__c">0</span><span class="mat__c">0.5</span></span> 给出 λ = 2 与 λ = 0.5：横轴被拉长一倍，竖轴被压到一半，两条坐标轴本身就是特征方向。一般矩阵只是「先转到某个斜的角度，再照这个倍数拉伸」，所以特征方向常常是斜的——这正是演示图里那两条橙色虚线。</p>
     </div>
   </details>
 

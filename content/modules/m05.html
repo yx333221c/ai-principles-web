@@ -42,6 +42,11 @@
     <span class="reads">「把 n 个输入各乘上自己的权重再全加起来，最后加一个常数 b。」这一行算完就是一个神经元的输出（还没折弯）。</span>
   </div>
   <div class="math-block math">
+    ReLU(z) <span class="op">=</span>
+    <span class="cases"><span class="case__row"><span>z</span><span class="case__cond">当 z &gt; 0</span></span><span class="case__row"><span>0</span><span class="case__cond">当 z ≤ 0</span></span></span>
+    <span class="reads">「折线在 0 处折弯：正数原样放行，负数一律掐成零。」这就是步骤 ② 说的「非线性开关」——等价写法 max(0, z) 里的那个 max，取的就是这两行中较大的一个。</span>
+  </div>
+  <div class="math-block math">
     y <span class="op">=</span> W<span class="sub">2</span><span class="bigg">(</span>W<span class="sub">1</span>x <span class="op">+</span> b<span class="sub">1</span><span class="bigg">)</span> <span class="op">+</span> b<span class="sub">2</span>
       <span class="op">=</span> <span class="bigg">(</span>W<span class="sub">2</span>W<span class="sub">1</span><span class="bigg">)</span>x <span class="op">+</span> <span class="bigg">(</span>W<span class="sub">2</span>b<span class="sub">1</span> <span class="op">+</span> b<span class="sub">2</span><span class="bigg">)</span>
     <span class="reads">「没有激活函数时，两层线性变换连乘，等于一个合并后的一次线性变换。」左边写了 4 个参数块，右边只有 2 个——层数在这一行里蒸发了。<span class="badge badge--simplify">已简化</span> 这里只算两层，也不谈数值精度；结论对任意层数同样成立。</span>

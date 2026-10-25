@@ -69,6 +69,24 @@ CDN 在本机不可达，公式一律手写 HTML（结构见 m07）：
 可用类：`.frac`（内含 `.num`/`.den`）、`.sub`、`.sup`、`.op`、`.bigg`、`.reads`、`.vec`。
 行内用 `<code>` 或 `<span class="math">`。
 
+**矩阵**用 `.mat`，**分段函数**用 `.cases`（v0.3 补强，此前只能用 `[[a b],[c d]]` 文字凑）：
+
+```html
+<!-- 矩阵：格子 .mat__c 按行优先排，列数写在内联 style 里。
+     selfcheck 核对 格子数 % 列数 == 0，漏格/错行会被抓到。 -->
+<span class="mat" style="grid-template-columns:repeat(2,auto)">
+  <span class="mat__c">0</span><span class="mat__c">−1</span>
+  <span class="mat__c">1</span><span class="mat__c">0</span></span>
+
+<!-- 分段函数：每行一个 .case__row，左值右条件（.case__cond） -->
+<span class="cases">
+  <span class="case__row"><span>z</span><span class="case__cond">当 z &gt; 0</span></span>
+  <span class="case__row"><span>0</span><span class="case__cond">当 z ≤ 0</span></span></span>
+```
+
+- 括号是 CSS 边框拼的，随内容自动增高，**不要**再用 `.bigg`+`.frac` 凑矩阵（m03 旧写法已迁）。
+- 矩阵与分段都可在行内正文里用，但块级公式里更常见；两者都必须配 `.reads` 读法（H4 不变）。
+
 ### 1.4 图解（两种实现，二选一）
 
 图解必须包在统一的 figure 外壳里，这样 lightbox 放大、步骤联动、图注样式都自动生效：

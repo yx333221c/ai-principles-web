@@ -111,6 +111,12 @@
   </div>
   <p>其中 <code>Q ∈ [n × d<sub>k</sub>]</code>、<code>K ∈ [n × d<sub>k</sub>]</code>、<code>V ∈ [n × d<sub>v</sub>]</code>，n 是词元数。维度必须写清，因为「Q 的列数要等于 K 的列数，softmax 之后的行数要等于 V 的行数」是读者最容易被卡住的地方。</p>
 
+  <div class="math-block math">
+    s<span class="sub">ij</span><span class="op">′</span> <span class="op">=</span>
+    <span class="cases"><span class="case__row"><span>s<span class="sub">ij</span></span><span class="case__cond">当 j ≤ i</span></span><span class="case__row"><span>−∞</span><span class="case__cond">当 j &gt; i（不许看未来）</span></span></span>
+    <span class="reads">「第 i 个位置的查询想读第 j 个词元：j 在过去就放行（s 就是步骤 ② 算出的分数），j 在未来就设成 −∞。」exp(−∞) = 0，所以 softmax 之后未来位置的权重正好是 0——这就是步骤 ⑤ 的因果掩码。矩阵形式写出来是一个下三角可用的 n×n 表。</span>
+  </div>
+
   <details class="math-detail">
     <summary>展开：为什么要除以 √d，以及为什么 O(n²) 无法回避</summary>
     <div class="math-detail__body prose">
