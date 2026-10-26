@@ -14,10 +14,39 @@ const rd = (f) => fs.readFileSync(path.join(ROOT, 'content/modules', f + '.html'
 const strip = (s) => s.replace(/<[^>]+>/g, ' ').replace(/&\w+;/g, ' ').replace(/\s+/g, ' ');
 
 let fail = 0, n = 0;
-const near = (label, got, want, tol) => {
+/* 悬空断言元检查（2026-10 复核要求）：
+   脚本注释宣称「每条断言都同时检查算出来对与文中确实这么写」，但实测有 2 条 near()
+   复算的是正文里根本不存在的数（m01 的 16.6、m02 的 1.37）——它们不会误报，
+   只会让人误信「被复算覆盖的每个数都在正文里」。
+   现在每条 near 的 want 都必须能在对应模块正文里搜到（opts.bool 显式豁免布尔/中间量断言）。 */
+const needs = [];
+const formsOf = (w) => {
+  const out = new Set();
+  const add = (v) => { const s = String(v); if (s && s !== 'NaN' && s !== 'Infinity') out.add(s); };
+  add(w);
+  /* 正文常把数四舍五入后写出来：逐个精度都试 */
+  for (let d = 0; d <= 4; d++) add(+Number(w).toFixed(d));
+  /* 百分数：0.29 → 29 */
+  if (Math.abs(w) < 1) for (let d = 0; d <= 2; d++) add(+(w * 100).toFixed(d));
+  /* 科学计数法：正文写 2.9×10⁻⁵，断言里是 2.9e-5 → 尾数要能对上 */
+  const ex = String(Number(w).toExponential()).match(/^([-\d.]+)e(-?\d+)$/);
+  if (ex) {
+    const mant = Number(ex[1]), e10 = Number(ex[2]);
+    for (let d = 0; d <= 3; d++) add(+mant.toFixed(d));
+    /* 也接受 1.8e-2 这种原样写法 */
+    add(mant + 'e' + e10);
+  }
+  return [...out];
+};
+const near = (label, got, want, tol, opts) => {
   n++;
-  const ok = Math.abs(got - want) <= (tol == null ? Math.abs(want) * 0.02 : tol);
-  if (!ok) { fail++; console.log('  FAIL ' + label + '  算得 ' + got.toPrecision(4) + '，文中 ' + want); }
+  const o = opts || {};
+  const pass = Math.abs(got - want) <= (tol == null ? Math.abs(want) * 0.02 : tol);
+  if (!pass) { fail++; console.log('  FAIL ' + label + '  算得 ' + got.toPrecision(4) + '，文中 ' + want); }
+  if (!o.bool) {
+    const file = o.file || (label.match(/m\d\d/) || [])[0];
+    needs.push({ label, want, file, alt: o.alt || [], demo: o.demo || null });
+  }
 };
 const says = (label, file, re) => {
   n++;
@@ -30,7 +59,8 @@ near('m01 −log₂0.06', -Math.log2(0.06), 4.06, 0.02);
 near('m01 −log₂0.04', -Math.log2(0.04), 4.64, 0.02);
 near('m01 加权平均码长', 0.7 * 0.5146 + 0.2 * 2.3219 + 0.06 * 4.0589 + 0.04 * 4.6439, 1.25, 0.02);
 near('m01 压缩率 2/1.254', 2 / 1.254, 1.6, 0.02);
-near('m01 log₂10⁵', Math.log2(1e5), 16.6, 0.05);
+/* 旧版这里有 near('m01 log₂10⁵', …, 16.6)：正文既无 16.6 也无 10⁵（grep 全站 0 命中），
+   属早期版本删改后遗留的悬空断言。2026-10 复核指出后删除，并加下方元检查防复发。 */
 says('m01 文中给出 1.25 比特/符号', 'm01', /1\.25/);
 says('m01 文中给出 1.6 倍压缩率', 'm01', /1\.6 倍/);
 
@@ -39,7 +69,28 @@ near('m02 −log₂0.60', -Math.log2(0.60), 0.74, 0.005);
 near('m02 −log₂0.20', -Math.log2(0.20), 2.32, 0.005);
 near('m02 惊讶度差', Math.log2(0.60) - Math.log2(0.20), 1.6, 0.03);
 near('m02 2^2.322 = 等效选项数', Math.pow(2, -Math.log2(0.20)), 5, 0.02);
-near('m02 熵 H(0.6,0.2,0.2)', -(0.6 * Math.log2(0.6) + 0.2 * Math.log2(0.2) * 2), 1.37, 0.01);
+/* m02 加权表（模块核心教具）：q=(0.50,0.30,0.20)、p=(0.60,0.20,0.20)。
+   旧版这里是一条 near('m02 熵 H(0.6,0.2,0.2)', …, 1.37) —— 复算的是正文里
+   根本不存在的分布（2026-10 复核判为悬空断言），现改为逐格复算正文真表。 */
+const q = [0.50, 0.30, 0.20], pm = [0.60, 0.20, 0.20];
+const surp = pm.map(v => -Math.log2(v));
+near('m02 惊讶度三格', surp[0], 0.74, 0.01);
+near('m02 茶/水的惊讶度', surp[1], 2.32, 0.01);
+const contrib = q.map((v, i) => v * surp[i]);
+near('m02 贡献 0.37', contrib[0], 0.37, 0.005);
+near('m02 贡献 0.70', contrib[1], 0.70, 0.005);
+near('m02 贡献 0.46', contrib[2], 0.46, 0.005);
+const Hqp = contrib.reduce((a, b) => a + b);
+const Hq = -q.reduce((a, v) => a + v * Math.log2(v), 0);
+near('m02 交叉熵 H(q,p)=1.53', Hqp, 1.53, 0.005);
+near('m02 熵 H(q)=1.49', Hq, 1.49, 0.005);
+near('m02 KL=0.04', Hqp - Hq, 0.04, 0.005);
+near('m02 困惑度 2^1.53=2.89', Math.pow(2, Hqp), 2.89, 0.01);
+near('m02 困惑度 2^1.49=2.80', Math.pow(2, Hq), 2.80, 0.01);
+says('m02 文中给出 1.53 bit', 'm02', /= 1\.53 bit/);
+says('m02 文中给出 1.49 bit', 'm02', /= 1\.49 bit/);
+says('m02 文中给出 0.04 bit', 'm02', /= 1\.53 − 1\.49 = 0\.04 bit/);
+says('m02 文中给出 2.89 与 2.80', 'm02', /= 2\.89 个选项.*?2\.80/s);
 says('m02 交叉熵 3bit ⇒ 困惑度 8', 'm02', /3 ?bit 就是 2³ = 8|2³ = 8/);
 
 /* ---------------- M06 梯度连乘 ---------------- */
@@ -53,7 +104,7 @@ says('m08 给出 Chinchilla 配比量级', 'm08', /20\s*(倍|词元|tokens|:1)/)
 const perTok = 2 * 32 * 8 * 128 * 2;
 near('m10 每词元 131072 字节', perTok, 131072, 1);
 near('m10 每词元 = 128 KiB', perTok / 1024, 128, 0.01);
-near('m10 128k 上下文 = 2³⁴ 字节', perTok * 131072, 2 ** 34, 1);
+near('m10 128k 上下文 = 2³⁴ 字节', perTok * 131072, 2 ** 34, 1, { alt: ['2³⁴'] });
 near('m10 即 16 GiB', perTok * 131072 / 2 ** 30, 16, 0.01);
 near('m10 十进制约 17.2 GB', perTok * 131072 / 1e9, 17.2, 0.05);
 /* 断言一律匹配 strip() 之后的纯文本：写进正则的标签会被 strip 掉，写了就永不匹配 */
@@ -72,10 +123,13 @@ near('m12 0.90¹⁰ ≈ 35%', Math.pow(0.90, 10) * 100, 35, 0.5);
 near('m12 期望出错步 1/(1−0.95)', Math.round(1 / (1 - 0.95)), 20, 0);
 near('m12 期望出错步 1/(1−0.90)', Math.round(1 / (1 - 0.90)), 10, 0);
 const tokOf = (obs, loop) => 320 + 5 * (34 + 26 + obs + (loop ? 70 : 0));
-near('m12 命中+重复 = 1410', tokOf(88, true), 1410, 0);
-near('m12 脏命中+重复 = 1570', tokOf(120, true), 1570, 0);
-near('m12 漏检+重复 = 1190（不溢出）', tokOf(44, true), 1190, 0);
-near('m12 漏检不溢出（≤1200）', tokOf(44, true) <= 1200 ? 1 : 0, 1, 0);
+/* 这三条的数出现在演示源码的读数表里（正文只讲机制不报具体词元数），
+   所以归属标成 demo 文件：改了演示的账目而没改这里，或反过来，都会被抓到。 */
+const M12JS = 'assets/js/demos/m12-agent-timeline.js';
+near('m12 命中+重复 = 1410', tokOf(88, true), 1410, 0, { demo: M12JS });
+near('m12 脏命中+重复 = 1570', tokOf(120, true), 1570, 0, { demo: M12JS });
+near('m12 漏检+重复 = 1190（不溢出）', tokOf(44, true), 1190, 0, { demo: M12JS });
+near('m12 漏检不溢出（≤1200）', tokOf(44, true) <= 1200 ? 1 : 0, 1, 0, { bool: true });
 
 /* ---------------- M13 统计 ---------------- */
 near('m13 N=100 p=0.95 标准误', Math.sqrt(0.95 * 0.05 / 100), 0.0218, 0.0005);
@@ -156,6 +210,35 @@ anchor('演示峡谷损失仍是 1.5x²+0.025y²', /loss:\s*\(x,\s*y\)\s*=>\s*1\
 anchor('演示步数上限仍是 200', /MAXSTEP\s*=\s*200/);
 anchor('演示逃逸半径仍是 6', /ESC\s*=\s*6/);
 anchorCount('演示碗形与峡谷起点都是 (-1.75,1.45)', /start:\s*\[\s*-1\.75,\s*1\.45\s*\]/g, 2);
+
+/* ---- 元检查：每条 near() 复算出的数，必须真的出现在它声称所在的地方 ---- */
+{
+  const cache = {};
+  const text = (id) => (cache[id] || (cache[id] = strip(rd(id))));
+  const dcache = {};
+  const demoText = (rel) => (dcache[rel] || (dcache[rel] = fs.readFileSync(path.join(ROOT, rel), 'utf8')));
+  let dangling = 0;
+  for (const t of needs) {
+    /* 归属为演示读数的断言：数要在演示源码里出现（与 m04 的 anchor 同理） */
+    if (t.demo) {
+      const hay = demoText(t.demo);
+      const hit = formsOf(t.want).find(s => hay.includes(s));
+      if (!hit) { dangling++; console.log('  FAIL 悬空断言: ' + t.label + ' 复算出 ' + t.want + '，但 ' + t.demo + ' 里搜不到'); }
+      continue;
+    }
+    if (!t.file || !fs.existsSync(path.join(ROOT, 'content/modules', t.file + '.html'))) {
+      dangling++; console.log('  FAIL 悬空: ' + t.label + ' 无法定位正文模块（label 里没有 mXX？）'); continue;
+    }
+    const body = text(t.file);
+    /* alt：正文用上标记法写（如 2³⁴ 而非 17179869184），显式登记等价写法 */
+    const hit = formsOf(t.want).find(s => body.includes(s)) || (t.alt || []).find(s => body.includes(s));
+    if (!hit) { dangling++; console.log('  FAIL 悬空断言: ' + t.label + ' 复算出 ' + t.want + '，但 ' + t.file + ' 正文里搜不到这个数'); }
+  }
+  /* 元检查不另计断言数：它检查的是上面每条 near() 的归属，不是新断言 */
+  if (dangling) fail += dangling;
+  else console.log('  ✓ ' + needs.length + ' 条复算断言的数值都能在正文/演示里找到（无悬空）');
+  if (dangling) console.log('  （布尔/中间量断言请显式传 {bool:true} 豁免，别默默放宽检查）');
+}
 
 console.log(fail
   ? 'verify-math: ' + fail + '/' + n + ' 条断言与内容不符，必须修'

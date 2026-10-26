@@ -96,7 +96,7 @@
 
 ### 2.2 关键使用场景
 
-1. **通读主线**：按 [M01] → [M13] 顺序学完，约 6–8 小时，读完全程能从「AI 会预测下一个字」推导出「为什么它会幻觉」。
+1. **通读主线**：按 [M01] → [M13] 顺序学完，约 5.5–6 小时（各模块 `estMinutes` 合计 341 分钟，首页文案由此派生），读完全程能从「AI 会预测下一个词元」推导出「为什么它会幻觉」。
 2. **按需查概念**：搜索引擎进来的人只关心一个点（如「什么是 KV Cache」），要求首屏 3 秒内命中结论 + 一个图。
 3. **演示旁证**：讲师/博主在分享时打开某个 demo 现场调参，作为讲解素材——要求 demo 可 URL 直达、可 iframe 嵌入。
 
@@ -247,7 +247,7 @@ interface Demo {
 |---|---|---|
 | 徽章 | `.badge` | `badge--prereq` / `badge--math` / `badge--demo` / `badge--simplify`（简化声明）/ `badge--new` |
 | 术语标记 | `<abbr class="term">` | 首现术语带 `data-term="xxx"`，hover 浮出术语表释义；触屏改为点按 |
-| 行内公式 | `.math` | MathML/`\(...\)` 由数学渲染脚本处理；**必须有 `.math--fallback` 纯文本版** |
+| 行内公式 | `.math` | 手写 HTML 公式（`.frac`/`.sub`/`.sup`/`.mat`/`.cases`，见 README 偏差表：KaTeX 不可达）；推导细节折叠进 `.math-detail` |
 | 代码片段 | `.code` | 带语言标签、复制按钮、行号可选 |
 | 强调卡 | `.callout` | `--note` / `--warn`（易错）/ `--key`（必须记住）/ `--lie`（常见误解） |
 | 数字滚盘 | `.odometer` | demo 里高频跳动的数字用它会比直接改 textContent 稳（避免抖动） |
@@ -479,13 +479,19 @@ ai-principles-web/
     "tagline": "AI 学会按需读取上下文",        // ≤20 字，首页卡片用
     "prereq": ["m03", "m05", "m06"],       // DAG，UI 依据它给提示与下一模块
     "segs": ["hook","intuition","mechanism","demo","misconception","takeaway"],
-    "demo": { "id": "m07-attn-map", "type": "param", "params": ["head","layer","scaleMode"] },
+    "demo": { "id": "m07-attn-map", "type": "param" },
+    "figures": ["m07-qkv-1"],          // 该模块图解的 data-fig 清单，selfcheck 与正文双向核对
     "status": "skeleton",             // skeleton | drafted | reviewed | published
     "difficulty": 3,                  // 1–5
     "estMinutes": 25
   }]
 }
 ```
+
+> `demo.params` 曾在契约里登记滑块键名，但全站无任何消费方、且键名在演示源码里已经写明，
+> 抄一份只会腐化（实测 7+ 个模块与正文脱节，如 m07 写了不存在的 `layer`）。2026-10 复核后删除。
+> `figures` 则相反：它是图集索引的候选数据源，因此升级为 selfcheck 断言
+> （正文 `data-fig` 集合必须与清单完全相等，双向）。
 
 ### 11.3 命名规范
 

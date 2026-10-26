@@ -168,7 +168,7 @@
     <section class="modmap" id="modmap" aria-labelledby="modmap-title">
       <h2 id="modmap-title">13 个模块，一条主线</h2>
       <p class="modmap__lede prose">顺序不是按主题美观排的，而是按依赖排的：前四个模块只用到初中数学，
-        之后每一块都建立在前一块之上。你可以顺序通读（约 5 小时），也可以直接跳进任何一个模块——
+        之后每一块都建立在前一块之上。你可以顺序通读（约 5.5–6 小时），也可以直接跳进任何一个模块——
         每个模块顶部会告诉你它需要先读懂哪几个。</p>
       <div class="modmap__group" id="intuition" data-part="intuition">
         <h3><span class="modmap__groupno">01</span> 直觉地基</h3>
@@ -244,8 +244,8 @@
           <li><article class="modcard" data-mod="m08" data-status="reviewed">
             <header><span class="modcard__no">M08</span><span class="badge badge--lvl">难度 3·进阶</span><span class="badge badge--time">~28 分钟</span><span class="badge badge--math">公式密集</span><span class="badge badge--debate">存在争议</span></header>
             <h4><a href="#m08">预训练与 Scaling Law</a></h4>
-            <p class="modcard__tag">智能从规模里涌现</p>
-            <p class="modcard__meta">~28 分钟 · 前置：07</p>
+            <p class="modcard__tag">损失随规模按幂律下降</p>
+            <p class="modcard__meta">~28 分钟 · 前置：02 07</p>
             <label class="modcard__done"><input type="checkbox" data-done="m08"><span>已读</span></label>
           </article></li>
           <li><article class="modcard" data-mod="m09" data-status="reviewed">
@@ -1426,15 +1426,15 @@
           
             <ol class="steps">
               <li data-step="1"><strong>一个「神经元」就是一行线性变换。</strong>它把这一层的输入各乘一个<span class="term" data-def="网络里乘在输入上的系数，训练得到的就是这组数。" data-en="weight">权重</span>再相加，最后加一个偏置。<code>x</code> 是输入向量（形状 <code>[n]</code>），<code>w</code> 是这一行的权重（同样 <code>[n]</code>），<code>b</code> 是标量偏置。</li>
-              <li data-step="1"><strong>网络就是把这些行排成层。</strong>一层有 m 个神经元，就是 <code>m</code> 行同时算，写成一式 <code>z = Wx + b</code>，其中 <code>W</code> 形状 <code>[m × n]</code>、结果 <code>z</code> 形状 <code>[m]</code>。所谓「深度」，就是层数。</li>
-              <li data-step="2"><strong>把激活函数拿掉，深度立刻作废。</strong>两层线性连着算：<code>y = W₂(W₁x + b₁) + b₂</code>，展开就是 <code>y = (W₂W₁)x + (W₂b₁ + b₂)</code>——一个<em>矩阵乘积</em>就替代了整叠层。层数 100 和层数 1 能表达的函数<strong>一模一样</strong>。这是「非线性开关」存在的全部理由。</li>
-              <li data-step="2"><strong>激活函数是逐元素的折弯开关。</strong>它一个数一个数地作用：<code>a = φ(z)</code>。加了它，两层之间就不再能合并，深度才开始买到东西。</li>
-              <li data-step="3"><strong>为什么折弯能拟合复杂函数。</strong>一个 ReLU 神经元在输入空间里切出一道「折痕」，折痕两侧斜率不同；把多个这样的折痕按权重叠加，就能拼出一段段斜率各异的折线。直线永远画不出台阶，而足够多的折线段可以逼近任意一条连续曲线（隐藏层为一层的经典结论，Cybenko（1989）[2026-10]）。表达力来自「折弯 + 叠起来」，不来自「多乘几次矩阵」。</li>
-              <li data-step="4"><strong>三种常见形状，各自带着一种毛病。</strong>Sigmoid 与 Tanh 两头都<strong>饱和</strong>（曲线躺平 → 局部导数趋 0 → 梯度一层层被削，走到浅层已接近 0，即梯度消失）；ReLU 负半轴<strong>斜率恒为 0</strong>，一旦某个神经元的输入总落在负半轴，它就再也不更新，俗称「死亡」。</li>
-              <li data-step="5"><strong>前向传播 = 沿计算图把值算出来。</strong><span class="term" data-def="把一次计算拆成一张有向图：每个节点是一步最小运算，每条边传一个数。" data-en="compute graph">计算图</span>把一次预测写成「一步一节点」的图。前向就是从输入出发，按拓扑顺序逐节点求值，一直算到损失。</li>
-              <li data-step="6"><strong>反向传播 = 同一个图倒着走一遍。</strong>规则只有一句：<em>每个节点把自己收到的「上游梯度」乘上自己的「局部导数」，再发给自己的每个输入</em>。局部导数只涉及这个节点自己，跟全网络有多大无关。</li>
-              <li data-step="7"><strong>这就是它能工程化的原因。</strong>写一个框架不需要会解优化题，只需要给每种算子配两小段代码：正着算值（forward）、局部求导（backward）。框架记下前向的访问顺序，再倒序调用 backward，把乘法自动接好线——这套自动接线就叫<span class="term" data-def="按计算图自动、逐节点套用链式法则，无需人工推完整导数公式。" data-en="automatic differentiation">自动微分</span>。求导公式是人写的，链子不是。</li>
-              <li data-step="8"><strong>一次参数更新是三步循环。</strong>前向算出损失 → 反向算出每个参数的梯度 → 每个参数沿梯度反方向挪一小步（学习率来自 M04）。三步重复几十万次，就是「训练」。每个参数只跟自己的梯度打交道，谁也不需要理解全局。</li>
+              <li data-step="2"><strong>网络就是把这些行排成层。</strong>一层有 m 个神经元，就是 <code>m</code> 行同时算，写成一式 <code>z = Wx + b</code>，其中 <code>W</code> 形状 <code>[m × n]</code>、结果 <code>z</code> 形状 <code>[m]</code>。所谓「深度」，就是层数。</li>
+              <li data-step="3"><strong>把激活函数拿掉，深度立刻作废。</strong>两层线性连着算：<code>y = W₂(W₁x + b₁) + b₂</code>，展开就是 <code>y = (W₂W₁)x + (W₂b₁ + b₂)</code>——一个<em>矩阵乘积</em>就替代了整叠层。层数 100 和层数 1 能表达的函数<strong>一模一样</strong>。这是「非线性开关」存在的全部理由。</li>
+              <li data-step="4"><strong>激活函数是逐元素的折弯开关。</strong>它一个数一个数地作用：<code>a = φ(z)</code>。加了它，两层之间就不再能合并，深度才开始买到东西。</li>
+              <li data-step="5"><strong>为什么折弯能拟合复杂函数。</strong>一个 ReLU 神经元在输入空间里切出一道「折痕」，折痕两侧斜率不同；把多个这样的折痕按权重叠加，就能拼出一段段斜率各异的折线。直线永远画不出台阶，而足够多的折线段可以逼近任意一条连续曲线（隐藏层为一层的经典结论，Cybenko（1989）[2026-10]）。表达力来自「折弯 + 叠起来」，不来自「多乘几次矩阵」。</li>
+              <li data-step="6"><strong>三种常见形状，各自带着一种毛病。</strong>Sigmoid 与 Tanh 两头都<strong>饱和</strong>（曲线躺平 → 局部导数趋 0 → 梯度一层层被削，走到浅层已接近 0，即梯度消失）；ReLU 负半轴<strong>斜率恒为 0</strong>，一旦某个神经元的输入总落在负半轴，它就再也不更新，俗称「死亡」。</li>
+              <li data-step="7"><strong>前向传播 = 沿计算图把值算出来。</strong><span class="term" data-def="把一次计算拆成一张有向图：每个节点是一步最小运算，每条边传一个数。" data-en="compute graph">计算图</span>把一次预测写成「一步一节点」的图。前向就是从输入出发，按拓扑顺序逐节点求值，一直算到损失。</li>
+              <li data-step="8"><strong>反向传播 = 同一个图倒着走一遍。</strong>规则只有一句：<em>每个节点把自己收到的「上游梯度」乘上自己的「局部导数」，再发给自己的每个输入</em>。局部导数只涉及这个节点自己，跟全网络有多大无关。</li>
+              <li data-step="9"><strong>这就是它能工程化的原因。</strong>写一个框架不需要会解优化题，只需要给每种算子配两小段代码：正着算值（forward）、局部求导（backward）。框架记下前向的访问顺序，再倒序调用 backward，把乘法自动接好线——这套自动接线就叫<span class="term" data-def="按计算图自动、逐节点套用链式法则，无需人工推完整导数公式。" data-en="automatic differentiation">自动微分</span>。求导公式是人写的，链子不是。</li>
+              <li data-step="10"><strong>一次参数更新是三步循环。</strong>前向算出损失 → 反向算出每个参数的梯度 → 每个参数沿梯度反方向挪一小步（学习率来自 M04）。三步重复几十万次，就是「训练」。每个参数只跟自己的梯度打交道，谁也不需要理解全局。</li>
             </ol>
           
             <div class="math-block math">
@@ -2223,11 +2223,11 @@
         </footer>
       </section>
 
-      <section class="module" id="m08" data-module="m08" data-part="training" data-status="reviewed" data-prereq="m07" data-demo="m08-scaling-curve" aria-labelledby="m08-title">
+      <section class="module" id="m08" data-module="m08" data-part="training" data-status="reviewed" data-prereq="m02 m07" data-demo="m08-scaling-curve" aria-labelledby="m08-title">
         <header class="module__head">
           <p class="module__no">M08 · 训练与涌现</p>
           <h2 id="m08-title">预训练与 Scaling Law</h2>
-          <p class="module__tag">智能从规模里涌现</p>
+          <p class="module__tag">损失随规模按幂律下降</p>
           <div class="module__badges"><span class="badge badge--lvl">难度 3·进阶</span><span class="badge badge--time">~28 分钟</span><span class="badge badge--math">公式密集</span><span class="badge badge--debate">存在争议</span></div>
         </header>
         <div class="sectionnav" role="navigation" aria-label="M08 段落">
@@ -2265,13 +2265,13 @@
           
             <ol class="steps">
               <li data-step="1"><strong><span class="term" data-def="在海量无标注文本上反复做下一词预测，直到损失降到目标。" data-en="pretraining">预训练</span>的目标只有一个：读前文，猜下一个词元。</strong>模型输出的是概率分布，打分用的还是 M02 那个交叉熵损失。除了这件事，预训练不做任何别的。<span class="badge badge--simplify">已简化</span>（略过批数据处理、学习率调度与硬件细节。）</li>
-              <li data-step="1"><strong>因为打分标准从头到尾没变，不同规模的模型才能放进同一张图比较。</strong>损失是一个单一数字，规模是另一个数字，剩下要回答的只有一个问题：这两个数字怎么对应。</li>
-              <li data-step="2"><strong>经验答案是<span class="term" data-def="y ∝ x^(−α) 型关系：x 乘十，y 乘一个只依赖 α 的固定系数，与 x 的起点无关。" data-en="power law">幂律</span>：L ∝ N^(−α)。</strong>取对数就变成 log L = 常数 − α·log N——<strong>双对数坐标上的一条直线</strong>。直线的意思是「斜率不变」，斜率不变的意思是我们敢沿着它往右画。</li>
-              <li data-step="3"><strong>参数量 N 与数据量 D 各有一条自己的线，不能混为一谈。</strong>参数负责<strong>存</strong>住数据里的规律，数据负责<strong>提供</strong>规律；只放大一项，另一项就成了瓶颈——损失先快降、随后走平，钱花在等待一个填不满的容器上。</li>
-              <li data-step="4"><strong>Chinchilla（Hoffmann 等，2022）把两条线接进同一个算力预算，算出最优配比：给定算力，N 与 D 应近似等比同步放大，约 20 词元配 1 参数。</strong>而当时的主流模型严重「参数过大、数据不足」[2026-10]：1750 亿参数的 GPT-3 只喂了约 3000 亿词元，比值不到 2 [2026-10]。同团队按最优配比重训的 700 亿参数模型，用<strong>一半</strong>算力做到了更低的损失 [2026-10]。</li>
-              <li data-step="5"><strong>这条结论开出两条路：把模型做小、数据喂多，或把数据做大。</strong>训练只花一次钱，推理按词元天天花钱，小模型长期更便宜。后来者普遍越过 20:1 的配比——例如 70 亿参数喂 2 万亿词元（比值约 286）[2026-10]——说明把算力预算优先换成数据，在工程上被反复验证。</li>
-              <li data-step="6"><strong>可是损失这条线，解释不了所有现象。</strong>某些基准（多位数加法、给了<span class="term" data-def="让模型先写中间步骤再给答案的提示方式。" data-en="chain of thought">思维链</span>提示的推理）在小模型上接近乱猜，跨过某个规模后<strong>突然跳升</strong>。这就是 <span class="term" data-def="规模跨过某阈值后才出现的能力；是否真实存在尚在争议中。" data-en="emergent ability">涌现能力</span>（emergent ability）<span class="badge badge--debate">存在争议</span>。</li>
-              <li data-step="7"><strong>两派读的是同一批曲线。</strong>一派（Wei 等，2022）认为跳变是真实的能力相变；另一派（Schaeffer 等，「Are Emergent Abilities a Mirage?」，NeurIPS 2023 杰出论文）指出：把「整题全对才算对」换成连续的度量（如编辑距离——答案差几个字），同一批模型的曲线就变平滑 [2026-10]。跳变可能不是模型变了，是<strong>尺子</strong>变了。</li>
+              <li data-step="2"><strong>因为打分标准从头到尾没变，不同规模的模型才能放进同一张图比较。</strong>损失是一个单一数字，规模是另一个数字，剩下要回答的只有一个问题：这两个数字怎么对应。</li>
+              <li data-step="3"><strong>经验答案是<span class="term" data-def="y ∝ x^(−α) 型关系：x 乘十，y 乘一个只依赖 α 的固定系数，与 x 的起点无关。" data-en="power law">幂律</span>：L ∝ N^(−α)。</strong>取对数就变成 log L = 常数 − α·log N——<strong>双对数坐标上的一条直线</strong>。直线的意思是「斜率不变」，斜率不变的意思是我们敢沿着它往右画。</li>
+              <li data-step="4"><strong>参数量 N 与数据量 D 各有一条自己的线，不能混为一谈。</strong>参数负责<strong>存</strong>住数据里的规律，数据负责<strong>提供</strong>规律；只放大一项，另一项就成了瓶颈——损失先快降、随后走平，钱花在等待一个填不满的容器上。</li>
+              <li data-step="5"><strong>Chinchilla（Hoffmann 等，2022）把两条线接进同一个算力预算，算出最优配比：给定算力，N 与 D 应近似等比同步放大，约 20 词元配 1 参数。</strong>而当时的主流模型严重「参数过大、数据不足」[2026-10]：1750 亿参数的 GPT-3 只喂了约 3000 亿词元，比值不到 2 [2026-10]。同团队按最优配比重训的 700 亿参数模型，用<strong>一半</strong>算力做到了更低的损失 [2026-10]。</li>
+              <li data-step="6"><strong>这条结论开出两条路：把模型做小、数据喂多，或把数据做大。</strong>训练只花一次钱，推理按词元天天花钱，小模型长期更便宜。后来者普遍越过 20:1 的配比——例如 70 亿参数喂 2 万亿词元（比值约 286）[2026-10]——说明把算力预算优先换成数据，在工程上被反复验证。</li>
+              <li data-step="7"><strong>可是损失这条线，解释不了所有现象。</strong>某些基准（多位数加法、给了<span class="term" data-def="让模型先写中间步骤再给答案的提示方式。" data-en="chain of thought">思维链</span>提示的推理）在小模型上接近乱猜，跨过某个规模后<strong>突然跳升</strong>。这就是 <span class="term" data-def="规模跨过某阈值后才出现的能力；是否真实存在尚在争议中。" data-en="emergent ability">涌现能力</span>（emergent ability）<span class="badge badge--debate">存在争议</span>。</li>
+              <li data-step="8"><strong>两派读的是同一批曲线。</strong>一派（Wei 等，2022）认为跳变是真实的能力相变；另一派（Schaeffer 等，「Are Emergent Abilities a Mirage?」，NeurIPS 2023 杰出论文）指出：把「整题全对才算对」换成连续的度量（如编辑距离——答案差几个字），同一批模型的曲线就变平滑 [2026-10]。跳变可能不是模型变了，是<strong>尺子</strong>变了。</li>
             </ol>
           
             <div class="math-block math">
@@ -2525,7 +2525,7 @@
           
             <ol class="steps">
               <li data-step="1"><strong>预训练模型没有「回答」这个行为。</strong>它的训练信号只有一种：在海量无标注<span class="term" data-def="没有人工标签的原始文本；预训练只做下一词元预测。" data-en="unlabeled text">文本</span>上预测下一个词元。语料里没人标过「这才是好回答」，所以一句提问在它眼里只是另一种待续写的文本。</li>
-              <li data-step="2"><strong>第一阶段 SFT：把续写掰成回答。</strong><span class="term" data-def="监督微调：在人工写的示范数据上继续做交叉熵训练。" data-en="supervised fine-tuning">监督微调</span>（SFT）用人工写的<span class="term" data-def="人工撰写的「问题 + 理想回答」配对数据，SFT 的训练材料。" data-en="demonstration pairs">示范问答对</span>继续做<span class="term" data-def="分类任务的损失：真实分布与预测分布之间的编码长度差。" data-en="cross-entropy">交叉熵</span>训练。损失与梯度都是 M02、M05 那套，只是换了数据、把学习率调小一到两个数量级。InstructGPT 用了约 1.3 万条示范（2022）[2026-10]。</li>
+              <li data-step="2"><strong>第一阶段 SFT：把续写掰成回答。</strong><span class="term" data-def="监督微调：在人工写的示范数据上继续做交叉熵训练。" data-en="supervised fine-tuning">监督微调</span>（SFT）用人工写的<span class="term" data-def="人工撰写的「问题 + 理想回答」配对数据，SFT 的训练材料。" data-en="demonstration pairs">示范问答对</span>继续做<span class="term" data-def="按真实分布取平均、用模型分布计算的惊讶度；即总平均码长 = 熵 + KL。分类任务的损失函数。" data-en="cross-entropy">交叉熵</span>训练。损失与梯度都是 M02、M05 那套，只是换了数据、把学习率调小一到两个数量级。InstructGPT 用了约 1.3 万条示范（2022）[2026-10]。</li>
               <li data-step="3"><strong>SFT 立住了规矩，但规矩的上限就是示范。</strong>示范只有万条量级时，模型会把示范的措辞与结构本身当成目标；示范没覆盖的场景（该追问澄清、该拒绝、该承认不知道）它只能猜。于是需要一个能给<strong>任意</strong>回答打分的裁判。</li>
               <li data-step="4"><strong>第二阶段：人类只排序，机器学打分。</strong>对同一个问题让 SFT 模型生成多个回答，标注员<strong>不写评语、不打绝对分数，只排出 A 比 B 好</strong>。把每次比较整理成<span class="term" data-def="偏好三元组：同一问题下「提示 + 更优回答 + 更差回答」。" data-en="preference triplet">偏好三元组</span> <code>(x, y_win, y_lose)</code>，用它们训练上文那位老师傅，即奖励模型，下文记作 RM。同一篇报告收集了约 3.3 万次比较（2022）[2026-10]。</li>
               <li data-step="5"><strong>第三阶段：最大化分数，但用一根缰绳拴住。</strong>用<span class="term" data-def="近端策略优化：限制每步更新幅度的强化学习算法，RLHF 的常用选择。" data-en="PPO">近端策略优化（PPO）</span>这类<span class="term" data-def="靠交互得到的标量奖励来学习行为策略的机器学习范式。" data-en="reinforcement learning">强化学习</span>算法反复采样新回答、找 RM 要分数、更新策略。同时减去一项 <span class="term" data-def="KL 散度：衡量两个概率分布差多远；此处约束新策略别离参考模型太远。" data-en="KL divergence">KL 散度</span>惩罚，把新策略拴在 SFT 模型附近。目标函数见下方第一个公式，本站写作 <code>J(θ)</code>。</li>
@@ -2792,12 +2792,12 @@
           <h3>机制拆解</h3>
           <ol class="steps">
               <li data-step="1"><strong>模型输出的不是答案，是一整排分数。</strong>最后一层给出词表大小（约 3 万到 25 万）个实数，叫<span class="term" data-def="softmax 之前的实数分数，本身不是概率，只有相对高低有意义。" data-en="logit">未归一化得分</span>（logit）。单独看一个 logit 毫无意义，只有它们之间的大小关系有意义。</li>
-              <li data-step="1"><strong>温度在 softmax 之前缩放分数。</strong>它除的是<em>分数</em>，不是概率——这是它和「事后把概率重新开方」的本质区别：除以小数等于把整个分数轴拉伸，而指数函数对拉伸极其敏感，于是差距被急剧放大。</li>
-              <li data-step="1"><strong>温度只改陡峭度，绝不改排序。</strong>因为所有分数被同一个正数除，大小关系不变。所以分数最高的那个词，在任何温度下都是最高概率的那个词；温度只能改变「它领先多少」。这是理解后面所有现象的钥匙。</li>
-              <li data-step="2"><strong>top-p 先截断、再重归一化。</strong>把候选按概率降序累计到 ≥ p 为止，只保留这一段（称为<span class="term" data-def="按概率降序累计达到 p 的最小候选集合；集合外的候选概率被置零后重新归一化。" data-en="nucleus">核</span>），其余清零、剩下的重新除以总和。它比「只保留前 k 个」更常用，因为<strong>核的大小会随模型自信程度自动伸缩</strong>。</li>
-              <li data-step="1"><strong>幻觉不是 bug，是训练目标的直接后果。</strong>模型被训练成「让下一词最像人类写过的文本」，而人类文本里有海量语气笃定但内容错误的句子。训练目标里从来没有「不确定时应当沉默」这一项，于是模型学到：<strong>流畅地继续，永远比停下来更划算</strong>。</li>
-              <li data-step="3"><strong>KV Cache 省算力，不省内存。</strong>生成第 t 个字要用到前 1…t 个词的 K/V；全重算是 O(t²)，把算过的 K/V 留在显存里复用就降到每步 O(t)。但缓存本身必须常驻，且随上下文线性增长。</li>
-              <li data-step="4"><strong>窗口标称长度 ≠ 有效使用长度。</strong>两个独立原因：位置编码见过的距离有限，超出就是外推；softmax 每行权重之和恒为 1，候选越多每个词分到的平均权重越小，中段信息容易被首尾挤掉。所以正确的说法不是「它记不住」，而是<strong>它能看见，但未必会去看</strong>。</li>
+              <li data-step="2"><strong>温度在 softmax 之前缩放分数。</strong>它除的是<em>分数</em>，不是概率——这是它和「事后把概率重新开方」的本质区别：除以小数等于把整个分数轴拉伸，而指数函数对拉伸极其敏感，于是差距被急剧放大。</li>
+              <li data-step="3"><strong>温度只改陡峭度，绝不改排序。</strong>因为所有分数被同一个正数除，大小关系不变。所以分数最高的那个词，在任何温度下都是最高概率的那个词；温度只能改变「它领先多少」。这是理解后面所有现象的钥匙。</li>
+              <li data-step="4"><strong>top-p 先截断、再重归一化。</strong>把候选按概率降序累计到 ≥ p 为止，只保留这一段（称为<span class="term" data-def="按概率降序累计达到 p 的最小候选集合；集合外的候选概率被置零后重新归一化。" data-en="nucleus">核</span>），其余清零、剩下的重新除以总和。它比「只保留前 k 个」更常用，因为<strong>核的大小会随模型自信程度自动伸缩</strong>。</li>
+              <li data-step="5"><strong>幻觉不是 bug，是训练目标的直接后果。</strong>模型被训练成「让下一词最像人类写过的文本」，而人类文本里有海量语气笃定但内容错误的句子。训练目标里从来没有「不确定时应当沉默」这一项，于是模型学到：<strong>流畅地继续，永远比停下来更划算</strong>。</li>
+              <li data-step="6"><strong>KV Cache 省算力，不省内存。</strong>生成第 t 个字要用到前 1…t 个词的 K/V；全重算是 O(t²)，把算过的 K/V 留在显存里复用就降到每步 O(t)。但缓存本身必须常驻，且随上下文线性增长。</li>
+              <li data-step="7"><strong>窗口标称长度 ≠ 有效使用长度。</strong>两个独立原因：位置编码见过的距离有限，超出就是外推；softmax 每行权重之和恒为 1，候选越多每个词分到的平均权重越小，中段信息容易被首尾挤掉。所以正确的说法不是「它记不住」，而是<strong>它能看见，但未必会去看</strong>。</li>
             </ol>
           
             <div class="math-block math">
@@ -2953,15 +2953,15 @@
           <h3>机制拆解</h3>
           <ol class="steps">
               <li data-step="1"><strong>切块：把图像变成序列。</strong>224×224 的图按 16×16 切成 196 块，每块展平成 768 维向量（16×16×3 通道），再经一个线性投影降到模型的工作维度，加上位置信息。这一步之后，图像与一句 196 词的话在数学上<strong>完全同形</strong>。</li>
-              <li data-step="1"><strong>喂给标准 Transformer。</strong>ViT 的架构就是 M07 那套：自注意力 + 前馈 + 残差 + 归一化，没有任何「视觉专用算子」。卷积的局部性在这里被注意力取代——每个方块可以直接看所有其他方块。</li>
-              <li data-step="2"><strong>分岔一：连续嵌入路线。</strong>图像编码器输出一串向量，用一个「翻译层」（线性投影或交叉注意力）把它们映射到语言模型的向量空间，然后当作前缀拼进文本。保真度高，但图像向量与文本词元<strong>不在同一个离散空间</strong>，无法共用同一套下一词预测损失。</li>
-              <li data-step="2"><strong>分岔二：离散 tokenizer 路线。</strong>先用向量量化（VQ）把每个方块归到一本「视觉词典」里的某个条目（比如 8192 个码字之一），于是图像真的变成了 196 个整数 ID。好处是<strong>图像和文本共用同一套自回归机制、同一个损失、同一个采样器</strong>；代价是量化必然丢信息，且码本大小是个新的魔法数字（见下方简化声明）。</li>
-              <li data-step="3"><strong>CLIP 的对比学习：不标注也能对齐。</strong>两个编码器（图像、文本）各自把输入压成一个向量，训练目标是：配对的图文（同一网页上的图片与其标题）向量靠近，不配对的推开。监督信号来自互联网上<strong>天然存在的图文配对</strong>，4 亿对量级 [2026-10]，没有一个人工标签。</li>
-              <li data-step="3"><strong>为什么这带来「零样本分类」。</strong>没为「猫/狗」训练过任何分类头。做法是把类别名填进模板句子——「一张猫的照片」「一张狗的照片」——编码成向量，再看图像向量离哪句最近。<strong>分类被降级成了检索</strong>，类别可以随时增减，不需要重新训练。</li>
-              <li data-step="4"><strong>失效模式一：数不清。</strong>视觉词元是<strong>定长</strong>的：无论图里有 3 只猫还是 30 只猫，都切成同样多的方块。数量没有作为一个计数被编码进任何一个方块，它只弥散在整体模式里。所以细粒度计数天生不可靠，而物体越大、占的方块越多，反而更容易被「数」对。</li>
-              <li data-step="4"><strong>失效模式二：看不清小字。</strong>切块 + 下采样会丢掉高频细节，一行 8 像素的小字可能在投影后只剩噪声级差异。这不是「分辨率不够」的简单问题，而是<strong>信息在进模型之前就已经不在了</strong>。</li>
-              <li data-step="4"><strong>失效模式三：空间关系与左右。</strong>位置编码提供的是「第几块」，不是「A 在 B 左边」这种关系；池化与全局注意力进一步把坐标信息摊薄。于是「左边第三个」这类问题常常答得自信而错。</li>
-              <li data-step="5"><strong>「看图说话但看不到细节」的根源。</strong>翻译层把视觉向量对齐到语言空间时，优化目标是「让语言模型能接着往下说」，而不是「保留所有像素事实」。所以它保留的是<strong>可被语言复述的那部分</strong>——能说出「一只橘猫在沙发上」，却说不出沙发扶手上有一道裂纹。</li>
+              <li data-step="2"><strong>喂给标准 Transformer。</strong>ViT 的架构就是 M07 那套：自注意力 + 前馈 + 残差 + 归一化，没有任何「视觉专用算子」。卷积的局部性在这里被注意力取代——每个方块可以直接看所有其他方块。</li>
+              <li data-step="3"><strong>分岔一：连续嵌入路线。</strong>图像编码器输出一串向量，用一个「翻译层」（线性投影或交叉注意力）把它们映射到语言模型的向量空间，然后当作前缀拼进文本。保真度高，但图像向量与文本词元<strong>不在同一个离散空间</strong>，无法共用同一套下一词预测损失。</li>
+              <li data-step="4"><strong>分岔二：离散 tokenizer 路线。</strong>先用向量量化（VQ）把每个方块归到一本「视觉词典」里的某个条目（比如 8192 个码字之一），于是图像真的变成了 196 个整数 ID。好处是<strong>图像和文本共用同一套自回归机制、同一个损失、同一个采样器</strong>；代价是量化必然丢信息，且码本大小是个新的魔法数字（见下方简化声明）。</li>
+              <li data-step="5"><strong>CLIP 的对比学习：不标注也能对齐。</strong>两个编码器（图像、文本）各自把输入压成一个向量，训练目标是：配对的图文（同一网页上的图片与其标题）向量靠近，不配对的推开。监督信号来自互联网上<strong>天然存在的图文配对</strong>，4 亿对量级 [2026-10]，没有一个人工标签。</li>
+              <li data-step="6"><strong>为什么这带来「零样本分类」。</strong>没为「猫/狗」训练过任何分类头。做法是把类别名填进模板句子——「一张猫的照片」「一张狗的照片」——编码成向量，再看图像向量离哪句最近。<strong>分类被降级成了检索</strong>，类别可以随时增减，不需要重新训练。</li>
+              <li data-step="7"><strong>失效模式一：数不清。</strong>视觉词元是<strong>定长</strong>的：无论图里有 3 只猫还是 30 只猫，都切成同样多的方块。数量没有作为一个计数被编码进任何一个方块，它只弥散在整体模式里。所以细粒度计数天生不可靠，而物体越大、占的方块越多，反而更容易被「数」对。</li>
+              <li data-step="8"><strong>失效模式二：看不清小字。</strong>切块 + 下采样会丢掉高频细节，一行 8 像素的小字可能在投影后只剩噪声级差异。这不是「分辨率不够」的简单问题，而是<strong>信息在进模型之前就已经不在了</strong>。</li>
+              <li data-step="9"><strong>失效模式三：空间关系与左右。</strong>位置编码提供的是「第几块」，不是「A 在 B 左边」这种关系；池化与全局注意力进一步把坐标信息摊薄。于是「左边第三个」这类问题常常答得自信而错。</li>
+              <li data-step="10"><strong>「看图说话但看不到细节」的根源。</strong>翻译层把视觉向量对齐到语言空间时，优化目标是「让语言模型能接着往下说」，而不是「保留所有像素事实」。所以它保留的是<strong>可被语言复述的那部分</strong>——能说出「一只橘猫在沙发上」，却说不出沙发扶手上有一道裂纹。</li>
             </ol>
           
             <div class="math-block math">
@@ -3110,12 +3110,12 @@
           <h4>先看清水位线：模型这一侧到底能做什么</h4>
             <ol class="steps">
               <li data-step="1"><strong>模型本身只有一个动作。</strong>给它一段文本，它输出下一个<span class="term" data-def="模型处理文本的最小单位，既不是词也不是字。" data-en="token">词元</span>的概率分布（M10）。就这一个。它不能执行、不能联网、不能读文件——「不能」不是被限制了，而是<strong>这套数学里压根没有「执行」这个算子</strong>。</li>
-              <li data-step="1"><strong>所谓工具调用，是模型输出了一段结构化文本。</strong>程序把这段文本（通常是 JSON）解析出来、真的去执行、再把结果<strong>作为文本</strong>追加到上下文末尾。整个过程中模型做的仍然只有写字，只是它写的东西<strong>恰好可被机器读</strong>。这就是「会说」变成「会做」的全部机制。</li>
-              <li data-step="2"><strong>把这件事重复若干轮，就是 ReAct 循环。</strong>Thought（要不要查、查什么）→ Action（写出的请求单）→ Observation（执行结果被塞回来的文本）→ 再 Thought……直到模型不再写请求单、而是直接写最终答案（Yao 等人，2022 [2026-10]）。关键点：<strong>每一步的 Observation 都变成新的输入文本</strong>，所以循环深度不是自由的，它被窗口长度约束——第 ⑥ 步会看到这个约束如何反噬。</li>
-              <li data-step="3"><strong>「记忆」分三层，而且存在三个不同的地方。</strong>短期 = 当前上下文窗口（窗口一滑就没了）；长期 = 外部存储加检索（向量库、数据库、文件），本质就是 M11 那套嵌入检索，取回来的仍然是文本；程序性 = 写进提示词（改输入）或者微调进权重（改参数）。三层里<strong>只有最后一层真正改变了模型</strong>。</li>
-              <li data-step="4"><strong>RAG 能压幻觉，靠的不是「让它学会」。</strong>它不改任何<span class="term" data-def="模型内部可训练的数值。" data-en="parameter">参数</span>，而是把「该说什么」的证据<strong>直接放进上下文</strong>。证据里的词与答案里的词在训练数据里共现过，于是这些证据词元会抬高相关候选的分数、压低其余候选——下一词分布被证据重新加权。这正是本站那条主线：M10 第 ③ 步说过<strong>温度改不了排序，但改输入可以</strong>。RAG 就是「改输入」的工程化版本：不换菜单，换菜。</li>
-              <li data-step="5"><strong>RAG 有三类失效，而且都不在模型这一侧。</strong>检索漏：该找到的没找到，因为相似度不等于相关性，问法和文档写法不一致就取不回来；检索脏：找到了相似但错误或过期的段落，模型会<strong>照着它错</strong>，因为它没有独立的事实通道；上下文挤：证据塞得太多太长，把「问题本身」挤到中段，而 M10 第 ⑦ 步已经说过——能看见不等于会去看。三类失效的共同点：<em>模型的推理一步没错，错在喂进去的文本</em>。</li>
-              <li data-step="6"><strong>长任务为什么必然「跑偏」：成功是连乘的。</strong>设每一步都正确的概率是 p，N 步全对的概率就是 p<sup>N</sup>。更要命的是错误不自我清除：<strong>第 2 步的错误 Observation 会留在上下文里</strong>，成为第 3、4、5 步的输入，于是后面每一步的 p 都在更差的输入上算——这叫误差累积与自我强化。步数是成本，不是能力。</li>
+              <li data-step="2"><strong>所谓工具调用，是模型输出了一段结构化文本。</strong>程序把这段文本（通常是 JSON）解析出来、真的去执行、再把结果<strong>作为文本</strong>追加到上下文末尾。整个过程中模型做的仍然只有写字，只是它写的东西<strong>恰好可被机器读</strong>。这就是「会说」变成「会做」的全部机制。</li>
+              <li data-step="3"><strong>把这件事重复若干轮，就是 ReAct 循环。</strong>Thought（要不要查、查什么）→ Action（写出的请求单）→ Observation（执行结果被塞回来的文本）→ 再 Thought……直到模型不再写请求单、而是直接写最终答案（Yao 等人，2022 [2026-10]）。关键点：<strong>每一步的 Observation 都变成新的输入文本</strong>，所以循环深度不是自由的，它被窗口长度约束——第 ⑥ 步会看到这个约束如何反噬。</li>
+              <li data-step="4"><strong>「记忆」分三层，而且存在三个不同的地方。</strong>短期 = 当前上下文窗口（窗口一滑就没了）；长期 = 外部存储加检索（向量库、数据库、文件），本质就是 M11 那套嵌入检索，取回来的仍然是文本；程序性 = 写进提示词（改输入）或者微调进权重（改参数）。三层里<strong>只有最后一层真正改变了模型</strong>。</li>
+              <li data-step="5"><strong>RAG 能压幻觉，靠的不是「让它学会」。</strong>它不改任何<span class="term" data-def="模型内部可训练的数值。" data-en="parameter">参数</span>，而是把「该说什么」的证据<strong>直接放进上下文</strong>。证据里的词与答案里的词在训练数据里共现过，于是这些证据词元会抬高相关候选的分数、压低其余候选——下一词分布被证据重新加权。这正是本站那条主线：M10 第 ③ 步说过<strong>温度改不了排序，但改输入可以</strong>。RAG 就是「改输入」的工程化版本：不换菜单，换菜。</li>
+              <li data-step="6"><strong>RAG 有三类失效，而且都不在模型这一侧。</strong>检索漏：该找到的没找到，因为相似度不等于相关性，问法和文档写法不一致就取不回来；检索脏：找到了相似但错误或过期的段落，模型会<strong>照着它错</strong>，因为它没有独立的事实通道；上下文挤：证据塞得太多太长，把「问题本身」挤到中段，而 M10 第 ⑦ 步已经说过——能看见不等于会去看。三类失效的共同点：<em>模型的推理一步没错，错在喂进去的文本</em>。</li>
+              <li data-step="7"><strong>长任务为什么必然「跑偏」：成功是连乘的。</strong>设每一步都正确的概率是 p，N 步全对的概率就是 p<sup>N</sup>。更要命的是错误不自我清除：<strong>第 2 步的错误 Observation 会留在上下文里</strong>，成为第 3、4、5 步的输入，于是后面每一步的 p 都在更差的输入上算——这叫误差累积与自我强化。步数是成本，不是能力。</li>
             </ol>
           
             <div class="callout callout--note">
@@ -3626,7 +3626,7 @@
     <section><h4>工程</h4><ul><li><a href="./assets/data/modules.json">内容契约 modules.json</a></li><li><a href="./README.md">如何构建与自检</a></li></ul></section>
     <section><h4>许可</h4><p>文字与图解 CC BY-SA 4.0，代码 MIT。引用请注明出处。</p></section>
   </div>
-  <p class="sitefooter__status">13 个模块 · 13 个交互演示 · 单文件零依赖</p>
+  <p class="sitefooter__status">13 个模块 · 13 个交互演示 · 单页静态站，零外部依赖</p>
 </footer>
 
 <!-- 搜索面板（app.js 实现，纯前端标题+术语+带走句索引） -->

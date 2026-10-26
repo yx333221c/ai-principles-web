@@ -26,15 +26,15 @@
 
   <ol class="steps">
     <li data-step="1"><strong>一个「神经元」就是一行线性变换。</strong>它把这一层的输入各乘一个<span class="term" data-def="网络里乘在输入上的系数，训练得到的就是这组数。" data-en="weight">权重</span>再相加，最后加一个偏置。<code>x</code> 是输入向量（形状 <code>[n]</code>），<code>w</code> 是这一行的权重（同样 <code>[n]</code>），<code>b</code> 是标量偏置。</li>
-    <li data-step="1"><strong>网络就是把这些行排成层。</strong>一层有 m 个神经元，就是 <code>m</code> 行同时算，写成一式 <code>z = Wx + b</code>，其中 <code>W</code> 形状 <code>[m × n]</code>、结果 <code>z</code> 形状 <code>[m]</code>。所谓「深度」，就是层数。</li>
-    <li data-step="2"><strong>把激活函数拿掉，深度立刻作废。</strong>两层线性连着算：<code>y = W₂(W₁x + b₁) + b₂</code>，展开就是 <code>y = (W₂W₁)x + (W₂b₁ + b₂)</code>——一个<em>矩阵乘积</em>就替代了整叠层。层数 100 和层数 1 能表达的函数<strong>一模一样</strong>。这是「非线性开关」存在的全部理由。</li>
-    <li data-step="2"><strong>激活函数是逐元素的折弯开关。</strong>它一个数一个数地作用：<code>a = φ(z)</code>。加了它，两层之间就不再能合并，深度才开始买到东西。</li>
-    <li data-step="3"><strong>为什么折弯能拟合复杂函数。</strong>一个 ReLU 神经元在输入空间里切出一道「折痕」，折痕两侧斜率不同；把多个这样的折痕按权重叠加，就能拼出一段段斜率各异的折线。直线永远画不出台阶，而足够多的折线段可以逼近任意一条连续曲线（隐藏层为一层的经典结论，Cybenko（1989）[2026-10]）。表达力来自「折弯 + 叠起来」，不来自「多乘几次矩阵」。</li>
-    <li data-step="4"><strong>三种常见形状，各自带着一种毛病。</strong>Sigmoid 与 Tanh 两头都<strong>饱和</strong>（曲线躺平 → 局部导数趋 0 → 梯度一层层被削，走到浅层已接近 0，即梯度消失）；ReLU 负半轴<strong>斜率恒为 0</strong>，一旦某个神经元的输入总落在负半轴，它就再也不更新，俗称「死亡」。</li>
-    <li data-step="5"><strong>前向传播 = 沿计算图把值算出来。</strong><span class="term" data-def="把一次计算拆成一张有向图：每个节点是一步最小运算，每条边传一个数。" data-en="compute graph">计算图</span>把一次预测写成「一步一节点」的图。前向就是从输入出发，按拓扑顺序逐节点求值，一直算到损失。</li>
-    <li data-step="6"><strong>反向传播 = 同一个图倒着走一遍。</strong>规则只有一句：<em>每个节点把自己收到的「上游梯度」乘上自己的「局部导数」，再发给自己的每个输入</em>。局部导数只涉及这个节点自己，跟全网络有多大无关。</li>
-    <li data-step="7"><strong>这就是它能工程化的原因。</strong>写一个框架不需要会解优化题，只需要给每种算子配两小段代码：正着算值（forward）、局部求导（backward）。框架记下前向的访问顺序，再倒序调用 backward，把乘法自动接好线——这套自动接线就叫<span class="term" data-def="按计算图自动、逐节点套用链式法则，无需人工推完整导数公式。" data-en="automatic differentiation">自动微分</span>。求导公式是人写的，链子不是。</li>
-    <li data-step="8"><strong>一次参数更新是三步循环。</strong>前向算出损失 → 反向算出每个参数的梯度 → 每个参数沿梯度反方向挪一小步（学习率来自 M04）。三步重复几十万次，就是「训练」。每个参数只跟自己的梯度打交道，谁也不需要理解全局。</li>
+    <li data-step="2"><strong>网络就是把这些行排成层。</strong>一层有 m 个神经元，就是 <code>m</code> 行同时算，写成一式 <code>z = Wx + b</code>，其中 <code>W</code> 形状 <code>[m × n]</code>、结果 <code>z</code> 形状 <code>[m]</code>。所谓「深度」，就是层数。</li>
+    <li data-step="3"><strong>把激活函数拿掉，深度立刻作废。</strong>两层线性连着算：<code>y = W₂(W₁x + b₁) + b₂</code>，展开就是 <code>y = (W₂W₁)x + (W₂b₁ + b₂)</code>——一个<em>矩阵乘积</em>就替代了整叠层。层数 100 和层数 1 能表达的函数<strong>一模一样</strong>。这是「非线性开关」存在的全部理由。</li>
+    <li data-step="4"><strong>激活函数是逐元素的折弯开关。</strong>它一个数一个数地作用：<code>a = φ(z)</code>。加了它，两层之间就不再能合并，深度才开始买到东西。</li>
+    <li data-step="5"><strong>为什么折弯能拟合复杂函数。</strong>一个 ReLU 神经元在输入空间里切出一道「折痕」，折痕两侧斜率不同；把多个这样的折痕按权重叠加，就能拼出一段段斜率各异的折线。直线永远画不出台阶，而足够多的折线段可以逼近任意一条连续曲线（隐藏层为一层的经典结论，Cybenko（1989）[2026-10]）。表达力来自「折弯 + 叠起来」，不来自「多乘几次矩阵」。</li>
+    <li data-step="6"><strong>三种常见形状，各自带着一种毛病。</strong>Sigmoid 与 Tanh 两头都<strong>饱和</strong>（曲线躺平 → 局部导数趋 0 → 梯度一层层被削，走到浅层已接近 0，即梯度消失）；ReLU 负半轴<strong>斜率恒为 0</strong>，一旦某个神经元的输入总落在负半轴，它就再也不更新，俗称「死亡」。</li>
+    <li data-step="7"><strong>前向传播 = 沿计算图把值算出来。</strong><span class="term" data-def="把一次计算拆成一张有向图：每个节点是一步最小运算，每条边传一个数。" data-en="compute graph">计算图</span>把一次预测写成「一步一节点」的图。前向就是从输入出发，按拓扑顺序逐节点求值，一直算到损失。</li>
+    <li data-step="8"><strong>反向传播 = 同一个图倒着走一遍。</strong>规则只有一句：<em>每个节点把自己收到的「上游梯度」乘上自己的「局部导数」，再发给自己的每个输入</em>。局部导数只涉及这个节点自己，跟全网络有多大无关。</li>
+    <li data-step="9"><strong>这就是它能工程化的原因。</strong>写一个框架不需要会解优化题，只需要给每种算子配两小段代码：正着算值（forward）、局部求导（backward）。框架记下前向的访问顺序，再倒序调用 backward，把乘法自动接好线——这套自动接线就叫<span class="term" data-def="按计算图自动、逐节点套用链式法则，无需人工推完整导数公式。" data-en="automatic differentiation">自动微分</span>。求导公式是人写的，链子不是。</li>
+    <li data-step="10"><strong>一次参数更新是三步循环。</strong>前向算出损失 → 反向算出每个参数的梯度 → 每个参数沿梯度反方向挪一小步（学习率来自 M04）。三步重复几十万次，就是「训练」。每个参数只跟自己的梯度打交道，谁也不需要理解全局。</li>
   </ol>
 
   <div class="math-block math">

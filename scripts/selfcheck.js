@@ -97,6 +97,14 @@ const segOf = (src, name) => {
 };
 const strip = (s) => s.replace(/<[^>]+>/g, '').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim();
 
+/* 各模块机制段的步骤数，供「第 X 步」引用核对使用（含跨模块引用）。
+   先建表再核对：m12 里写「M10 第 ⑥ 步」时，m10 可能还没轮到被遍历。 */
+const stepCount = {};
+built.forEach(m => {
+  const blk = segOf(rd('content/modules/' + m.id + '.html'), 'mechanism').match(/<ol class="steps">[\s\S]*?<\/ol>/);
+  stepCount[m.id] = blk ? (blk[0].match(/<li[\s>]/g) || []).length : 0;
+});
+
 built.forEach(m => {
   const f = 'content/modules/' + m.id + '.html';
   const src = rd(f);
@@ -109,12 +117,23 @@ built.forEach(m => {
   if (bogus.length) bad(m.id + ' 非法段落名: ' + bogus.join(','));
   if (!miss.length && !dup.length && !bogus.length) ok(m.id + ' 六段齐全');
 
-  /* hook：≤140 字、零术语 */
-  const hook = strip(segOf(src, 'hook'));
-  const hookLen = [...hook].length;
-  if (!hookLen) bad(m.id + ' hook 为空');
-  else if (hookLen > 190) bad(m.id + ' hook ' + hookLen + ' 字，超出 §5-1 限制');
-  else ok(m.id + ' hook ' + hookLen + ' 字');
+  /* hook：规范明文 ≤120 字（§5-1）。
+     量的是 <p class="hook"> 本体，不是整个 hook 段——段里还有一条
+     <p class="demo__note"> 前置模块提示，那是 UI 横幅、不是钩子。
+     按整段量会把 13 个全部误判为超标（实测最大 112 字 vs 整段 174 字），
+     而旧阈值 190 正是为了迁就这个误判才放宽的——治错了地方。 */
+  const hookSeg = segOf(src, 'hook');
+  const hookPara = (hookSeg.match(/<p class="hook">([\s\S]*?)<\/p>/) || [])[1];
+  if (hookPara == null) {
+    bad(m.id + ' hook 段缺 <p class="hook">（构建器靠它区分钩子与前置提示）');
+  } else {
+    const hookLen = [...strip(hookPara)].length;
+    if (!hookLen) bad(m.id + ' hook 为空');
+    else if (hookLen > 120) bad(m.id + ' hook ' + hookLen + ' 字，超出 §5-1 的 120 字限制');
+    else ok(m.id + ' hook ' + hookLen + ' 字');
+  }
+  /* 钩子里不许出现术语（§5-1「不许出现任何术语」）：term 卡与英文缩写都是信号 */
+  if (hookPara != null && /class="term"|data-en=/.test(hookPara)) bad(m.id + ' hook 出现术语卡（§5-1 要求零术语）');
 
   /* H2/H3：直觉段必须有失效边界 */
   const intu = segOf(src, 'intuition');
@@ -125,8 +144,51 @@ built.forEach(m => {
   const mech = segOf(src, 'mechanism');
   const steps = (mech.match(/<li[\s>]/g) || []).length;
   (steps >= 3 ? ok(m.id + ' 机制 ' + steps + ' 步') : bad(m.id + ' 机制段步骤 ' + steps + ' < 3'));
+
+  /* 步骤编号双轨检查（2026-10 复核发现的系统性缺陷）：
+     可见编号由 CSS counter(step) 按 <li> 顺序渲染，悬停联动用 data-step 属性。
+     两者一旦错位，hover 第 5 步会点亮图里第 4 步——联动"看起来在工作"，
+     所以人工检查发现不了。这里要求 data-step 序列恰好是 1..N。 */
+  const stepBlock = mech.match(/<ol class="steps">[\s\S]*?<\/ol>/);
+  if (stepBlock) {
+    const ds = [...stepBlock[0].matchAll(/<li[^>]*data-step="(\d+)"/g)].map(x => Number(x[1]));
+    const liN = (stepBlock[0].match(/<li[\s>]/g) || []).length;
+    if (ds.length !== liN) bad(m.id + ' steps 有 ' + liN + ' 个 <li> 但只有 ' + ds.length + ' 个带 data-step（联动会漏项）');
+    else if (ds.some((v, i) => v !== i + 1)) bad(m.id + ' data-step 序列 ' + ds.join(',') + ' ≠ 1..' + liN + '（编号双轨错位）');
+    else {
+      ok(m.id + ' data-step 与可见编号一致（1..' + liN + '）');
+      /* 引用必须在步数范围内：写「第 ⑳ 步」而只有 8 步就是悬空引用。
+         ① 的码点是 U+2460，⑳ 是 U+2473——字符类要覆盖到 ⑳，
+         只写 [①-] 会让 ⑯ 以上的越界引用**匹配不到**从而静默漏过（变异测试抓到过）。
+         两点必须处理，否则就是误报机器：
+         ① 跨模块引用（「M10 第 ⑥ 步」）要按**目标模块**的步数核对，不能拿本模块比；
+         ② 阿拉伯数字写法（「第 3 步」）多半指外部算法（如 InstructGPT 的 RLHF 三步），
+            不是本站 .steps 编号，一律不纳入。 */
+      const circNo = (c) => c.charCodeAt(0) - 0x2460 + 1;   /* ① = U+2460 */
+      for (const t of src.matchAll(/(?:(M\d\d)\s*)?第\s*([\u2460-\u2473]+)\s*步/g)) {
+        const target = t[1] ? 'm' + t[1].slice(1) : m.id;
+        const n = t[1] ? (stepCount[target] || 0) : liN;
+        if (!n) continue;
+        const bad2 = [...t[2]].map(circNo).filter(r => r > n);
+        if (bad2.length) bad(m.id + (t[1] ? ' 跨模块' : '') + '步骤引用越界: ' + (t[1] || '') + ' 第 ' + bad2.join('、') + ' 步（' + target + ' 只有 ' + n + ' 步）');
+      }
+    }
+  }
   const figs = (mech.match(/class="figure/g) || []).length;
   (figs >= 1 ? ok(m.id + ' 图解 ' + figs + ' 张') : bad(m.id + ' 机制段无图解（§5-3）'));
+  /* modules.json 的 figures 清单与正文 data-fig 双向核对。
+     2026-10 复核实测 10 个模块漂移（清单挂着正文里已不存在的幽灵名、
+     正文新增的图清单里没有），而 README 把这份文件称作「内容契约」。
+     静默腐化的原因是没人核对它——现在它有了消费方：这条断言。 */
+  {
+    const all = [...src.matchAll(/data-fig="([^"]+)"/g)].map(x => x[1]);
+    const declared = m.figures || [];
+    const missing = all.filter(f => !declared.includes(f));
+    const ghost = declared.filter(f => !all.includes(f));
+    if (missing.length) bad(m.id + ' 正文图解未登记进 modules.json: ' + missing.join(', '));
+    if (ghost.length) bad(m.id + ' modules.json 列了正文不存在的图解: ' + ghost.join(', '));
+    if (!missing.length && !ghost.length && all.length) ok(m.id + ' figures 清单与正文一致（' + all.length + ' 张）');
+  }
   const figBlocks = [...mech.matchAll(/<div class="figure"[^>]*>([\s\S]*?)<\/figcaption>/g)].map(x => x[0]);
   figBlocks.forEach((b, i) => {
     const svg = /<svg[\s\S]*<\/svg>/.test(b);

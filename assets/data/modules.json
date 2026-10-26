@@ -93,15 +93,12 @@
       "demo": {
         "id": "m01-shannon-game",
         "type": "param",
-        "params": [
-          "sequenceLen",
-          "modelClass"
-        ],
         "title": "猜下一个符号",
         "kind": "svg"
       },
       "figures": [
-        "m01-shannon-game-1"
+        "m01-shannon-game-1",
+        "m01-codec-loop-2"
       ],
       "acceptance": "用自己的话说清「模型能力 ≈ 对数据的压缩质量」，并解释为什么随机噪声压不动",
       "formulaDense": false
@@ -129,11 +126,6 @@
       "demo": {
         "id": "m02-entropy-bars",
         "type": "param",
-        "params": [
-          "p1",
-          "p2",
-          "p3"
-        ],
         "title": "惊喜度与熵",
         "kind": "svg"
       },
@@ -166,16 +158,12 @@
       "demo": {
         "id": "m03-vector-field",
         "type": "param",
-        "params": [
-          "matrixA",
-          "matrixB",
-          "angle"
-        ],
         "title": "向量与相似度",
         "kind": "svg"
       },
       "figures": [
-        "m03-vector-field-1"
+        "m03-vector-field-1",
+        "m03-matrix-transform-2"
       ],
       "acceptance": "用二维示意讲清点积=相似度、矩阵=空间变换、特征向量=不变方向",
       "formulaDense": false
@@ -204,16 +192,12 @@
       "demo": {
         "id": "m04-loss-terrain",
         "type": "param",
-        "params": [
-          "lr",
-          "momentum",
-          "optimizer"
-        ],
         "title": "梯度下山地形的球",
         "kind": "svg"
       },
       "figures": [
-        "m04-loss-terrain-1"
+        "m04-loss-terrain-1",
+        "m04-momentum-2"
       ],
       "acceptance": "解释 SGD/动量/Adam 各自解决了什么问题，而非记公式",
       "formulaDense": false
@@ -244,15 +228,13 @@
       "demo": {
         "id": "m05-microcalc",
         "type": "flagship-step",
-        "params": [
-          "weight",
-          "activation"
-        ],
         "frames": true,
         "title": "手搭网络与反向传播",
         "kind": "svg"
       },
       "figures": [
+        "m05-linear-collapse-2",
+        "m05-activation-shapes-3",
         "m05-compute-graph-1"
       ],
       "acceptance": "在浏览器里手搭 2 层网络训练拟合一个圆；解释计算图中梯度如何回流",
@@ -281,14 +263,11 @@
       "demo": {
         "id": "m06-rnn-vanish",
         "type": "param",
-        "params": [
-          "steps",
-          "weightScale"
-        ],
         "title": "梯度随距离衰减",
         "kind": "svg"
       },
       "figures": [
+        "m06-path-length-1",
         "m06-receptive-field-1"
       ],
       "acceptance": "对比 CNN 局部感受野/RNN 时间展开的显存与串行瓶颈；说出「路径长度」为何决定梯度衰减",
@@ -319,18 +298,11 @@
       "demo": {
         "id": "m07-attn-map",
         "type": "flagship",
-        "params": [
-          "head",
-          "layer",
-          "scaleMode",
-          "sentence"
-        ],
         "title": "注意力矩阵：它到底在看哪里",
         "kind": "svg"
       },
       "figures": [
-        "m07-transformer-flow-1",
-        "m07-qkv-flow-2"
+        "m07-qkv-1"
       ],
       "acceptance": "白板画出 Transformer 数据流；解释 O(n²) 复杂度从哪来；说出 RoPE 与绝对位置编码的差异",
       "formulaDense": true
@@ -340,8 +312,9 @@
       "num": 8,
       "part": "training",
       "title": "预训练与 Scaling Law",
-      "tagline": "智能从规模里涌现",
+      "tagline": "损失随规模按幂律下降",
       "prereq": [
+        "m02",
         "m07"
       ],
       "difficulty": 3,
@@ -358,16 +331,12 @@
       "demo": {
         "id": "m08-scaling-curve",
         "type": "param",
-        "params": [
-          "paramsB",
-          "tokensB",
-          "fitLine"
-        ],
         "title": "规模定律拟合器",
         "kind": "svg"
       },
       "figures": [
-        "m08-scaling-law-1"
+        "m08-scaling-law-1",
+        "m08-emergence-2"
       ],
       "debate": "涌现能力是真实现象还是评测指标的不连续假象（两派并列）",
       "acceptance": "复述 Chinchilla 结论（数据与参数应同步放大）；解释为何「更大不一定更聪明」的错觉",
@@ -396,10 +365,6 @@
       "demo": {
         "id": "m09-reward-kl",
         "type": "param",
-        "params": [
-          "klCoef",
-          "rewardScale"
-        ],
         "title": "奖励与跑偏的拉锯",
         "kind": "svg"
       },
@@ -433,16 +398,11 @@
       "demo": {
         "id": "m10-temp-lab",
         "type": "flagship",
-        "params": [
-          "temperature",
-          "topP",
-          "samples"
-        ],
         "title": "温度采样实验室",
         "kind": "svg"
       },
       "figures": [
-        "m10-kv-cache-1"
+        "m10-nucleus-1"
       ],
       "acceptance": "解释为何代码要 temp=0 而创意写作要高 temp；说出 128k 上下文「大海捞针」失效的两种原因",
       "formulaDense": true
@@ -470,15 +430,11 @@
       "demo": {
         "id": "m11-clip-space",
         "type": "param",
-        "params": [
-          "patchSize",
-          "temperature"
-        ],
         "title": "图文对齐的嵌入空间",
         "kind": "svg"
       },
       "figures": [
-        "m11-vit-patch-1"
+        "m11-patch-1"
       ],
       "acceptance": "解释「图文对齐」如何被训练出来；说出多模态模型的典型失效模式（细粒度计数、OCR）",
       "formulaDense": false
@@ -506,16 +462,13 @@
       "demo": {
         "id": "m12-agent-timeline",
         "type": "flagship-step",
-        "params": [
-          "speed",
-          "frame"
-        ],
         "frames": true,
         "title": "智能体循环回放",
         "kind": "svg"
       },
       "figures": [
         "m12-agent-loop-1",
+        "m12-decay-1",
         "m12-rag-hit-miss-2"
       ],
       "acceptance": "画出 plan→act→observe 循环；比较 RAG 与微调的适用边界；解释长任务为何会「跑偏」",
@@ -546,10 +499,6 @@
       "demo": {
         "id": "m13-bench-saturation",
         "type": "param",
-        "params": [
-          "bench",
-          "year"
-        ],
         "title": "基准饱和与评测失效",
         "kind": "svg"
       },
