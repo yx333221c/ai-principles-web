@@ -20,23 +20,51 @@ let fail = 0, n = 0;
    只会让人误信「被复算覆盖的每个数都在正文里」。
    现在每条 near 的 want 都必须能在对应模块正文里搜到（opts.bool 显式豁免布尔/中间量断言）。 */
 const needs = [];
+/* 候选形式必须「代表同一个数」，且必须独立成数。
+   两代 bug 都栽在这：
+   ① 早期用裸 includes()，formsOf(0.0218) 含单字符 "0"，任何正文都命中 → 假绿；
+   ② 我改成数字边界后**仍然假绿**：0.0218 四舍五入到 0 位就是 "0"，
+      而正文里当然有独立的 "0"。"0" 压根不是 0.0218 的表示。
+   所以每个形式都带上它「代表的值」，与 want 差超过 5% 的一律不算命中。
+   尾零也要留成字符串：正文写「0.70 bit」时，只有解析后的 "0.7"
+   会被边界判据拒掉（后面紧贴 0），于是又退回去撞别的数。 */
+const numHit = (body, s) => {
+  const esc = s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp('(?<![\\d.])' + esc + '(?![\\d.])').test(body);
+};
 const formsOf = (w) => {
-  const out = new Set();
-  const add = (v) => { const s = String(v); if (s && s !== 'NaN' && s !== 'Infinity') out.add(s); };
-  add(w);
-  /* 正文常把数四舍五入后写出来：逐个精度都试 */
-  for (let d = 0; d <= 4; d++) add(+Number(w).toFixed(d));
-  /* 百分数：0.29 → 29 */
-  if (Math.abs(w) < 1) for (let d = 0; d <= 2; d++) add(+(w * 100).toFixed(d));
-  /* 科学计数法：正文写 2.9×10⁻⁵，断言里是 2.9e-5 → 尾数要能对上 */
+  const out = [], seen = new Set();
+  const add = (s, val) => {
+    s = String(s);
+    if (!s || s === 'NaN' || s === 'Infinity' || seen.has(s)) return;
+    if (!isFinite(val) || Math.abs(val - w) > Math.abs(w) * 0.05 + 1e-12) return;
+    seen.add(s); out.push(s);
+  };
+  add(w, w);
+  for (let d = 0; d <= 4; d++) {
+    const s = Number(w).toFixed(d);
+    add(s, Number(s));
+  }
+  /* 百分数：正文写「2.2 分」而断言是 0.0218 → 2.2 代表的值就是 0.022 */
+  if (Math.abs(w) < 1) for (let d = 0; d <= 2; d++) {
+    const s = (w * 100).toFixed(d);
+    add(s, Number(s) / 100);
+  }
+  /* 科学计数法：正文写 2.9×10⁻⁵ 或 1.8e-2，断言里是 2.9e-5 */
   const ex = String(Number(w).toExponential()).match(/^([-\d.]+)e(-?\d+)$/);
   if (ex) {
-    const mant = Number(ex[1]), e10 = Number(ex[2]);
-    for (let d = 0; d <= 3; d++) add(+mant.toFixed(d));
-    /* 也接受 1.8e-2 这种原样写法 */
-    add(mant + 'e' + e10);
+    const e10 = Number(ex[2]);
+    for (let d = 0; d <= 3; d++) {
+      const mant = +Number(ex[1]).toFixed(d);
+      add(mant + 'e' + e10, mant * Math.pow(10, e10));
+      /* 正文用上标记法写（2.9×10⁻⁵）：Unicode 上标数字 */
+      const SUP = { '-': '⁻', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+        '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹' };
+      const sup = String(e10).split('').map(c => SUP[c] || '').join('');
+      if (sup.length === String(e10).length) add(mant + '×10' + sup, mant * Math.pow(10, e10));
+    }
   }
-  return [...out];
+  return out;
 };
 const near = (label, got, want, tol, opts) => {
   n++;
@@ -132,10 +160,17 @@ near('m12 漏检+重复 = 1190（不溢出）', tokOf(44, true), 1190, 0, { demo
 near('m12 漏检不溢出（≤1200）', tokOf(44, true) <= 1200 ? 1 : 0, 1, 0, { bool: true });
 
 /* ---------------- M13 统计 ---------------- */
-near('m13 N=100 p=0.95 标准误', Math.sqrt(0.95 * 0.05 / 100), 0.0218, 0.0005);
-near('m13 N=500 p=0.95 标准误', Math.sqrt(0.95 * 0.05 / 500), 0.0097, 0.0005);
-near('m13 区分度 4p(1−p) 在 p=0.5 取最大', 4 * 0.5 * 0.5, 1, 0);
-near('m13 p=0.95 时区分度仅 0.19', 4 * 0.95 * 0.05, 0.19, 0.005);
+/* 这三条原先复算的是 0.0218 / 0.19 这类**正文从未印出的数**（收紧元检查后被抓出）。
+   它们不守护任何东西：√(0.95×0.05/100) 永远等于 0.0218，与页面无关。
+   现在改成复算正文真正写出的那几句，才算真在防漂移。 */
+near('m13 N=500 p=0.95 标准误 ±0.97 分', Math.sqrt(0.95 * 0.05 / 500) * 100, 0.97, 0.01, { alt: ['±0.97 分'] });
+/* 元检查只问「这个数在不在正文」，而 0.97 的百分数形式 97 会在别处命中，
+   所以「±0.97 分」这句原文得由 says() 守——两者分工，别指望前者。 */
+says('m13 正文印出「±0.97 分」', 'm13', /±0\.97 分/);
+near('m13 区分度在 p=0.5 取最大值 1', 4 * 0.5 * 0.5, 1, 0, { alt: ['最大值 1'] });
+near('m13 p=0.99 时区分度几乎归零', 4 * 0.99 * 0.01, 0.04, 0.005, { alt: ['几乎归零'] });
+says('m13 正文给出 SE 公式', 'm13', /√\(p/);
+says('m13 正文给出区分度式 4·p·(1−p)', 'm13', /4\s*·\s*p\s*·\s*\(1\s*−\s*p\)/);
 
 /* ---------------- M04 梯度下降（图解面板与误区里的量化断言）----------------
    地形与演示一致：碗形两轴 a=3；峡谷横陡 a=3 / 纵平 a=0.05；起点 (-1.75, 1.45) */
@@ -165,7 +200,7 @@ near('m04 动量第十步损失 0.411', m66.L, 0.411, 0.01);
 const t98 = traj(0.50, 0.98, 200), t90 = traj(0.50, 0.90, 200);
 near('m04 β=0.98 末 40 步仍换边 17 次', flips(t98.xs.slice(-40)), 17, 0);
 near('m04 β=0.98 摆幅约 ±0.4', (Math.max(...t98.xs.slice(-40)) - Math.min(...t98.xs.slice(-40))) / 2, 0.41, 0.03);
-near('m04 β=0.98 损失卡在 1.8e-2', t98.L, 1.82e-2, 2e-3);
+near('m04 β=0.98 损失卡在 1.8e-2', t98.L, 1.82e-2, 2e-3, { demo: 'assets/js/demos/m04-loss-terrain.js' });
 near('m04 β=0.90 同 lr 收敛到 1.5e-9', t90.L, 1.52e-9, 2e-10);
 /* 碗形实测临界：动量放宽稳定域（2(1+β)/a），不是收紧 */
 function deadBowl(lr, beta) {
@@ -222,7 +257,7 @@ anchorCount('演示碗形与峡谷起点都是 (-1.75,1.45)', /start:\s*\[\s*-1\
     /* 归属为演示读数的断言：数要在演示源码里出现（与 m04 的 anchor 同理） */
     if (t.demo) {
       const hay = demoText(t.demo);
-      const hit = formsOf(t.want).find(s => hay.includes(s));
+      const hit = formsOf(t.want).find(s => numHit(hay, s));
       if (!hit) { dangling++; console.log('  FAIL 悬空断言: ' + t.label + ' 复算出 ' + t.want + '，但 ' + t.demo + ' 里搜不到'); }
       continue;
     }
@@ -230,8 +265,8 @@ anchorCount('演示碗形与峡谷起点都是 (-1.75,1.45)', /start:\s*\[\s*-1\
       dangling++; console.log('  FAIL 悬空: ' + t.label + ' 无法定位正文模块（label 里没有 mXX？）'); continue;
     }
     const body = text(t.file);
-    /* alt：正文用上标记法写（如 2³⁴ 而非 17179869184），显式登记等价写法 */
-    const hit = formsOf(t.want).find(s => body.includes(s)) || (t.alt || []).find(s => body.includes(s));
+    /* 数值候选要独立成数；alt 是作者登记的正文原话（如 2³⁴、16 GiB），按字面找 */
+    const hit = formsOf(t.want).find(s => numHit(body, s)) || (t.alt || []).find(s => body.includes(s));
     if (!hit) { dangling++; console.log('  FAIL 悬空断言: ' + t.label + ' 复算出 ' + t.want + '，但 ' + t.file + ' 正文里搜不到这个数'); }
   }
   /* 元检查不另计断言数：它检查的是上面每条 near() 的归属，不是新断言 */
