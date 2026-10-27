@@ -28,8 +28,12 @@ const KEYS = DATA.modules.map(m => m.demo.id);
 
 /* 沙箱下捕获子进程 stdout 会被拒（EPERM），所以一律用 shell 重定向 + stdio:ignore */
 const sh = (cmd) => spawnSync(cmd, { shell: true, stdio: 'ignore', windowsHide: true }).status;
+/* 空设备名必须按平台取：Linux 上写死 'nul' 会真的创建一个名叫 nul 的文件；
+   而 os.devNull 在 Windows 返回 '\\.\nul'，cmd 的重定向解析器不认这个前缀，
+   同样会落一个名叫 nul 的文件（实测踩过）。只有裸 'nul' 在 Windows 才是设备。 */
+const DEVNULL = process.platform === 'win32' ? 'nul' : '/dev/null';
 
-sh(`curl -s -o nul -w "%{http_code}" ${BASE} > "${path.join(TMP, 'probe.txt')}" 2>nul`);
+sh(`curl -s -o "${DEVNULL}" -w "%{http_code}" ${BASE} > "${path.join(TMP, 'probe.txt')}" 2>${DEVNULL}`);
 const code = fs.existsSync(path.join(TMP, 'probe.txt')) ? fs.readFileSync(path.join(TMP, 'probe.txt'), 'utf8').trim() : '';
 if (code !== '200') {
   console.error('本地服务不可用（HTTP ' + (code || 'n/a') + '）。先跑：python -m http.server 8765 --bind 127.0.0.1');
