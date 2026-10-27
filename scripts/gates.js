@@ -44,14 +44,16 @@ const run = (args, env) => new Promise((done) => {
   c.on('error', () => done(1));
 });
 
-/* 静态服务起在独立进程里（scripts/serve.js），不在本进程内。
-   理由不是性能而是隔离：本进程还要跑构建与自检，服务活着时它们的输出会交错；
-   而且服务端口用 0（内核分配），避免撞上 8765 上残留的**旧**服务——
-   那种情况下 verify-demos 验的不是当前产物，却会报告「全部通过」。 */
+/* 静态服务起在独立进程里（scripts/serve.js），并带 --live-build。
+   为什么必须 live-build（2026-10 队友实测发现）：index.html 是生成物，
+   改了 content/modules 不重建就不会进页面，而 CSS/JS 是运行时直接加载的。
+   于是闸门 4 会验「新 JS + 旧正文」的混搭版并报告全过——它验的不是你刚改的东西。
+   live-build 让服务当场构建页面，验的永远是当前源文件；index.html 是否已重建
+   交给闸门 1/3 去管（它们本来就是干这个的）。 */
 function startServer() {
   const portFile = path.join(os.tmpdir(), 'aip-gates-port-' + process.pid + '.txt');
   try { fs.unlinkSync(portFile); } catch { /* 不存在就好 */ }
-  const child = spawn(process.execPath, [path.join(ROOT, 'scripts/serve.js'), '0', portFile],
+  const child = spawn(process.execPath, [path.join(ROOT, 'scripts/serve.js'), '0', portFile, '--live-build'],
     { cwd: ROOT, stdio: 'ignore', detached: false });
   let dead = false;
   child.on('exit', () => { dead = true; });
