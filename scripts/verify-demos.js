@@ -13,6 +13,7 @@
    ========================================================================== */
 'use strict';
 const fs = require('fs');
+const http = require('http');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -26,19 +27,20 @@ fs.mkdirSync(TMP, { recursive: true });
 const DATA = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets/data/modules.json'), 'utf8'));
 const KEYS = DATA.modules.map(m => m.demo.id);
 
-/* 沙箱下捕获子进程 stdout 会被拒（EPERM），所以一律用 shell 重定向 + stdio:ignore */
+/* 沙箱下捕获子进程 stdout 会被拒（EPERM），所以 Chrome 那步仍用 shell 重定向 + stdio:ignore */
 const sh = (cmd) => spawnSync(cmd, { shell: true, stdio: 'ignore', windowsHide: true }).status;
-/* 空设备名必须按平台取：Linux 上写死 'nul' 会真的创建一个名叫 nul 的文件；
-   而 os.devNull 在 Windows 返回 '\\.\nul'，cmd 的重定向解析器不认这个前缀，
-   同样会落一个名叫 nul 的文件（实测踩过）。只有裸 'nul' 在 Windows 才是设备。 */
-const DEVNULL = process.platform === 'win32' ? 'nul' : '/dev/null';
 
-sh(`curl -s -o "${DEVNULL}" -w "%{http_code}" ${BASE} > "${path.join(TMP, 'probe.txt')}" 2>${DEVNULL}`);
-const code = fs.existsSync(path.join(TMP, 'probe.txt')) ? fs.readFileSync(path.join(TMP, 'probe.txt'), 'utf8').trim() : '';
-if (code !== '200') {
-  console.error('本地服务不可用（HTTP ' + (code || 'n/a') + '）。先跑：python -m http.server 8765 --bind 127.0.0.1');
-  process.exit(2);
-}
+/* 服务可用性探测：用 node 自己的 http，不起子进程、不走 shell。
+   原来那条 `curl ... > probe.txt 2>nul` 实测出现过「同一 URL 在父进程直接
+   探测拿到 200，经这条 shell 重定向却写出空文件」，于是报「本地服务不可用」
+   ——假失败，且把人引向去查服务（服务其实是好的）。少一个外部依赖少一类坑。 */
+const probeServer = (url) => new Promise((done) => {
+  let settled = false;
+  const finish = (v) => { if (!settled) { settled = true; done(v); } };
+  const req = http.get(url, (res) => { res.resume(); finish(res.statusCode); });
+  req.on('error', () => finish(0));
+  req.setTimeout(5000, () => { req.destroy(); finish(0); });
+});
 
 /* 三种视口/主题组合：桌面亮、桌面暗（§8.2 双主题）、手机（§8.4 断点 S） */
 const CASES = [
@@ -46,6 +48,14 @@ const CASES = [
   { name: 'desktop-dark',  w: 1600, h: 4000, q: '&theme=dark' },
   { name: 'mobile',        w: 390,  h: 3200, q: '' }
 ];
+
+(async () => {
+const code = await probeServer(BASE);
+if (code !== 200) {
+  console.error('本地服务不可用（HTTP ' + (code || '无响应') + '）：' + BASE);
+  console.error('  起一个：node scripts/serve.js <端口>，或直接跑 node scripts/gates.js（自带服务）');
+  process.exit(2);
+}
 
 const pad = (s, n) => String(s).padEnd(n);
 let problems = 0;
@@ -96,3 +106,4 @@ for (const cs of CASES) {
 console.log('\n' + (problems ? problems + ' 项需要处理' : '三种视口/主题下全部通过（含图解对比度扫描）'));
 fs.rmSync(TMP, { recursive: true, force: true });
 process.exit(problems ? 1 : 0);
+})();
