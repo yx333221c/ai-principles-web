@@ -126,7 +126,7 @@
       "demo": {
         "id": "m02-entropy-bars",
         "type": "param",
-        "title": "惊喜度与熵",
+        "title": "惊讶度与熵",
         "kind": "svg"
       },
       "figures": [
@@ -285,7 +285,7 @@
         "m06"
       ],
       "difficulty": 4,
-      "estMinutes": 35,
+      "estMinutes": 45,
       "status": "reviewed",
       "segs": [
         "hook",
@@ -302,7 +302,8 @@
         "kind": "svg"
       },
       "figures": [
-        "m07-qkv-1"
+        "m07-qkv-1",
+        "m07-block-flow-2"
       ],
       "acceptance": "白板画出 Transformer 数据流；解释 O(n²) 复杂度从哪来；说出 RoPE 与绝对位置编码的差异",
       "formulaDense": true

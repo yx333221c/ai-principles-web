@@ -436,6 +436,31 @@ const unusedCls = cls.filter(x => !scope.includes(x) && !documented.includes(x))
 if (unusedCls.length) warn('CSS 死代码（未使用且文档未承诺，' + unusedCls.length + '）: ' + unusedCls.join(', '));
 else ok('components.css 无死代码（已用类 + 契约声明的可选词汇除外）');
 
+/* 声称的总时长必须等于 estMinutes 之和。
+   2026-10 复核抓到「约 5 小时 / 6–8 小时 / 341 分钟」三处口径不一；修完后我把
+   派生值 341 写死进 DESIGN.md，随后 m07 扩写把合计改成 351，那个数又过期了——
+   **造出写死派生值这个坑的是我，抓不到它的闸门也是我**。所以核对而不是再抄一遍。 */
+(function () {
+  const total = J.modules.reduce((a, m) => a + (m.estMinutes || 0), 0);
+  const hours = total / 60;
+  let checked = 0;
+  for (const f of ['DESIGN.md', 'README.md', 'templates/shell.html'].filter(has)) {
+    const src = rd(f);
+    for (const m of src.matchAll(/(\d{2,4})\s*分钟/g)) {
+      checked++;
+      if (Number(m[1]) !== total) bad(f + ' 写死「' + m[1] + ' 分钟」，但 estMinutes 合计是 ' + total);
+    }
+    /* 「约 X–Y 小时」：实测值必须落在区间内 */
+    for (const m of src.matchAll(/约\s*(\d+(?:\.\d+)?)[–-](\d+(?:\.\d+)?)\s*小时/g)) {
+      checked++;
+      const lo = Number(m[1]), hi = Number(m[2]);
+      if (hours < lo || hours > hi) bad(f + ' 写死「约 ' + lo + '–' + hi + ' 小时」，实测合计 ' + hours.toFixed(2) + ' 小时');
+    }
+  }
+  if (checked) ok('总时长口径与 estMinutes 合计一致（' + total + ' 分钟 ≈ ' + hours.toFixed(2) + ' 小时，核对 ' + checked + ' 处）');
+  else warn('文档里找不到任何总时长表述（DESIGN §2.2 场景 1 需要它）');
+})();
+
 console.log('== 7. 演示契约 ==');
 built.forEach(m => {
   const f = 'assets/js/demos/' + m.demo.id + '.js';
