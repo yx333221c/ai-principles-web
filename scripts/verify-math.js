@@ -32,46 +32,75 @@ const numHit = (body, s) => {
   const esc = s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp('(?<![\\d.])' + esc + '(?![\\d.])').test(body);
 };
+/* 断言值的「书写精度」：正文只写 −0.6 时，不能拿它当 −0.608 的证据。
+   早先按 5% 相对容差放行所有舍入形式，结果 m05 的 ∂L/∂a₁=−0.608
+   是靠网络权重 w₂₁=−0.6 命中的——一个毫不相干的数。
+   现在只接受「精度不低于断言字面」的形式：−0.608 认 −0.608/−0.6080，
+   不认 −0.61/−0.6。要匹配更粗的写法，用 {alt:['…']} 显式登记正文原话。 */
+const decOf = (w) => {
+  const s = String(w);
+  if (s.includes('e') || s.includes('E')) {
+    const m = s.match(/\.(\d+)e/i);
+    return m ? m[1].length : 0;
+  }
+  const i = s.indexOf('.');
+  return i < 0 ? 0 : s.length - i - 1;
+};
 const formsOf = (w) => {
   const out = [], seen = new Set();
+  const dw = decOf(w);
   const add = (s, val) => {
     s = String(s);
     if (!s || s === 'NaN' || s === 'Infinity' || seen.has(s)) return;
     if (!isFinite(val) || Math.abs(val - w) > Math.abs(w) * 0.05 + 1e-12) return;
     seen.add(s); out.push(s);
+    /* 正文用真减号 U+2212 写负数（−0.608），而 String(-0.608) 给 ASCII 连字符 */
+    if (s[0] === '-') {
+      const uni = '−' + s.slice(1);
+      if (!seen.has(uni)) { seen.add(uni); out.push(uni); }
+    }
   };
   add(w, w);
-  for (let d = 0; d <= 4; d++) {
+  for (let d = dw; d <= Math.max(dw, 4); d++) {
     const s = Number(w).toFixed(d);
     add(s, Number(s));
   }
-  /* 百分数：正文写「2.2 分」而断言是 0.0218 → 2.2 代表的值就是 0.022 */
-  if (Math.abs(w) < 1) for (let d = 0; d <= 2; d++) {
+  /* 百分数：只在断言本身写得足够细时才生成（0.0097 → 0.97 需要 4 位精度） */
+  if (Math.abs(w) < 1) for (let d = dw; d <= Math.max(dw, 2); d++) {
     const s = (w * 100).toFixed(d);
     add(s, Number(s) / 100);
   }
-  /* 科学计数法：正文写 2.9×10⁻⁵ 或 1.8e-2，断言里是 2.9e-5 */
-  const ex = String(Number(w).toExponential()).match(/^([-\d.]+)e(-?\d+)$/);
+  /* 科学计数法：正文写 2.9×10⁻⁵ 或 1.8e-2，断言里是 2.9e-5。
+     指数符号两种都要收：toExponential 对大数给 "8.4e+22"（带 +），
+     正则只写 -?\d+ 会把这类整条漏掉（实测 m08 的 8.4e22 因此无候选形式）。 */
+  const ex = String(Number(w).toExponential()).match(/^([-\d.]+)e([+-]?\d+)$/);
   if (ex) {
-    const e10 = Number(ex[2]);
-    for (let d = 0; d <= 3; d++) {
+    const e10 = Number(ex[2]), mdw = decOf(w);
+    for (let d = mdw; d <= Math.max(mdw, 3); d++) {
       const mant = +Number(ex[1]).toFixed(d);
       add(mant + 'e' + e10, mant * Math.pow(10, e10));
-      /* 正文用上标记法写（2.9×10⁻⁵）：Unicode 上标数字 */
+      /* 正文用上标记法写数量级（8.4×10²²、2.9×10⁻⁵）。
+         先剥掉前导 +：'+' 映成空串会让长度校验失败，10²² 就生成不出来。 */
       const SUP = { '-': '⁻', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
         '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹' };
-      const sup = String(e10).split('').map(c => SUP[c] || '').join('');
-      if (sup.length === String(e10).length) add(mant + '×10' + sup, mant * Math.pow(10, e10));
+      const eStr = String(ex[2]).replace(/^\+/, '');
+      const sup = eStr.split('').map(c => SUP[c]).join('');
+      if (sup.length === eStr.length) {
+        add(mant + '×10' + sup, mant * Math.pow(10, e10));
+        add(mant + ' × 10' + sup, mant * Math.pow(10, e10));
+      }
     }
   }
   return out;
 };
+let nearCalls = 0, boolCalls = 0;
 const near = (label, got, want, tol, opts) => {
-  n++;
+  n++; nearCalls++;
   const o = opts || {};
   const pass = Math.abs(got - want) <= (tol == null ? Math.abs(want) * 0.02 : tol);
   if (!pass) { fail++; console.log('  FAIL ' + label + '  算得 ' + got.toPrecision(4) + '，文中 ' + want); }
-  if (!o.bool) {
+  if (o.bool) boolCalls++;
+  else {
     const file = o.file || (label.match(/m\d\d/) || [])[0];
     needs.push({ label, want, file, alt: o.alt || [], demo: o.demo || null });
   }
@@ -91,6 +120,12 @@ near('m01 压缩率 2/1.254', 2 / 1.254, 1.6, 0.02);
    属早期版本删改后遗留的悬空断言。2026-10 复核指出后删除，并加下方元检查防复发。 */
 says('m01 文中给出 1.25 比特/符号', 'm01', /1\.25/);
 says('m01 文中给出 1.6 倍压缩率', 'm01', /1\.6 倍/);
+/* B1 修复（2026-10 复核）：正文原先把「理想码长」与「某套具体前缀码的平均码长」
+   混为一谈，写了个任何口径都推不出的 1.34。现在两套码分开算，逐格复算： */
+near('m01 Huffman(1,2,3,3) 平均码长', 0.7 * 1 + 0.2 * 2 + 0.06 * 3 + 0.04 * 3, 1.40, 0.005);
+near('m01 次优码(1,2,4,4) 平均码长', 0.7 * 1 + 0.2 * 2 + 0.06 * 4 + 0.04 * 4, 1.50, 0.005);
+near('m01 每 100 符号 Huffman 总长', 70 * 1 + 20 * 2 + 6 * 3 + 4 * 3, 140, 0);
+near('m01 取整损失（Huffman 减熵）', 1.40 - (0.7 * 0.5146 + 0.2 * 2.3219 + 0.06 * 4.0589 + 0.04 * 4.6439), 0.15, 0.005);
 
 /* ---------------- M02 交叉熵链条 ---------------- */
 near('m02 −log₂0.60', -Math.log2(0.60), 0.74, 0.005);
@@ -199,9 +234,11 @@ near('m04 动量第十步损失 0.411', m66.L, 0.411, 0.01);
 /* β 的代价是反应迟钝，不是弹飞：β=0.98 在 lr=0.50 下发散不了，只是收不下去 */
 const t98 = traj(0.50, 0.98, 200), t90 = traj(0.50, 0.90, 200);
 near('m04 β=0.98 末 40 步仍换边 17 次', flips(t98.xs.slice(-40)), 17, 0);
-near('m04 β=0.98 摆幅约 ±0.4', (Math.max(...t98.xs.slice(-40)) - Math.min(...t98.xs.slice(-40))) / 2, 0.41, 0.03);
-near('m04 β=0.98 损失卡在 1.8e-2', t98.L, 1.82e-2, 2e-3, { demo: 'assets/js/demos/m04-loss-terrain.js' });
-near('m04 β=0.90 同 lr 收敛到 1.5e-9', t90.L, 1.52e-9, 2e-10);
+near('m04 β=0.98 摆幅约 ±0.4', (Math.max(...t98.xs.slice(-40)) - Math.min(...t98.xs.slice(-40))) / 2, 0.41, 0.03,
+  { demo: 'assets/js/demos/m04-loss-terrain.js' });
+near('m04 β=0.98 损失卡在 1.8e-2', t98.L, 1.82e-2, 2e-3,
+  { demo: 'assets/js/demos/m04-loss-terrain.js', alt: ['1.8e-2'] });
+near('m04 β=0.90 同 lr 收敛到 1.5e-9', t90.L, 1.52e-9, 2e-10, { alt: ['1.5e-9'] });
 /* 碗形实测临界：动量放宽稳定域（2(1+β)/a），不是收紧 */
 function deadBowl(lr, beta) {
   let x = -1.75, y = 1.45, vx = 0, vy = 0;
@@ -246,8 +283,12 @@ anchor('演示步数上限仍是 200', /MAXSTEP\s*=\s*200/);
 anchor('演示逃逸半径仍是 6', /ESC\s*=\s*6/);
 anchorCount('演示碗形与峡谷起点都是 (-1.75,1.45)', /start:\s*\[\s*-1\.75,\s*1\.45\s*\]/g, 2);
 
-/* ---- 元检查：每条 near() 复算出的数，必须真的出现在它声称所在的地方 ---- */
-{
+/* ---- 元检查：每条 near() 复算出的数，必须真的出现在它声称所在的地方 ----
+   ⚠️ 必须**在所有 near() 登记完之后**调用（文件末尾）。
+   本文件一度把这段放在中途，结果后来新增的 31 条断言压根没被溯源检查——
+   「48 条无悬空」听起来是绿的，实际是漏统计。这类「检查跑在登记之前」的
+   顺序错误不会报错，只会安静地少查。 */
+function checkProvenance() {
   const cache = {};
   const text = (id) => (cache[id] || (cache[id] = strip(rd(id))));
   const dcache = {};
@@ -257,7 +298,7 @@ anchorCount('演示碗形与峡谷起点都是 (-1.75,1.45)', /start:\s*\[\s*-1\
     /* 归属为演示读数的断言：数要在演示源码里出现（与 m04 的 anchor 同理） */
     if (t.demo) {
       const hay = demoText(t.demo);
-      const hit = formsOf(t.want).find(s => numHit(hay, s));
+      const hit = formsOf(t.want).find(s => numHit(hay, s)) || (t.alt || []).find(s => hay.includes(s));
       if (!hit) { dangling++; console.log('  FAIL 悬空断言: ' + t.label + ' 复算出 ' + t.want + '，但 ' + t.demo + ' 里搜不到'); }
       continue;
     }
@@ -269,11 +310,79 @@ anchorCount('演示碗形与峡谷起点都是 (-1.75,1.45)', /start:\s*\[\s*-1\
     const hit = formsOf(t.want).find(s => numHit(body, s)) || (t.alt || []).find(s => body.includes(s));
     if (!hit) { dangling++; console.log('  FAIL 悬空断言: ' + t.label + ' 复算出 ' + t.want + '，但 ' + t.file + ' 正文里搜不到这个数'); }
   }
-  /* 元检查不另计断言数：它检查的是上面每条 near() 的归属，不是新断言 */
+  /* 元检查不另计断言数：它检查的是每条 near() 的归属，不是新断言 */
   if (dangling) fail += dangling;
   else console.log('  ✓ ' + needs.length + ' 条复算断言的数值都能在正文/演示里找到（无悬空）');
   if (dangling) console.log('  （布尔/中间量断言请显式传 {bool:true} 豁免，别默默放宽检查）');
+  /* 自证：登记的条数必须等于非 bool 的 near() 条数，防再次少统计 */
+  const nonBool = nearCalls - boolCalls;
+  if (needs.length !== nonBool) {
+    fail++; console.log('  FAIL 元检查自身漏统计：near() 非 bool 共 ' + nonBool + ' 条，只登记了 ' + needs.length + ' 条');
+  }
 }
+
+/* ---------------- 2026-10 专家复核修复后新增的锁 ----------------
+   原则：只锁**读者看得见的数**。复核报告建议的几条里，
+   1.17 / 0.042 / 1.87 只出现在 SVG 注释与推导里、正文没印，写成断言
+   就是造悬空（那正是本文件刚修掉的缺陷），故不加。 */
+
+/* m02 D17：真赌局与记分口径的对偶（正文印 0.04 bit 与 1.03 倍） */
+near('m02 真赌局 G(f=q) = KL = 0.04', 0.5 * Math.log2(0.5 / 0.6) + 0.3 * Math.log2(0.3 / 0.2), 0.04, 0.005);
+near('m02 每轮财富倍数 2^KL = 1.03', Math.pow(2, 0.04397), 1.03, 0.005);
+says('m02 文中给出「1.03 倍」', 'm02', /1\.03 倍/);
+
+/* m05 B2：手算表此前**一条断言都没有**，而它是核心教具。
+   逐格复算 17 行链条，锁住「每行 = 上游 × 本行局部导数」这条自洽性。 */
+const dLy = 0.24 - 1;                                  // ∂L/y = y − t = −0.76
+near('m05 ∂L/∂y', dLy, -0.76, 0.005);
+near('m05 ∂L/∂a₁ = ∂L/∂y × v₁', dLy * 0.8, -0.608, 0.001);
+near('m05 ∂L/∂z₁ = ∂L/∂a₁ × ReLU′(0.3)', dLy * 0.8 * 1, -0.608, 0.001);
+near('m05 ∂L/∂w₂₁ = ∂L/∂z₁ × x₂', dLy * 0.8 * 1 * 0.5, -0.304, 0.001);
+near('m05 ∂L/∂a₂ = ∂L/∂y × v₂', dLy * 0.7, -0.532, 0.001);
+near('m05 ∂L/∂z₂ = ∂L/∂a₂ × ReLU′(−0.5) → 死亡', dLy * 0.7 * 0, 0, 0, { bool: true });
+const w11n = 0.5 - 0.5 * (dLy * 0.8 * 1 * 1.0);
+const yNew = 0.8 * Math.max(0, w11n * 1.0 + (-0.4) * 0.5) + 0.7 * 0;
+near('m05 更新后 w₁₁', w11n, 0.804, 0.001);
+near('m05 更新后损失', 0.5 * (yNew - 1) * (yNew - 1), 0.134, 0.001);
+
+/* m06 C8：hint 承诺的三个读数（正文没有，归属演示源码） */
+const M06JS = 'assets/js/demos/m06-rnn-vanish.js';
+near('m06 0.98¹⁰⁰ = 0.1326', Math.pow(0.98, 100), 0.1326, 0.0002, { demo: M06JS });
+near('m06 跌破 1% 需 228 跳', Math.ceil(Math.log(0.01) / Math.log(0.98)), 228, 0, { demo: M06JS });
+near('m06 λ=1.1 第 5 跳到 1.61', Math.pow(1.1, 5), 1.61, 0.005, { demo: M06JS });
+
+/* m08 B3：自测题「约同预算」的前提（原 175B 版本差 1.87 倍，题面自假） */
+near('m08 280B×0.3T 的 ND = 8.4e22', 280e9 * 0.3e12, 8.4e22, 1e20);
+near('m08 70B×1.4T 的 ND = 9.8e22', 70e9 * 1.4e12, 9.8e22, 1e20);
+near('m08 后者比前者多 17%', (70e9 * 1.4e12 / (280e9 * 0.3e12) - 1) * 100, 17, 0.5);
+near('m08 1.4 万亿 ÷ 700 亿 = 20', 1.4e12 / 70e9, 20, 0);
+near('m08 0.3 万亿 ÷ 2800 亿 = 1.07', 0.3e12 / 280e9, 1.07, 0.005);
+
+/* m12 C4：纠错模型改成恒定提升后，hint 与契约注释里的整组读数
+   （原实现被 clamp 钳平，等于现场演示了 myth 3 要破除的结论） */
+const M12JS2 = 'assets/js/demos/m12-agent-timeline.js';
+const pEff = (p) => (1 + p) / 2;                        // 1 − (1−p)(1−CATCH)，CATCH=0.5
+const pct = (p, n) => Math.round(Math.pow(pEff(p), n) * 100);
+near('m12 corr p=0.95 十步', pct(0.95, 10), 78, 0, { demo: M12JS2 });
+near('m12 corr p=0.95 十五步', pct(0.95, 15), 68, 0, { demo: M12JS2 });
+near('m12 corr p=0.95 二十步', pct(0.95, 20), 60, 0, { demo: M12JS2 });
+near('m12 corr p=0.90 十步', pct(0.90, 10), 60, 0, { demo: M12JS2 });
+near('m12 corr p=0.90 十五步', pct(0.90, 15), 46, 0, { demo: M12JS2 });
+near('m12 corr p=0.90 跌破一半在第 14 步', Math.ceil(Math.log(0.5) / Math.log(pEff(0.90))), 14, 0, { demo: M12JS2 });
+near('m12 corr p=0.99 十步（仍逐格下降，不再水平）', pct(0.99, 10), 95, 0, { demo: M12JS2 });
+near('m12 corr p=0.99 二十步', pct(0.99, 20), 90, 0, { demo: M12JS2 });
+/* 纠错后仍是指数：p=0.95 在 20 步内不跌破一半（旧实现第 2 步就钳平） */
+near('m12 corr p=0.95 二十步内不跌破一半', Math.log(0.5) / Math.log(pEff(0.95)) > 20 ? 1 : 0, 1, 0, { bool: true });
+
+/* m13 C5：区分度阈值的正确区间（原注释把 ≥0.25 说成 p∈[0.15,0.85]，
+   那是阈值 0.51 的解；按它校阈值会改错画面） */
+const M13JS = 'assets/js/demos/m13-bench-saturation.js';
+near('m13 4p(1−p)≥0.25 的下界 0.067', (1 - Math.sqrt(0.75)) / 2, 0.067, 0.0005, { demo: M13JS });
+near('m13 4p(1−p)≥0.25 的上界 0.933', (1 + Math.sqrt(0.75)) / 2, 0.933, 0.0005, { demo: M13JS });
+near('m13 端点处区分度恰为 0.25', 4 * ((1 - Math.sqrt(0.75)) / 2) * (1 - (1 - Math.sqrt(0.75)) / 2), 0.25, 0.0005, { demo: M13JS });
+
+/* 元检查放在**所有** near() 之后调用，并自证登记条数（见函数上方注释）。 */
+checkProvenance();
 
 console.log(fail
   ? 'verify-math: ' + fail + '/' + n + ' 条断言与内容不符，必须修'
