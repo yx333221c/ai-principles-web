@@ -413,7 +413,7 @@
       "num": 11,
       "part": "inference",
       "title": "多模态",
-      "tagline": "把图像翻译成模型能读的 token",
+      "tagline": "把图像翻译成模型能读的词元",
       "prereq": [
         "m07"
       ],

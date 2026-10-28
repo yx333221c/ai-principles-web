@@ -23,23 +23,23 @@
   <h4>先看清水位线：模型这一侧到底能做什么</h4>
   <ol class="steps">
     <li data-step="1"><strong>模型本身只有一个动作。</strong>给它一段文本，它输出下一个<span class="term" data-def="模型处理文本的最小单位，既不是词也不是字。" data-en="token">词元</span>的概率分布（M10）。就这一个。它不能执行、不能联网、不能读文件——「不能」不是被限制了，而是<strong>这套数学里压根没有「执行」这个算子</strong>。</li>
-    <li data-step="2"><strong>所谓工具调用，是模型输出了一段结构化文本。</strong>程序把这段文本（通常是 JSON）解析出来、真的去执行、再把结果<strong>作为文本</strong>追加到上下文末尾。整个过程中模型做的仍然只有写字，只是它写的东西<strong>恰好可被机器读</strong>。这就是「会说」变成「会做」的全部机制。</li>
-    <li data-step="3"><strong>把这件事重复若干轮，就是 ReAct 循环。</strong>Thought（要不要查、查什么）→ Action（写出的请求单）→ Observation（执行结果被塞回来的文本）→ 再 Thought……直到模型不再写请求单、而是直接写最终答案（Yao 等人，2022 [2026-10]）。关键点：<strong>每一步的 Observation 都变成新的输入文本</strong>，所以循环深度不是自由的，它被窗口长度约束——第 ⑥ 步会看到这个约束如何反噬。</li>
+    <li data-step="2"><strong>所谓工具调用，是模型输出了一段结构化文本。</strong>程序把这段文本（通常是 JSON）解析出来、真的去执行、再把结果<strong>作为文本</strong>追加到上下文末尾（严格说：按对话模板插入一段带角色标记的词元，物理上通常仍在末尾，但带着「这是工具回来的」这层边界）。整个过程中模型做的仍然只有写字，只是它写的东西<strong>恰好可被机器读</strong>。这就是「会说」变成「会做」的全部机制。</li>
+    <li data-step="3"><strong>把这件事重复若干轮，就是 ReAct 循环。</strong>Thought（要不要查、查什么）→ Action（写出的请求单）→ Observation（执行结果被塞回来的文本）→ 再 Thought……直到模型不再写请求单、而是直接写最终答案（Yao 等人，2022 [2026-10]）。关键点：<strong>每一步的 Observation 都变成新的输入文本</strong>，所以循环深度不是自由的，它被窗口长度约束——第 ⑥ 步会看到这个约束如何反噬。另一类做法是<strong>先把任务写成子任务清单、再逐条执行</strong>（planning，显式规划 <span class="badge badge--simplify">已简化</span>：这里略去了树搜索与回溯）；两者不在「谁更聪明」上不同，而在<strong>错误往哪儿传播</strong>上不同——清单式把误差集中在计划阶段（计划错了，后面每一步都跟着错），ReAct 式把它摊到每一步（每步重新想，也就每步重新掷一次骰子）。<strong>两种结构都跑不出 p<sup>N</sup> 这条连乘。</strong></li>
     <li data-step="4"><strong>「记忆」分三层，而且存在三个不同的地方。</strong>短期 = 当前上下文窗口（窗口一滑就没了）；长期 = 外部存储加检索（向量库、数据库、文件），本质就是 M11 那套嵌入检索，取回来的仍然是文本；程序性 = 写进提示词（改输入）或者微调进权重（改参数）。三层里<strong>只有最后一层真正改变了模型</strong>。</li>
-    <li data-step="5"><strong>RAG 能压幻觉，靠的不是「让它学会」。</strong>它不改任何<span class="term" data-def="模型内部可训练的数值。" data-en="parameter">参数</span>，而是把「该说什么」的证据<strong>直接放进上下文</strong>。证据里的词与答案里的词在训练数据里共现过，于是这些证据词元会抬高相关候选的分数、压低其余候选——下一词分布被证据重新加权。这正是本站那条主线：M10 第 ③ 步说过<strong>温度改不了排序，但改输入可以</strong>。RAG 就是「改输入」的工程化版本：不换菜单，换菜。</li>
+    <li data-step="5"><strong>RAG 能压幻觉，靠的不是「让它学会」。</strong>它不改任何<span class="term" data-def="模型内部可训练的数值。" data-en="parameter">参数</span>，而是把「该说什么」的证据<strong>直接放进上下文</strong>。证据里的词与答案里的词在训练数据里共现过，于是这些证据词元会抬高相关候选的分数、压低其余候选——下一词分布被证据重新加权 <span class="badge badge--simplify">已简化</span>（这是对「上下文内复制 / 诱导回路」这一机制假说的教学化表述，它在多大范围解释上下文学习仍有争议）。这正是本站那条主线：M10 第 ③ 步说过<strong>温度改不了排序，但改输入可以</strong>。RAG 就是「改输入」的工程化版本：不换菜单，换菜。</li>
     <li data-step="6"><strong>RAG 有三类失效，而且都不在模型这一侧。</strong>检索漏：该找到的没找到，因为相似度不等于相关性，问法和文档写法不一致就取不回来；检索脏：找到了相似但错误或过期的段落，模型会<strong>照着它错</strong>，因为它没有独立的事实通道；上下文挤：证据塞得太多太长，把「问题本身」挤到中段，而 M10 第 ⑦ 步已经说过——能看见不等于会去看。三类失效的共同点：<em>模型的推理一步没错，错在喂进去的文本</em>。</li>
     <li data-step="7"><strong>长任务为什么必然「跑偏」：成功是连乘的。</strong>设每一步都正确的概率是 p，N 步全对的概率就是 p<sup>N</sup>。更要命的是错误不自我清除：<strong>第 2 步的错误 Observation 会留在上下文里</strong>，成为第 3、4、5 步的输入，于是后面每一步的 p 都在更差的输入上算——这叫误差累积与自我强化。步数是成本，不是能力。</li>
   </ol>
 
   <div class="callout callout--note">
-    <p><strong>这条连乘，你在本站已经见过一次。</strong>M06 第 ⑤ 步讲的是梯度：误差回传 99 段，每段乘一次同一个矩阵，于是 <code>0.9⁹⁹ ≈ 2.9×10⁻⁵</code>，开头那个词几乎收不到改正意见。这里讲的是成功率：任务走 20 步，每步乘一次 p，于是 10 步之后只剩六成。<strong>是同一件事的两次出现——凡是按步数连乘的量，都会指数地消失</strong>。区别只在方向：M06 里被乘没的是学习信号，这里被乘没的是任务成功率。</p>
+    <p><strong>这条连乘，你在本站已经见过一次。</strong>M06 第 ⑤ 步讲的是梯度：误差回传 99 段，每段乘一次同一个矩阵，于是 <code>0.9⁹⁹ ≈ 2.9×10⁻⁵</code>，开头那个词几乎收不到改正意见。这里讲的是成功率：p=0.95 走 10 步只剩六成，走到 20 步只剩 36%（0.95<sup>20</sup>≈0.359）。<strong>是同一件事的两次出现——凡是按步数连乘的量，都会指数地消失</strong>。区别只在方向：M06 里被乘没的是学习信号，这里被乘没的是任务成功率。</p>
   </div>
 
   <div class="math-block math">
     P<span class="sub">全对</span> <span class="op">=</span> p<span class="sup">N</span>
     <span class="reads">读作：每一步都对的概率 p，连乘 N 次。p=0.95 走 10 步约六成，p=0.90 走 10 步只剩三分之一。</span>
   </div>
-  <p>这是一个<strong>一阶近似</strong> <span class="badge badge--simplify">已简化</span>：它假设各步错误率相同、彼此独立，且错了也不会被后面的步骤发现。真实系统里，「让模型回看自己写过的东西」确实能纠正一部分错误，所以实测衰减比 p<sup>N</sup> 慢一些；但「早期错误会污染后续输入」这条反向修正同样存在，两头并不能抵消成「多步一定更可靠」。下面演示里把这两点做成了可以对比的样子。</p>
+  <p>这是一个<strong>一阶近似</strong> <span class="badge badge--simplify">已简化</span>：它假设各步错误率相同、彼此独立，且错了也不会被后面的步骤发现。真实系统里有两个方向相反的修正。「让模型回看自己写过的东西」确实能纠正一部分错误，实测衰减因此比 p<sup>N</sup> 慢一些；但「早期错误会污染后续输入」这条反向修正同样存在，它让后面每一步的 p 更小。<strong>这两头方向相反的修正并不必然抵消成「多步一定更可靠」。</strong>下面演示把前一个方向做成了可以对比的样子：打开开关后每一步以恒定概率把本步的失手纠正回来，等效单步正确率从 p 抬到 p<span class="sub">eff</span> = (1 + p) / 2 —— 底数变大，<em>连乘仍是连乘，衰减变慢但没有变成不衰减</em>；后一个方向（污染）不在那条曲线上，见机制第 ⑦ 步。</p>
 
   <div class="figure" data-fig="m12-agent-loop-1">
     <div class="figure__inner">
@@ -48,15 +48,15 @@
         <div class="fig__flow">
           <div class="fig__box fig__box--a"><b>模型</b><span class="fig__sub">只会输出词元分布</span></div>
           <span class="fig__arrow">→ 写</span>
-          <div class="fig__box"><b>一段结构化文本</b><span class="fig__sub">{"tool":"weather_api"}</span></div>
+          <div class="fig__box" data-step="2"><b>一段结构化文本</b><span class="fig__sub">{"tool":"weather"}</span></div>
           <span class="fig__arrow">→ 解析</span>
-          <div class="fig__box fig__box--w"><b>外部程序</b><span class="fig__sub">真正去执行</span></div>
+          <div class="fig__box fig__box--w" data-step="2"><b>外部程序</b><span class="fig__sub">真正去执行</span></div>
           <span class="fig__arrow">→ 得到</span>
-          <div class="fig__box fig__box--g"><b>结果文本</b><span class="fig__sub">{"aqi":156,…}</span></div>
+          <div class="fig__box fig__box--g" data-step="3"><b>结果文本</b><span class="fig__sub">{"aqi":156,…}</span></div>
           <span class="fig__arrow">→ 追加</span>
-          <div class="fig__box fig__box--a"><b>同一个模型</b><span class="fig__sub">拿新文本再算一次</span></div>
+          <div class="fig__box fig__box--a" data-step="3"><b>同一个模型</b><span class="fig__sub">拿新文本再算一次</span></div>
         </div>
-        <div class="fig__row fig__row--sub">
+        <div class="fig__row fig__row--sub" data-step="3">
           <span class="fig__tag">循环一轮</span>
           <span class="fig__chain"><code>Thought</code><i>→</i><code>Action</code><i>→</i><code>Observation</code><i>→</i><code>Thought</code><i>→</i><code>…</code><i>→</i><code>Final Answer</code></span>
         </div>
@@ -108,7 +108,7 @@
         <line class="grid-l" x1="429" y1="100" x2="429" y2="128" stroke-dasharray="2 3"></line>
         <line class="grid-l" x1="231" y1="100" x2="231" y2="128" stroke-dasharray="2 3"></line>
         <text x="70" y="162" class="t-xs faint">短虚线处 = 曲线跌破一半：p=0.90 在第 7 步，p=0.95 在第 14 步。</text>
-        <text x="12" y="206" class="t-xs faint">已简化：假设各步错误率相同且相互独立。真实系统里后面的步骤有机会发现并纠正前面的错，所以实测衰减比这条线慢，但不是不衰减。</text>
+        <text x="12" y="206" class="t-xs faint">已简化：假设各步错误率相同且相互独立。真实系统里后面的步骤有机会发现并纠正前面的错，所以实测衰减比这条线慢——但仍是同一条指数的底数变大，不是变成不衰减。</text>
       </svg>
     </div>
     <figcaption>怎么看：先看纵轴 50% 那条虚线，再看每条曲线<strong>在哪一步穿过它</strong>。p 只差 0.05，穿线位置从第 14 步挪到第 7 步——这条曲线就是「为什么步数是成本」的全部论证。演示里可以亲手把 p 拖来拖去看它换线。</figcaption>
@@ -117,7 +117,7 @@
   <div class="figure" data-fig="m12-rag-hit-miss-2">
     <div class="figure__inner">
       <div class="fig">
-        <div class="fig__head">同一个问题、同一个模型，只换检索质量（对应第 ④⑤ 步）</div>
+        <div class="fig__head">同一个问题、同一个模型，只换检索质量（对应第 ⑤⑥ 步：⑤ 分布加权、⑥ 三类失效）</div>
         <div class="fig__grid" style="grid-template-columns:96px repeat(3,1fr)">
           <div class="fig__lbl"></div><div class="fig__tok fig__tok--out">命中</div><div class="fig__tok">漏检</div><div class="fig__tok fig__tok--k">脏命中</div>
           <div class="fig__lbl">检索到的段落</div>
@@ -165,7 +165,7 @@
   <details class="math-detail">
     <summary>展开：为什么「把窗口做到无限大」不能取代检索</summary>
     <div class="math-detail__body prose">
-      <p>三重理由，每条都指回前面的模块。<strong>其一，成本。</strong>M10 的键值缓存那条式子里，显存随序列长度<strong>线性</strong>增长，而注意力那张分数表随它<strong>平方</strong>增长；把 200 万字全文塞进去，先撑不住的是硬件，不是模型。<strong>其二，注意力稀释。</strong>softmax 每行权重之和恒等于 1，候选越多，每个词元平均分到的权重越小，中段内容容易被首尾挤掉——这正是 M10 第 ⑦ 步说「能看见不等于会去看」的原因，也是公开长文档评测里「答案放中间」正确率明显更低的那一项 [2026-10]。<strong>其三，排序仍然要有人做。</strong>全塞进去只是把「选哪些」这一步从检索器搬给了注意力，而注意力是排列不变的、没有事实优先级的（M07 第 ⑦ 步）。检索器的价值从来不是「省地方」，而是<strong>在进入模型之前先决定证据的排序与取舍</strong>。</p>
+      <p>三重理由，每条都指回前面的模块。<strong>其一，成本。</strong>M10 的键值缓存那条式子里，显存随序列长度<strong>线性</strong>增长，而注意力那张分数表随它<strong>平方</strong>增长（实体化时；分块实现能把显存压到线性，计算量仍是平方）；把 200 万字全文塞进去，先撑不住的是硬件，不是模型。<strong>其二，中段内容读不进去。</strong>公开长文档评测里「答案放在中间」时正确率明显更低 [2026-10]。这一现象有两条并列的归因 <span class="badge badge--debate">存在争议</span>：一派归给 softmax 稀释——每行权重之和恒等于 1，候选越多，每个词元平均分到的权重越小，中段容易被首尾挤掉（本站 M10 第 ⑦ 步「能看见不等于会去看」走的是这条）；另一派归给位置编码的外推与注意力汇点（M10 第 ⑦ 步也并列过）。两派尚未分清，而且这个效应在专门做过长上下文训练的模型上会显著减弱，本站不裁决。<strong>其三，排序仍然要有人做。</strong>全塞进去只是把「选哪些」这一步从检索器搬给了注意力，而注意力对顺序是等变的、没有事实优先级（M07 第 ⑦ 步）。检索器的价值从来不是「省地方」，而是<strong>在进入模型之前先决定证据的排序与取舍</strong>。</p>
     </div>
   </details>
 </seg>
@@ -179,7 +179,7 @@
     <summary>「智能体会自己上网查资料。」</summary>
     <div class="myth__body">
       <p><strong>为何会有这个误解：</strong>界面上确实是它「决定」了要查什么，查询语句也由它写成，看起来整件事都是它做的；而背后的执行代码从不露面。</p>
-      <p class="myth__truth">正确说法：查是<strong>外部程序</strong>在查，模型只是输出了一段格式正确的请求文本。最干净的证据是断网：拔掉网线，它照样会写出一张格式挑不出毛病的查询单，并且接着把并不存在的结果当真。这也说明「它想查」不等于「它知道自己在查什么」——请求单的内容和真实世界之间没有任何保证关系。</p>
+      <p class="myth__truth">正确说法：查是<strong>外部程序</strong>在查，模型只是输出了一段格式正确的请求文本。最干净的证据是断网：拔掉网线，它照样会写出一张格式挑不出毛病的查询单，而且即使外部程序回填的是报错文本或空观测（本模块演示里「漏检」那一档取回的就是「（返回空）」），它也常常接着写出一个像答案的东西。这也说明「它想查」不等于「它知道自己在查什么」——请求单的内容和真实世界之间没有任何保证关系。</p>
     </div>
   </details>
   <details class="myth">
@@ -214,7 +214,7 @@
     <label class="quiz__opt"><input type="radio" name="q-m12"><span>每周用最新价格表微调一次模型，把价格记进参数里</span></label>
     <label class="quiz__opt"><input type="radio" name="q-m12"><span>把采样温度调到 0，让它每次稳定复现记住的价格</span></label>
     <div class="quiz__fb">
-      <p data-for="no"><strong>回到机制第 ④⑤ 步：</strong>「每周重训」把易变事实写进了<strong>最难回滚</strong>的那一层——参数，而且从训练完成到上线之间，价格已经变了；更麻烦的是你无法逐条审计它到底记成了什么。B 项错在这里。C 项犯了 M10 第 ③ 步那个老错：温度<strong>改不了排序</strong>，更不可能把一个从没进过上下文的数字变进分布里；T=0 只保证每次一样，不保证一样地新。正确答案的判断标准只有一句：这条知识多久变一次、要不要被指回原文。</p>
+      <p data-for="no"><strong>回到机制第 ④⑤ 步：</strong>「每周重训」把易变事实写进了<strong>最难回滚</strong>的那一层——参数，而且从训练完成到上线之间，价格已经变了；更麻烦的是你无法逐条审计它到底记成了什么。第二项错在这里。第三项犯了 M10 第 ③ 步那个老错：温度<strong>改不了排序</strong>，更不可能把一个从没进过上下文的数字变进分布里；T=0 只保证每次一样，不保证一样地新。正确答案的判断标准只有一句：这条知识多久变一次、要不要被指回原文。</p>
       <p data-for="ok"><strong>对了。</strong>你用的正是那条边界：<strong>易变、需可核查的知识留在外部存储与检索，稳定、分布性的「怎么说」才写进权重</strong>（机制第 ④⑤ 步）。顺手做个推论练习：如果要求改成「让模型永远用公司那套内部术语说话」，答案就该翻向微调——术语是分布性的，逐条检索拼不出来。带着这个边界去 M13：一旦检索回来的文档里夹了别人的指令，上面这套分工立刻变成攻击面。</p>
     </div>
     <p class="quiz__result" aria-live="polite"></p>

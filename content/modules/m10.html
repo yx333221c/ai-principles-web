@@ -1,46 +1,46 @@
 <meta title="解码、采样与上下文" tagline="模型的「性格」藏在采样里">
 
 <seg name="hook">
-  <p class="hook">同一个问题问两遍，它给了两个不同的答案；把温度调到 0，它每次一字不差。那么哪一个才是「它真正的想法」？答案是：都不存在。它每写一个字，都是在整本词典上掷一次骰子——而骰子的形状，是你能用两个数字改写的。</p>
+  <p class="hook">同一个问题问两遍，它给了两个不同的答案；把温度调到 0、同一套后端同一份权重，它每次一字不差。哪一个才是「它真正的想法」？都不存在——它每写一个词元都是在整本词典上掷骰子，而骰子的形状，是你能用两个数字改写的。</p>
 </seg>
 
 <seg name="intuition">
-  <p>模型每生成一个字之前，手里都有一份<strong>候选菜单</strong>：词典里几万个词，每个后面跟着一个概率。它不会照第一行点菜，而是<strong>按概率掷骰子</strong>——概率 60% 的菜有 60% 的机会被选中。</p>
+  <p>模型每生成一个词元之前（词元就是模型处理文本的最小单位，一次只输出一个，不是「一个字」），手里都有一份<strong>候选菜单</strong>：词表里几万个候选，每个后面跟着一个概率。它不会照第一行点菜，而是<strong>按概率掷骰子</strong>——概率 60% 的菜有 60% 的机会被选中。把这套「算分布—挑一个—接着算」的在线过程叫<strong>推理（inference）</strong>，它和训练是两件事：推理不动任何参数。</p>
   <p>「温度」这个旋钮做的事很朴素：<strong>把菜单上的差距放大或缩小</strong>。温度调低，头牌和第二名的差距被拉到天上，模型几乎只点头牌；温度调高，差距被抹平，冷门菜也有机会上桌。</p>
   <p>「top-p」则是另一件事：<strong>先把菜单上那些几乎没人点的行撕掉</strong>，再在剩下的里面掷骰子。撕到哪，取决于你要求「累计覆盖多少概率」。</p>
 
   <div class="callout callout--warn">
     <p><strong>这个类比对下面几件事不成立：</strong></p>
     <ul>
-      <li><strong>菜单不是预先列好的。</strong>每写一个字，整份菜单都要用一次完整前向传播重算。所以「点菜」这个动作，一个字要重复一次，一个字比一个字贵。</li>
-      <li><strong>掷骰子的随机性不带来正确性。</strong>直觉上「多几种可能 = 更有创意」，但温度升高时上升的不仅是好答案的概率，<strong>错误答案的概率上升得更快</strong>——因为词典里错的词永远比对的多。</li>
+      <li><strong>菜单不是预先列好的。</strong>每写一个词元，整份菜单都要用一次完整前向传播重算。所以「点菜」这个动作，一个词元要重复一次，一个词元比一个词元贵。</li>
+      <li><strong>掷骰子的随机性不带来正确性。</strong>直觉上「多几种可能 = 更有创意」，但温度升高时上升的不仅是好答案的概率，<strong>错误答案的概率上升得更快</strong>——因为词典里语义不当的组合通常远多于恰当的组合。</li>
     </ul>
   </div>
 </seg>
 
 <seg name="mechanism">
   <ol class="steps">
-    <li data-step="1"><strong>模型输出的不是答案，是一整排分数。</strong>最后一层给出词表大小（约 3 万到 25 万）个实数，叫<span class="term" data-def="softmax 之前的实数分数，本身不是概率，只有相对高低有意义。" data-en="logit">未归一化得分</span>（logit）。单独看一个 logit 毫无意义，只有它们之间的大小关系有意义。</li>
-    <li data-step="2"><strong>温度在 softmax 之前缩放分数。</strong>它除的是<em>分数</em>，不是概率——这是它和「事后把概率重新开方」的本质区别：除以小数等于把整个分数轴拉伸，而指数函数对拉伸极其敏感，于是差距被急剧放大。</li>
-    <li data-step="3"><strong>温度只改陡峭度，绝不改排序。</strong>因为所有分数被同一个正数除，大小关系不变。所以分数最高的那个词，在任何温度下都是最高概率的那个词；温度只能改变「它领先多少」。这是理解后面所有现象的钥匙。</li>
-    <li data-step="4"><strong>top-p 先截断、再重归一化。</strong>把候选按概率降序累计到 ≥ p 为止，只保留这一段（称为<span class="term" data-def="按概率降序累计达到 p 的最小候选集合；集合外的候选概率被置零后重新归一化。" data-en="nucleus">核</span>），其余清零、剩下的重新除以总和。它比「只保留前 k 个」更常用，因为<strong>核的大小会随模型自信程度自动伸缩</strong>。</li>
-    <li data-step="5"><strong>幻觉不是 bug，是训练目标的直接后果。</strong>模型被训练成「让下一词最像人类写过的文本」，而人类文本里有海量语气笃定但内容错误的句子。训练目标里从来没有「不确定时应当沉默」这一项，于是模型学到：<strong>流畅地继续，永远比停下来更划算</strong>。</li>
-    <li data-step="6"><strong>KV Cache 省算力，不省内存。</strong>生成第 t 个字要用到前 1…t 个词的 K/V；全重算是 O(t²)，把算过的 K/V 留在显存里复用就降到每步 O(t)。但缓存本身必须常驻，且随上下文线性增长。</li>
-    <li data-step="7"><strong>窗口标称长度 ≠ 有效使用长度。</strong>两个独立原因：位置编码见过的距离有限，超出就是外推；softmax 每行权重之和恒为 1，候选越多每个词分到的平均权重越小，中段信息容易被首尾挤掉。所以正确的说法不是「它记不住」，而是<strong>它能看见，但未必会去看</strong>。</li>
+    <li data-step="1"><strong>模型输出的不是答案，是一整排分数。</strong>最后一层给出词表大小（常见开源模型约 3 万到 25 万，本站按量级引用）[2026-10] 个实数，叫<span class="term" data-def="softmax 之前的实数分数，本身不是概率，只有相对高低有意义。" data-en="logit">未归一化得分</span>（logit）。单独看一个 logit 毫无意义，只有它们之间的大小关系有意义。</li>
+    <li data-step="2"><strong>温度在 softmax 之前缩放分数。</strong>它除的是<em>分数</em>，不是概率：除以小数等于把整个分数轴拉伸，而指数函数对拉伸极其敏感，于是差距被急剧放大；T&gt;1 则是压缩，同一条机制。顺带纠一个常见口误：有人把它说成「这和『把概率取 1/T 次幂再归一化』有本质区别」——<strong>两者其实逐点相等</strong>：取对数就把 p 换回 z，于是 softmax(z/T) = p^(1/T) / Σ p^(1/T)，是同一条曲线，只是先除 logits 实现上更省事、数值上更稳。<strong>真正会出错的是第三种做法：只把概率各自取幂、跳过归一化</strong>，那样加起来就不再是 1。</li>
+    <li data-step="3"><strong>温度只改陡峭度，绝不改排序。</strong>因为所有分数被同一个正数除，大小关系不变。所以分数最高的那个候选，在任何温度下都是最高概率的那个候选；温度只能改变「它领先多少」。这是理解后面所有现象的钥匙。</li>
+    <li data-step="4"><strong>核采样（top-p）先截断、再重归一化。</strong>把候选按概率降序累计到 ≥ p 为止，只保留这一段（称为<span class="term" data-def="按概率降序累计达到 p 的最小候选集合；集合外的候选概率被置零后重新归一化。" data-en="nucleus">核</span>），其余清零、剩下的重新除以总和。它比「只保留前 k 个」更常用，因为<strong>核的大小会随模型自信程度自动伸缩</strong>。</li>
+    <li data-step="5"><strong>幻觉不是 bug，是训练目标的直接后果。</strong>本站把「<span class="term" data-def="流畅、语气笃定，但与事实或给定上下文不符的输出。它不是说谎：模型没有「知道真假却故意隐瞒」这一层，它只是在续写。" data-en="hallucination">幻觉</span>（hallucination）」定义为这种输出。模型被训练成「让下一词元最像人类写过的文本」，而人类文本里有海量语气笃定但内容错误的句子。<strong>预训练</strong>目标里没有「不确定时应当沉默」这一项，于是模型学到：流畅地继续，永远比停下来更划算。</li>
+    <li data-step="6"><strong>键值缓存（KV cache）省算力，不省显存。</strong>生成第 t 个词元要用到前 1…t 个词元的 K/V；全重算是 O(t²)，把算过的 K/V 留在显存里复用就降到每步 O(t)。但缓存本身必须常驻，且随上下文线性增长。</li>
+    <li data-step="7"><strong>窗口标称长度 ≠ 有效使用长度。</strong>两个独立原因：位置编码见过的距离有限，超出就是外推；softmax 每行权重之和恒为 1，候选越多每个词元分到的平均权重越小，中段信息容易被首尾挤掉。所以正确的说法不是「它记不住」，而是<strong>它能看见，但未必会去看</strong>。</li>
   </ol>
 
   <div class="math-block math">
     p<sub>i</sub> <span class="op">=</span> <span class="frac"><span class="num">exp(z<sub>i</sub> / T)</span><span class="den">Σ<sub>j</sub> exp(z<sub>j</sub> / T)</span></span>
-    <span class="reads">读作：把每个分数先除以温度 T，再取指数，再除以所有指数之和——T 越小，分数之间的差距被放得越开。</span>
+    <span class="reads">读作：把每个分数先除以温度 T，再取指数，再除以所有指数之和——T 越小，分数之间的差距被放得越开。因为分母对全体是同一个数，谁减了最大值、谁加了同一个常数都不改变结果，所以程序实现里那步「先减最大值防溢出」算出来的概率和这个式子完全一样（推导见下方折叠框）。</span>
   </div>
 
-  <p>第 ⑤ 步要补一句：后训练（M09）确实会部分矫正「瞎编」的倾向，但它矫正的是<strong>行为分布</strong>（学会说「我不确定」），不是<strong>知识边界</strong>。<span class="badge badge--simplify">已简化</span> 采样参数会放大这个裂缝：温度升高时，「听起来合理但其实编的」那些词概率上升得比正确答案更快，因为词典里错的组合远多于对的。</p>
+  <p>第 ⑤ 步要补一句：后训练（M09）确实会部分矫正「瞎编」的倾向，但它矫正的是<strong>行为分布</strong>（学会说「我不确定」），不是<strong>知识边界</strong>。<span class="badge badge--simplify">已简化</span> 采样参数会放大这个裂缝：温度升高时，「听起来合理但其实编的」那些候选概率上升得比正确答案更快，因为词典里错的组合远多于对的。</p>
 
   <div class="math-block math">
-    KV Cache 显存 <span class="op">≈</span> 2 <span class="op">×</span> 层数 <span class="op">×</span> KV 头数 <span class="op">×</span> 每头维度 <span class="op">×</span> 序列长 <span class="op">×</span> 字节数
+    键值缓存显存 <span class="op">≈</span> 2 <span class="op">×</span> 层数 <span class="op">×</span> KV 头数 <span class="op">×</span> 每头维度 <span class="op">×</span> 序列长 <span class="op">×</span> 字节数
     <span class="reads">读作：每个历史词元要在每一层留下「键」和「值」两份向量；乘上词元数与层数就是总占用——它随上下文线性增长，且无法用算力换掉。</span>
   </div>
-  <p><span class="badge badge--simplify">已简化</span> 口算一例：32 层、8 个 KV 头、每头 128 维、FP16（2 字节）的模型，每个词元占 2×32×8×128×2 = 131072 字节 = 恰好 128 KiB；128k 上下文就是 131072 × 131072 = 2³⁴ 字节 = <strong>16 GiB</strong>（按十进制算约 17.2 GB——这个单位差本身就是一种常见误读）。在某些规模下，单条请求的缓存比模型权重本身还大。这里假设了 8 个 KV 头的分组查询结构（GQA）；若每层每个头都存完整 KV，还要再翻几倍 [2026-10]。</p>
+  <p><span class="badge badge--simplify">已简化：单请求、无 PagedAttention / KV 量化 / 前缀共享，也未计激活与中间张存的显存</span> 口算一例：32 层、8 个 KV 头、每头 128 维、FP16（2 字节）的模型，每个词元占 2×32×8×128×2 = 131072 字节 = 恰好 128 KiB；128k 上下文就是 131072 × 131072 = 2³⁴ 字节 = <strong>16 GiB</strong>（按十进制算约 17.2 GB——这个单位差本身就是一种常见误读）。在某些规模下，单条请求的缓存比模型权重本身还大。这里假设了 8 个 KV 头的分组查询结构（GQA）；若每层每个头都存完整 KV，还要再翻几倍 [2026-10]。</p>
 
   <div class="figure" data-fig="m10-nucleus-1">
     <div class="figure__inner">
@@ -57,10 +57,10 @@
           <div class="fig__code fig__code--sun">58%</div><div class="fig__code fig__code--sun">79%</div>
           <div class="fig__code fig__code--a">90% ← 到此为止</div><div class="fig__code fig__code--sun">96%</div>
           <div class="fig__code fig__code--sun">98%</div><div class="fig__code fig__code--sun">100%</div>
-          <div class="fig__lbl">top-p = 0.9 保留</div>
-          <div class="fig__pill fig__pill--g">留</div><div class="fig__pill fig__pill--g">留</div>
-          <div class="fig__pill fig__pill--g">留（补齐 90%）</div><div class="fig__pill fig__pill--mute">剪</div>
-          <div class="fig__pill fig__pill--mute">剪</div><div class="fig__pill fig__pill--mute">剪</div>
+          <div class="fig__lbl" data-step="4">top-p = 0.9 保留</div>
+          <div class="fig__pill fig__pill--g" data-step="4">留</div><div class="fig__pill fig__pill--g" data-step="4">留</div>
+          <div class="fig__pill fig__pill--g" data-step="4">留（补齐 90%）</div><div class="fig__pill fig__pill--mute" data-step="4">剪</div>
+          <div class="fig__pill fig__pill--mute" data-step="4">剪</div><div class="fig__pill fig__pill--mute" data-step="4">剪</div>
           <div class="fig__lbl">top-k = 3 保留</div>
           <div class="fig__pill fig__pill--a">留</div><div class="fig__pill fig__pill--a">留</div>
           <div class="fig__pill fig__pill--a">留</div><div class="fig__pill fig__pill--mute">剪</div>
@@ -70,7 +70,7 @@
           <span><i class="sw-g"></i>核采样：保留到累计 90%，数量随分布形状变化</span>
           <span><i class="sw-a"></i>top-k：永远保留 3 个，不管模型多不确定</span>
         </div>
-        <div class="fig__note">换成「平坦」分布（每项约 12%）时，top-p=0.9 会保留 8 项，而 top-k=3 仍只留 3 项——这就是前者更自适应的含义。</div>
+        <div class="fig__note">本表概率是<strong>示意数据</strong>：一个中等把握的分布，用来把「补齐到 90%」这一步画清楚，不是演示里那组 logits 算出来的。按演示「尖锐」场景 T=1 实算，前两项就是 82.6% 与 13.6%、累计 96.2%，top-p=0.9 只需留 2 项——模型越确定，核越小。换成演示「平坦」场景 T=1（八项从 15.8% 到 10.1%，差不多高），前 7 项累计 89.94%、还差一点不到 90%，top-p=0.9 反而要保留<strong>全部 8 项</strong>，而 top-k=3 仍只留 3 项——这才是「前者更自适应」的含义。</div>
       </div>
     </div>
     <figcaption>怎么看：从上往下读五行。第一行是候选与概率；第三行的「累计」决定核在哪一列截断；第四、五行对比两种截断法各自留下哪些候选。关键差别是<strong>数量会不会随分布形状变</strong>。</figcaption>
@@ -80,7 +80,8 @@
     <summary>展开：为什么 T→0 在数值上等于贪心解码</summary>
     <div class="math-detail__body prose">
       <p>设最高分 z₁ 与次高分 z₂ 之差为 Δ &gt; 0。两者概率之比是 <code>exp((z₁−z₂)/T) = exp(Δ/T)</code>。T→0 时 Δ/T→∞，比值→∞，于是最高项吃掉全部概率质量——这就是贪心解码。反过来 T→∞ 时比值→1，分布趋于均匀，模型退化成随机词表抽奖机。</p>
-      <p>实践里因此有两个推论：① T=0 不保证「正确」，只保证「每次一样」，贪心会稳定走进高概率但错误的套路；② 温度不能救回一个本身分数不高的正确答案——想让某个词更容易被选中，只能改输入或改模型。</p>
+      <p>实践里因此有两个推论：① T=0 不保证「正确」，只保证「每次一样」——而且连这后半句也是有条件的：它要求后端确实走贪心、top-p/top-k 之类的截断不再引入第二个随机源、同一份权重、同样的批处理组成，并且没有浮点非确定性。现实中两个分数几乎相等的候选，会因为 batch 内归约顺序不同而偶发换序（batch-invariance 问题），GPU 原子加法与 MoE 路由也能带来同类抖动。所以「一字不差」是<strong>工程经验，不是定理</strong>；要真拿到可复现的输出，还得固定实现、固定硬件与批大小。在这套前提之内，贪心会稳定走进高概率但错误的套路；② 温度不能救回一个本身分数不高的正确答案——想让某个候选词元更容易被选中，只能改输入或改模型。</p>
+      <p>顺带一个被代码用到、正文却常漏的性质：<strong>给所有分数同时加同一个常数，softmax 的结果一字不变</strong>——分子分母同时乘上 exp(c)，约掉了。所以程序里先减去最大值再取指数，只是防止 exp 溢出，算出来的概率完全一样（本页演示就是这么实现的：先除 T、再减 max、再取指数、最后归一）。同理，全体乘一个正数不改排序，全体除以一个正温度也不改排序——第 ③ 步说的是同一条性质的三次应用。<span class="badge badge--simplify">已简化：推导只写两项之比，完整证明要对每一项取同一比值再夹逼</span></p>
     </div>
   </details>
 </seg>
@@ -101,12 +102,12 @@
   <details class="myth">
     <summary>「temperature=0 就是正确答案，因为模型选的是它最确信的那个。」</summary>
     <div class="myth__body">
-      <p><strong>为何会有这个误解：</strong>「最确信」听起来天然等于「最正确」，而且关掉采样后输出确实稳定，稳定容易被误读成可靠。</p>
-      <p class="myth__truth">正确说法：贪心选的是<strong>单步</strong>最高概率，不是全局最优。语言里很多长句的正确走向需要先在局部选一个次优词（比如先写「虽然」），贪心会因为「虽然」单步概率低于「但是」而永远走不进那条路——这被称为贪心解码的短视。同时它还会放大重复：一旦某个短语出现，它的条件概率上升，贪心就更倾向再选它，于是陷入循环。稳定 ≠ 正确。</p>
+      <p><strong>为何会有这个误解：</strong>「最确信」听起来天然等于「最正确」，而且关掉采样后输出通常确实稳定，稳定容易被误读成可靠。</p>
+      <p class="myth__truth">正确说法：贪心选的是<strong>单步</strong>最高概率，不是全局最优。语言里很多长句的正确走向需要先在局部选一个次优词（比如先写「虽然」），贪心会因为「虽然」单步概率低于「但是」而永远走不进那条路——这被称为贪心解码的短视。同时它还会放大重复：一旦某个短语出现，它的条件概率上升，贪心就更倾向再选它，于是陷入循环。而且前面那条前提别忘：这里的「稳定」也要同实现、同权重、同批处理才成立。稳定 ≠ 正确。</p>
     </div>
   </details>
   <details class="myth">
-    <summary>「上下文窗口写着 128k，那我把 12 万字丢进去，它当然全都读到了。」</summary>
+    <summary>「上下文窗口写着 128k，那我把 12 万字丢进去（约合十几万词元），它当然全都读到了。」</summary>
     <div class="myth__body">
       <p><strong>为何会有这个误解：</strong>厂商标称的是<strong>位置上限</strong>（技术上能塞进去多少词元），而用户把它理解成<strong>能力</strong>（塞进去之后能用好多少）。这两个数字可以差好几倍。</p>
       <p class="myth__truth">正确说法：见机制第 ⑦ 步——能看见不等于会去看。位置外推与注意力稀释会让中段信息的实际可用度显著下降；公开评测里「把答案放在长文档中间」这一变体的正确率，明显低于「放在开头或结尾」[2026-10]。工程上的对策是把关键信息往首尾放、或者干脆用检索（M12）先筛一遍再喂进去。</p>
@@ -130,7 +131,7 @@
   </div>
 
   <ul class="nextlinks">
-    <li><a href="#m12">M12 智能体与检索增强：用外部证据改变下一个词的概率</a></li>
+    <li><a href="#m12">M12 智能体与检索增强：用外部证据改变下一个词元的概率</a></li>
     <li><a href="#m02">M02 概率与交叉熵：熵、困惑度与这里的读数是什么关系</a></li>
     <li><a href="#m07">M07 注意力：softmax 在注意力里做的是同一件事</a></li>
   </ul>

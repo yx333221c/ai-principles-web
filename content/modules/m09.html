@@ -13,7 +13,7 @@
   <div class="callout callout--warn">
     <p><strong>这个类比对下面三件事不成立，越早知道越省时间：</strong></p>
     <ul>
-      <li><strong>老师傅是学生教出来的。</strong>奖励模型不是天然存在的评分标准，它同样是用梯度训出来的<span class="term" data-def="网络里乘在输入上的系数；这里指打分所依赖的可训练权重。" data-en="weight">权重</span>近似。既然是近似就有漏洞，而优化会把模型精准地推向漏洞——这就是「刷分」（reward hacking）：分数上涨，回答变差。</li>
+      <li><strong>老师傅是学生教出来的。</strong>奖励模型不是天然存在的评分标准，它同样是用梯度训出来的<span class="term" data-def="模型内部可训练的数值；这里指打分所依赖的那一组参数。" data-en="parameter">参数</span>近似。既然是近似就有漏洞，而优化会把模型精准地推向漏洞——这就是「刷分」（reward hacking）：分数上涨，回答变差。</li>
       <li><strong>评语被压成了一个数字。</strong>老师傅只输出一个标量分数，丢掉了「哪里好、好多少、为什么别这么写」的全部结构信息。学生只能靠反复试错反推评语的意思，而监督学习能直接读到一份改好的作业。</li>
       <li><strong>批改和上课用的是同一套计算。</strong>老师傅与学生的差别只在输出层：一个吐下一个词元的分布，一个吐一个分数。所以学生能钻的空子，恰恰是它和老师傅共享内部表示的那一部分，而不是人类会犯的那类错。</li>
     </ul>
@@ -22,15 +22,15 @@
 
 <seg name="mechanism">
   <h4>先把三件事分开：续写、回答、答得好</h4>
-  <p>这三件事对应三个不同的目标函数，也对应后训练要依次补上的三个缺口。整条链上要同时摆着好几个模型副本，这是本节最容易迷路的地方，所以先给结论：<strong>RLHF 的闭环里有三个模型——策略模型在训练，参考模型和奖励模型冻结。</strong></p>
+  <p>这三件事对应<strong>三种不同的数据</strong>；目标函数则是「续写与回答共用 M02 那个交叉熵（只换数据与掩码），打分换成偏好似然，最后换成『分数 − β·KL』」——全站数下来换过三次，但其中只有后两次是<strong>新出现</strong>的独立目标（下表就按这个口径写「两个独立的训练目标」）。整条链上还要同时摆着好几个模型副本，这是本节最容易迷路的地方，所以先把两层口径钉住：<strong>「角色」有三个——策略模型、参考模型、奖励模型，其中只有策略在产出回答、只有奖励在打分；「显存」里有四份——再加上 PPO 的价值网络，它也在线更新，但只服务于降低梯度方差，不产出回答。</strong></p>
 
   <ol class="steps">
     <li data-step="1"><strong>预训练模型没有「回答」这个行为。</strong>它的训练信号只有一种：在海量无标注<span class="term" data-def="没有人工标签的原始文本；预训练只做下一词元预测。" data-en="unlabeled text">文本</span>上预测下一个词元。语料里没人标过「这才是好回答」，所以一句提问在它眼里只是另一种待续写的文本。</li>
     <li data-step="2"><strong>第一阶段 SFT：把续写掰成回答。</strong><span class="term" data-def="监督微调：在人工写的示范数据上继续做交叉熵训练。" data-en="supervised fine-tuning">监督微调</span>（SFT）用人工写的<span class="term" data-def="人工撰写的「问题 + 理想回答」配对数据，SFT 的训练材料。" data-en="demonstration pairs">示范问答对</span>继续做<span class="term" data-def="按真实分布取平均、用模型分布计算的惊讶度；即总平均码长 = 熵 + KL。分类任务的损失函数。" data-en="cross-entropy">交叉熵</span>训练。损失与梯度都是 M02、M05 那套，只是换了数据、把学习率调小一到两个数量级。InstructGPT 用了约 1.3 万条示范（2022）[2026-10]。</li>
     <li data-step="3"><strong>SFT 立住了规矩，但规矩的上限就是示范。</strong>示范只有万条量级时，模型会把示范的措辞与结构本身当成目标；示范没覆盖的场景（该追问澄清、该拒绝、该承认不知道）它只能猜。于是需要一个能给<strong>任意</strong>回答打分的裁判。</li>
-    <li data-step="4"><strong>第二阶段：人类只排序，机器学打分。</strong>对同一个问题让 SFT 模型生成多个回答，标注员<strong>不写评语、不打绝对分数，只排出 A 比 B 好</strong>。把每次比较整理成<span class="term" data-def="偏好三元组：同一问题下「提示 + 更优回答 + 更差回答」。" data-en="preference triplet">偏好三元组</span> <code>(x, y_win, y_lose)</code>，用它们训练上文那位老师傅，即奖励模型，下文记作 RM。同一篇报告收集了约 3.3 万次比较（2022）[2026-10]。</li>
+    <li data-step="4"><strong>第二阶段：人类只排序，机器学打分。</strong>对同一个问题让 SFT 模型生成多个回答，标注员<strong>不写评语、不打绝对分数，只排出 A 比 B 好</strong>。把每次比较整理成<span class="term" data-def="偏好三元组：同一问题下「提示 + 更优回答 + 更差回答」。" data-en="preference triplet">偏好三元组</span> <code>(x, y_win, y_lose)</code>，用它们训练上文那位老师傅，即奖励模型，下文记作 RM。同一篇报告的奖励模型数据集是约 <strong>3.3 万条提示</strong>（2022）[2026-10]；注意单位——每条提示让标注员给 4 到 9 个回答排序，一次排序就产出 6 到 36 对「A 比 B 好」，所以提示只有 3.3 万条，<strong>成对比较却有数十万到上百万对</strong>。这正是「只排序」比「写评语」便宜的真正原因。</li>
     <li data-step="5"><strong>第三阶段：最大化分数，但用一根缰绳拴住。</strong>用<span class="term" data-def="近端策略优化：限制每步更新幅度的强化学习算法，RLHF 的常用选择。" data-en="PPO">近端策略优化（PPO）</span>这类<span class="term" data-def="靠交互得到的标量奖励来学习行为策略的机器学习范式。" data-en="reinforcement learning">强化学习</span>算法反复采样新回答、找 RM 要分数、更新策略。同时减去一项 <span class="term" data-def="KL 散度：衡量两个概率分布差多远；此处约束新策略别离参考模型太远。" data-en="KL divergence">KL 散度</span>惩罚，把新策略拴在 SFT 模型附近。目标函数见下方第一个公式，本站写作 <code>J(θ)</code>。</li>
-    <li data-step="6"><strong>三个模型，各自的死活不一样。</strong><span class="term" data-def="正在被更新的那一个：负责生成回答的大模型本身。" data-en="policy model">策略模型</span> π<sub>θ</sub> 在被训练；<span class="term" data-def="冻结的 SFT 副本，只用来算 KL 惩罚，自身不被更新。" data-en="reference model">参考模型</span> π<sub>ref</sub> 冻结；奖励模型冻结，实践中每隔几轮用新收集的比较重训一次。再加一个从策略模型初始化出来的<span class="term" data-def="强化学习中预测长期回报的辅助网络，用来降低梯度方差。" data-en="critic">价值网络</span>，一轮训练要同时养着 <strong>4 份大模型副本</strong>——显存开销与训练不稳定都来自这里。</li>
+    <li data-step="6"><strong>三个角色、四份副本，各自的死活不一样。</strong><span class="term" data-def="正在被更新的那一个：负责生成回答的大模型本身。" data-en="policy model">策略模型</span> π<sub>θ</sub> 在被训练；<span class="term" data-def="冻结的 SFT 副本，只用来算 KL 惩罚，自身不被更新。" data-en="reference model">参考模型</span> π<sub>ref</sub> 冻结；奖励模型冻结，实践中每隔几轮用新收集的比较重训一次。再加一个<span class="term" data-def="强化学习中预测长期回报的辅助网络，用来降低梯度方差。" data-en="critic">价值网络</span>：InstructGPT 明确写它是<strong>从奖励模型初始化</strong>的（并且只训 6B 的 RM，因为 175B 的 RM 训练不稳、不适合拿来当价值网络）；不少开源实现则改成从策略 / SFT 模型初始化——<strong>这一步各家不同</strong>，它本身也在线更新，只是不产出回答。一轮训练要同时养着 <strong>4 份大模型副本</strong>——显存开销与训练不稳定都来自这里 [2026-10]。</li>
     <li data-step="7"><strong>为什么这套很麻烦。</strong>① 每步都要现场生成大量回答才有样本，等于在训练里嵌了一段推理；② 一整段话只换一个标量分数，奖励稀疏、梯度噪声大；③ 优化压力越大，模型越会去找 RM 近似面之外的漏洞，表现为回答变长、变自信、开头套路化；④ 四个模型的超参互相牵连，复现成本高。</li>
     <li data-step="8"><strong><span class="term" data-def="直接偏好优化：把 RLHF 的后两段改写成一个直接在偏好对上优化的分类式损失。" data-en="DPO">直接偏好优化</span>（DPO）：把「训 RM + 强化学习」压成一个损失。</strong>关键洞见是：第 ⑤ 步那个带 KL 惩罚的目标<strong>有闭式最优解</strong>。把它解出来，奖励就能改写成「策略与参考模型的对数概率之差」；而偏好数据本来就只关心两个回答的奖励<strong>差</strong>。代进去，独立的 RM 与「现场采样」这两样东西同时消失。</li>
   </ol>
@@ -42,10 +42,10 @@
     <span class="reads">读作：只在人工写的答案那一段上，逐位取出「标准答案词元」的对数概率，求平均再变号。x 是提问，y<sub>t</sub> 是答案的第 t 个词元，|y| 是答案长度。这和 M02 的交叉熵是同一个式子，只是换了一批会讲话的数据。</span>
   </div>
 
-  <p>奖励模型不预测下一个词元，它预测<strong>人类会怎么选</strong>：先在两个回答上各算一个分数，再用 sigmoid 把分差变成概率。</p>
+  <p>奖励模型不预测下一个词元，它预测<strong>人类会怎么选</strong>：先在两个回答上各算一个分数，再用 sigmoid 把分差变成概率——这就是 <span class="term" data-def="把「A 比 B 好的概率」建模为两者分数之差的 sigmoid 的选择模型；成对比较数据的标准似然形式。" data-en="Bradley–Terry model">Bradley–Terry 式</span>的成对逻辑似然。</p>
   <div class="math-block math">
-    L<sub>RM</sub> <span class="op">=</span> − log σ <span class="bigg">(</span> r<sub>θ</sub>(x, y<sub>win</sub>) <span class="op">−</span> r<sub>θ</sub>(x, y<sub>lose</sub>) <span class="bigg">)</span>
-    <span class="reads">读作：把人类判定更好的那个回答的分数，减去较差那个的分数；这个差越大，「我们猜对了排序」的概率越接近 1，损失越接近 0。r<sub>θ</sub> 是奖励模型的输出，σ 是 sigmoid，把任意实数压进 0 到 1。</span>
+    L<sub>RM</sub> <span class="op">=</span> − log σ <span class="bigg">(</span> r<sub>φ</sub>(x, y<sub>win</sub>) <span class="op">−</span> r<sub>φ</sub>(x, y<sub>lose</sub>) <span class="bigg">)</span>
+    <span class="reads">读作：把人类判定更好的那个回答的分数，减去较差那个的分数；这个差越大，「我们猜对了排序」的概率越接近 1，损失越接近 0。r<sub>φ</sub> 是奖励模型的输出，它的参数写作 φ，<strong>与策略的参数 θ 是两套东西</strong>——后面推 DPO 要同时拿着这两套，混用会迷路。σ 是 sigmoid，把任意实数压进 0 到 1。</span>
   </div>
 
   <p>第三阶段优化的不再是任何数据集，而是这个目标：</p>
@@ -57,12 +57,12 @@
   <p>DPO 的全部起点，是注意到这个目标<strong>有解析的最优策略</strong>，于是奖励可以被反解出来：</p>
   <div class="math-block math">
     r(x, y) <span class="op">=</span> β <span class="op">·</span> log <span class="frac"><span class="num">π<sub>θ</sub>(y | x)</span><span class="den">π<sub>ref</sub>(y | x)</span></span> <span class="op">+</span> const
-    <span class="reads">读作：一段回答的奖励，等于「新策略比参考模型更愿写出它」的对数倍数，乘上缰绳系数 β，再加一个与回答无关的常数。这一步就是「RM 被吸收进策略」的出处。</span>
+    <span class="reads">读作：一段回答的奖励，等于「新策略比参考模型更愿写出它」的对数倍数，乘上缰绳系数 β，再加一个与回答无关的常数。严格说这条等式只在 KL 约束目标的<strong>最优策略 π<sup>∗</sup></strong> 处成立（那个常数其实是 β·log Z(x)，随问题变、与回答无关）；DPO 接着把 π<sup>∗</sup> 换成被训练的 π<sub>θ</sub>——这一步是它全部的赌注，也是「RM 被吸收进策略」的确切含义。<span class="badge badge--simplify">已简化：用 π_θ 代最优策略</span></span>
   </div>
   <p>把上式代进 <code>L<sub>RM</sub></code>，常数项在分差里相消，配分函数也不用算了，剩下一个纯分类损失：</p>
   <div class="math-block math">
     L<sub>DPO</sub> <span class="op">=</span> − log σ <span class="bigg">(</span> β <span class="bigg">[</span> log <span class="frac"><span class="num">π<sub>θ</sub>(y<sub>win</sub>|x)</span><span class="den">π<sub>ref</sub>(y<sub>win</sub>|x)</span></span> <span class="op">−</span> log <span class="frac"><span class="num">π<sub>θ</sub>(y<sub>lose</sub>|x)</span><span class="den">π<sub>ref</sub>(y<sub>lose</sub>|x)</span></span> <span class="bigg">]</span> <span class="bigg">)</span>
-    <span class="reads">读作：算「更优回答比参考模型多自信多少」，减去「较差回答多自信多少」，再把这个差推大。RM 不再作为一个独立模型存在——它就是策略自己；但参考模型还在，它就在每个分数的分母上。</span>
+    <span class="reads">读作：算「更优回答比参考模型多自信多少」，减去「较差回答多自信多少」，再把这个差推大。不再有一个<strong>单独训练、单独打分</strong>的奖励模型：奖励被重写成策略与参考模型的对数概率比，这个「隐式奖励」只活在损失函数里；但参考模型还在，它就在每个分数的分母上。</span>
   </div>
   <p>这里只给目标函数形式 <span class="badge badge--simplify">已简化：略去 DPO 推导中的配分函数与 Bradley–Terry 偏好假设的细节</span>。原论文报告的 β 多取 0.1–0.5（2023）[2026-10]。DPO 的代价同样清楚：不再现场生成回答，只能从<strong>已有</strong>的偏好对里学，因此学不出示范数据里没有的行为，也更吃数据分布的偏差。至于 DPO 与 RLHF 谁更强，目前是有争议的：有工作报告同数据下 DPO 接近 RLHF，也有工作报告在困难任务上在线强化学习仍然更高（2023–2024）<span class="badge badge--debate">存在争议</span>。</p>
 
@@ -82,7 +82,7 @@
           <rect class="box box--sun" x="10" y="134" width="120" height="40" rx="6"></rect>
           <text x="70" y="152" class="t-xs" text-anchor="middle">一整页网页</text>
           <text x="70" y="166" class="t-xs faint" text-anchor="middle">无标注文本</text>
-          <rect class="box" x="10" y="184" width="120" height="44" rx="6"></rect>
+          <rect class="box box--a" x="10" y="184" width="120" height="44" rx="6"></rect>
           <text x="70" y="202" class="t-sm" text-anchor="middle">下一词元预测</text>
           <text x="70" y="218" class="t-xs muted" text-anchor="middle">交叉熵</text>
           <line class="line" x1="70" y1="174" x2="70" y2="184" marker-end="url(#m09-arw)"></line>
@@ -130,7 +130,7 @@
 
         <g data-step="6">
           <rect class="box" x="10" y="26" width="620" height="82" rx="8"></rect>
-          <text x="24" y="46" class="t-sm">④ 这一步同时驻留 4 份模型副本（本站最该记住的一格）：</text>
+          <text x="24" y="46" class="t-sm">策略优化这一步同时驻留 4 份模型副本（本站最该记住的一格）：</text>
           <rect class="box box--a" x="24" y="58" width="130" height="36" rx="5"></rect>
           <text x="89" y="74" class="t-xs" text-anchor="middle">策略模型</text>
           <text x="89" y="88" class="t-xs accent" text-anchor="middle">正在被训练</text>
@@ -142,19 +142,19 @@
           <text x="377" y="88" class="t-xs muted" text-anchor="middle">冻结 · 负责打分</text>
           <rect class="box box--b" x="456" y="58" width="130" height="36" rx="5"></rect>
           <text x="521" y="74" class="t-xs" text-anchor="middle">价值网络</text>
-          <text x="521" y="88" class="t-xs muted" text-anchor="middle">辅助 · 从策略初始化</text>
+          <text x="521" y="88" class="t-xs muted" text-anchor="middle">辅助 · 也在更新</text>
           <line class="line" x1="564" y1="126" x2="534" y2="112" marker-end="url(#m09-arw)"></line>
         </g>
 
         <text x="10" y="272" class="t-sm muted">一条闭环：SFT 模型生成回答 → 人类排序 → 训练奖励模型 → 强化学习更新策略 → 再采样再排序。</text>
-        <text x="10" y="290" class="t-xs faint">越靠右，数据的「人工含量」越低，但一次训练要养活的模型副本越多。</text>
+        <text x="10" y="290" class="t-xs faint">人工量先升后降；副本数到 ④ 才跳到 4 份</text>
       </svg>
     </div>
-    <figcaption>怎么看：按列读：每列上下两格分别是「这个阶段吃什么数据」和「它在优化什么」，灰底是数据形态、彩色是训出来的模型；顶部横条回答「PPO 那一步同时开着哪几个模型」。灰箭头只表示阶段顺序。悬停左侧步骤 1、2、4、5、6 会高亮图中对应环节。</figcaption>
+    <figcaption>怎么看：按列读：每列上下两格分别是「这个阶段吃什么数据」和「它在优化什么」，灰底是数据形态、彩色是训出来的模型；顶部横条回答「策略优化那一步同时开着哪几个模型」——注意四份副本里<strong>有两份在动</strong>：策略模型和价值网络，另两份（参考、奖励）冻结，所以「三个角色」说的是<strong>谁在产出回答、谁在打分</strong>，而「4 份」说的是<strong>显存里摆着几个大模型</strong>，两条口径别混。图内 ①–④ 是<strong>阶段号</strong>，与左侧 ①–⑧ 的<strong>步骤号</strong>不同源，别按圈号去找步骤。底部那句「人工量先升后降」的完整读法：① 不要人工标注 → ② 每条都要人写完整答案（最贵）→ ③④ 人只排序（回落），<strong>并不是单调递减</strong>；副本数则是前三栏各只养一个模型，到 ④ 一下子变成四份。灰箭头只表示阶段顺序。悬停左侧步骤 1、2、4、5、6 会高亮图中对应环节。</figcaption>
   </div>
 
   <div class="callout callout--key">
-    <p><strong>必须记住的对照表。</strong>「三个模型」是本站对 RLHF 最要紧的一次澄清——答不出这三个，就还没读懂这一步。</p>
+    <p><strong>必须记住的对照表。</strong>「三个角色、四份显存」是本站对 RLHF 最要紧的一次澄清——既要说得出这三个角色，也要说得出第四份副本（价值网络）为什么也得开着、它和前三者有什么不同。</p>
     <table class="tbl tbl--scroll">
       <thead>
         <tr><th>模型</th><th>在 RLHF 里干什么</th><th>训练状态</th><th>DPO 里变成什么</th></tr>
@@ -163,6 +163,7 @@
         <tr><td>策略模型 π<sub>θ</sub></td><td>生成回答，被优化的对象</td><td>在线更新</td><td>仍是唯一被训练的那一个</td></tr>
         <tr><td>参考模型 π<sub>ref</sub></td><td>冻结的 SFT 副本，KL 惩罚的另一端</td><td>冻结</td><td>保留，充当公式里的分母</td></tr>
         <tr><td>奖励模型 r</td><td>把「问题 + 回答」压成一个标量分数</td><td>冻结，偶尔重训</td><td><strong>被省掉</strong>，吸收成对数概率比</td></tr>
+        <tr><td>价值网络</td><td>估计长期回报、给策略更新降方差；不产出回答</td><td>在线更新；InstructGPT 从 RM 初始化，各家起点不同</td><td><strong>整条消失</strong>：没有 RL 回路，就没有它的位置</td></tr>
       </tbody>
     </table>
   </div>
@@ -192,7 +193,7 @@
 
 <seg name="demo">
   <h4>缰绳该放多长</h4>
-  <p>下面这条拉锯就是机制段第 ⑤ 步的目标函数：横轴是策略偏离参考模型的程度，纵轴是分数。拖 β 看最优工作点往哪移，拖「可被钻空子程度」看刷分与变好什么时候分道扬镳。</p>
+  <p>下面这条拉锯就是机制段第 ⑤ 步的目标函数：横轴 κ 是策略偏离参考模型的程度（KL 距离，0–2，无量纲教学刻度），纵轴是分数。你能改两个量：缰绳系数 β ∈ [0, 2]（越大越保守）与「可被钻空子程度」ε ∈ [0, 1]（奖励模型与真实人类偏好之间的缺口，0 = 打分完全可信）。拖 β 看最优工作点往哪移，拖 ε 看刷分与变好什么时候分道扬镳。</p>
 </seg>
 
 <seg name="misconception">
@@ -221,13 +222,13 @@
     <summary>「奖励模型的分数越高，模型就越对齐。」</summary>
     <div class="myth__body">
       <p><strong>为何会有这个误解：</strong>奖励分数是整条流程里唯一可见的量，日志、曲线、消融表都拿它当指标，「优化它就是在优化目标」是最顺手的推断。</p>
-      <p class="myth__truth">正确说法：奖励模型的分数是<strong>人类偏好的代理指标</strong>，一旦成为优化目标，它同时也成了攻击面。分数曲线背后往往藏着一条先升后降的真实质量曲线，两者差值就是被钻空子的量——上面那个演示画的就是这条差值。所以实践中必须用与奖励模型训练数据无关的评测集，并让人盲评对比，才能判断这一步是否真的更好。</p>
+      <p class="myth__truth">正确说法：奖励模型的分数是<strong>人类偏好的代理指标</strong>，一旦成为优化目标，它同时也成了攻击面。分数曲线背后往往藏着一条先升后降的真实质量曲线，两者差值就是被钻空子的量——上面那个演示画的就是这条差值（注意演示把它画在「策略偏离参考模型多远」这根轴上，不是训练步数轴上）。这条现象的可标度版本见 Gao、Schulman 与 Hilton 的《Scaling Laws for Reward Model Overoptimization》（2023）[2026-10]：刷分的量随优化强度按幂律增长，更大的奖励模型更抗刷。所以实践中必须用与奖励模型训练数据无关的评测集，并让人盲评对比，才能判断这一步是否真的更好。</p>
     </div>
   </details>
 </seg>
 
 <seg name="takeaway">
-  <blockquote class="takeaway__line">RLHF 改的是说话习惯，不是知识；三个模型里只有一个在变。</blockquote>
+  <blockquote class="takeaway__line">RLHF 改的是说话习惯，不是知识；三个角色里只有策略一直在变。</blockquote>
 
   <div class="quiz">
     <p class="quiz__q">自测：DPO 声称「更简单」，它在结构上到底省掉了什么？</p>
@@ -236,7 +237,7 @@
     <label class="quiz__opt"><input type="radio" name="q-m09"><span>省掉了偏好数据，直接拿示范问答对继续训</span></label>
     <div class="quiz__fb">
       <p data-for="no"><strong>再想一步：</strong>把机制段最后那个 DPO 损失拿来看：分母里出现了参考模型，说明它还在；下标 win / lose 说明它仍然吃偏好对。真正消失的是那个单独训练、单独打分的奖励模型，以及「让模型先生成回答、再拿去打分」这一整轮循环。省掉的是阶段与副本，不是数据。</p>
-      <p data-for="ok"><strong>对了。</strong>奖励被改写成策略与参考模型的对数概率比，奖励模型因此被吸收进策略本身；代价是不再在线探索，行为被离线偏好数据的分布钉住。这条权衡正是进入 M13 的入口：一个不生成新行为的模型，也就不会在偏好数据覆盖不到的地方暴露问题。</p>
+      <p data-for="ok"><strong>对了。</strong>奖励被改写成策略与参考模型的对数概率比，那个<strong>单独训练、单独打分</strong>的奖励模型因此从流程里消失；代价是不再在线探索，行为被离线偏好数据的分布钉住。这条权衡正是进入 M13 的入口：一个不生成新行为的模型，也就<strong>更难被这套手段照出</strong>偏好数据覆盖不到的问题——风险没有消失，只是不显形。这正是评测盲区，而不是免疫。</p>
     </div>
     <p class="quiz__result" aria-live="polite"></p>
   </div>

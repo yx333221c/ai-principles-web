@@ -1,21 +1,26 @@
 <meta title="注意力与 Transformer" tagline="AI 学会「按需读取上下文」">
 
 <seg name="hook">
-  <p class="hook">1950 年图灵断言：2000 年前不会有能骗过人的机器。今天它骗过了我们。可拆开内部，这台机器只做了一件简单到令人失望的事——用一堆数字加权平均另一堆数字。为什么这点算术，成了八年里 AI 最大的进展？</p>
-  <p class="demo__note">读这一段前，建议先看 M05（网络怎么学）与 M06（旧方法为什么记不住长句）。</p>
+  <p class="hook">1950 年图灵设过一个门槛：到 2000 年，机器该让询问者聊五分钟后、认出它是机器的把握不到七成。七十六年后回看，门槛松得惊人。可今天的系统拆开只做一件事：用一堆数字加权平均另一堆数字。这点算术凭什么成了这几年 AI 最大的进展？</p>
+  <p class="demo__note">读这一段前，建议先看 M03（向量与点积）、M05（网络怎么学）与 M06（旧方法为什么记不住长句）。</p>
 </seg>
 
 <seg name="intuition">
-  <p>把每个词元想成一张<strong>便签</strong>。模型读到第 7 个字时，手里握着前 7 张便签。</p>
-  <p>注意力做的一件事，是给这 7 张便签<strong>分配注意力预算</strong>：这个字该多参考第 3 张、少参考第 5 张，各分多少。分配完，按这个比例把便签上的内容加权混合成一份新摘要，作为当前位置的新表示。</p>
-  <p>「该给谁多分一点」不是人规定的，是模型从数据里学出来的。同一个句子，处理「它」这个字时预算会流向它指代的名词；处理动词时预算会流向它的主语。</p>
+  <p>把每个词元想成一张<strong>便签</strong>。模型读到第 7 个位置时，手里握着前 7 张便签。</p>
+  <p>注意力做的一件事，是给这 7 张便签<strong>分配注意力预算</strong>：这个位置该多参考第 3 张、少参考第 5 张，各分多少。分配完，按这个比例把便签上的内容加权混合成一份新摘要，作为当前位置的新表示。</p>
+  <p>「该给谁多分一点」不是人规定的，是模型从数据里学出来的。同一个句子，处理「它」这个位置时预算常流向它指代的名词；处理谓语时预算常流向主语——这是分析出来的<strong>偏好</strong>，不是写在代码里的规则。</p>
 
   <div class="callout callout--warn">
-    <p><strong>这个类比对下面两件事不成立，务必记住：</strong></p>
+    <p><strong>这个类比对下面三件事不成立，务必记住：</strong></p>
     <ul>
       <li><strong>便签不是被人读的。</strong>便签上的内容是 <span class="term" data-def="把离散对象（词元、图像块）映射成连续向量的结果；向量的远近表示语义相似度。" data-en="embedding">嵌入</span>，是 512 个左右的数字，没有任何一个位置对应「一个词」。</li>
-      <li><strong>预算不是一次分配的。</strong>真实模型每一层、每一个<span class="term" data-def="把注意力拆成多组并行计算，各自学一种关系类型（如指代、邻接、主语-谓语）。" data-en="attention head">头</span>都在独立重新分配预算。一个 32 层的模型对同一个字做了上百次不同的「读便签」。</li>
+      <li><strong>预算不是一次分配的。</strong>真实模型每一层、每一个<span class="term" data-def="把注意力拆成多组并行计算，各组独立学自己的加权方式；偏好存在，事先分工不存在。" data-en="attention head">头</span>都在独立重新分配预算。一个 32 层的模型对同一个位置做了上百次不同的「读便签」。</li>
+      <li><strong>没有「找到」这回事。</strong>便签堆里不存在一张被检索命中的便签：打分是两次投影之后的一次内积，连续、可部分、会随上下文整体漂移。把「检索」当成模型内部的事实，这个类比就失效了（机制段步骤条之后的那条「对下面几件事不成立」给了具体边界）。</li>
     </ul>
+  </div>
+
+  <div class="callout callout--note">
+    <p>钩子里那个门槛的<strong>方向</strong>值得多说一句：图灵 1950 年写的是「一台存储约 10⁹ 比特（按十进制 125 MB）的机器，能让平均询问者在五分钟询问后<strong>做对判断的概率不超过 70%</strong>」，也就是<strong>被骗率至少三成</strong>就算过关 <span class="badge badge--debate">存在争议</span>——这是一道宽松的<strong>下限式</strong>门槛，既不是「必须完全骗不过」，也不是「误判率要压到 30% 以下」（那反而是更严格的要求）。至于今天的大模型是否算「通过了图灵测试」，两派并列：一派认为在受控的短交谈实验里，它被判为人类一方的比例已远超图灵的预期；另一派认为测试措辞含糊，且常被引用的 2014 年那次「通过」（Eugene Goostman 程序伪装成 13 岁乌克兰少年，五分钟交谈后说服了 30 位评委中的 33%）刚过图灵那条三成线，且靠的是「外国人英语不好」这种人格设定来解释怪异回答，不足以支撑结论 [2026-10]。本站不裁决，只强调一点：无论判「通过」与否，模型内部做的仍然是下面这套加权平均。原文见 Turing《Computing Machinery and Intelligence》（Mind 59, 1950）。</p>
   </div>
 </seg>
 
@@ -24,14 +29,25 @@
   <p>普通<span class="term" data-def="神经网络里乘在输入上的固定系数，训练后不再随输入改变。" data-en="weight">权重</span>是训练好就固定的。注意力最反直觉的地方在于：<strong>它每次前向传播都重新算一遍自己该用多少权重</strong>。权重不再是「参数」，而是「由当前输入决定的函数值」。这就是它能按需读取上下文的原因。</p>
 
   <ol class="steps">
-    <li data-step="1"><strong>每个词元生成三个向量。</strong>同一份输入经过三组不同的固定权重，分别投影出<span class="term" data-def="你想找什么：当前位置发出的查询。" data-en="query (Q)">查询 Q</span>、<span class="term" data-def="我能被什么找到：每个位置的可检索标签。" data-en="key (K)">键 K</span>、<span class="term" data-def="被找到之后实际交出的内容。" data-en="value (V)">值 V</span>。Q 与 K 是「匹配用的」，V 是「搬运用的」。</li>
-    <li data-step="2"><strong>两两点积，得到分数矩阵。</strong>第 i 个位置的 Q 和第 j 个位置的 K 做<span class="term" data-def="两个向量对应位置相乘再求和；方向越一致结果越大，因此衡量相似度。" data-en="dot product">点积</span>，得到一个 n×n 的分数表 <code>QKᵀ</code>（n 是词元数）。分数大 = 「i 想找的东西，j 身上有」。</li>
-    <li data-step="3"><strong>除以 √d，再按行做 softmax。</strong>把每行分数除以 <span class="math">√d</span>（d 是 K 向量的维度）后做 softmax，把一行分数变成「加起来等于 1」的权重。<span class="term" data-def="把一组任意实数压成正数且总和为 1 的分布：exp(xᵢ) / Σexp(xⱼ)。" data-en="softmax">softmax</span> 负责「放大的更大、压小的更小」，让模型敢把预算集中到一两个词上。除以 √d 是为了防止分数太大导致 softmax 饱和、梯度消失。</li>
+    <li data-step="1"><strong>每个词元生成三个向量。</strong>同一份输入经过三组不同的固定权重，分别投影出<span class="term" data-def="你想找什么：当前位置发出的查询。" data-en="query (Q)">查询 Q</span>、<span class="term" data-def="每个位置亮出的对名片：别人的查询来和它比方向一致性，是连续打分，不是查表命中。" data-en="key (K)">键 K</span>、<span class="term" data-def="按权重实际交出的内容：真正被搬进输出的那一份。" data-en="value (V)">值 V</span>。这个分工只是说：Q 与 K 只出现在打分里，V 才是被搬进输出的那一份；三者都来自同一份输入，都由训练决定。</li>
+    <li data-step="2"><strong>两两点积，得到分数矩阵。</strong>第 i 个位置的 Q 和第 j 个位置的 K 做<span class="term" data-def="两个向量对应位置相乘再求和；方向越一致结果越大，因此衡量相似度。" data-en="dot product">点积</span>，得到一个 n×n 的分数表 <code>QKᵀ</code>（n 是词元数）。分数大，只说明这两个投影方向对得齐——<strong>不是「命中」，也没有查表</strong>。</li>
+    <li data-step="3"><strong>除以 √d，再按行做 softmax。</strong>把每行分数除以 <span class="math">√d</span>（d 是 K 向量的维度）后做 softmax，把一行分数变成「加起来等于 1」的权重。<span class="term" data-def="把一组任意实数压成正数且总和为 1 的分布：exp(xᵢ) / Σexp(xⱼ)。" data-en="softmax">softmax</span> 负责「放大的更大、压小的更小」，让模型敢把预算集中到一两个位置。除以 √d 是为了防止分数太大把 softmax 推向 one-hot：那时权重对分数几乎不再敏感，Q/K 这条路就学不动了。</li>
     <li data-step="4"><strong>用权重对 V 加权求和。</strong>输出 = 权重 × 各位置的 V 相加。每个词元的新表示，就是它「按相关性读来的」上下文的加权平均。</li>
-    <li data-step="5"><strong>套上因果掩码。</strong>训练目标是预测下一个词，所以位置 i 只允许看 ≤ i 的位置。做法是把 <code>i &lt; j</code> 的分数设成 <code>−∞</code>，softmax 后权重正好是 0。这也解释了为什么注意力必须是单向的。</li>
-    <li data-step="6"><strong>多头：把维度切薄、并行多算几次。</strong>不是算一次 512 维注意力，而是算 8 次 64 维，各自独立学，最后拼接再投影。于是一个头可以专门盯「前一个词」，一个盯「指代对象」，一个盯「句法主语」。</li>
-    <li data-step="7"><strong>残差与位置编码。</strong>注意力本身<strong>完全不知道顺序</strong>——把输入打乱，输出只是跟着打乱，结果一模一样。所以必须显式注入位置信息：早期是加一张「位置向量表」（绝对位置编码），如今主流是<span class="term" data-def="旋转位置编码：按位置把 Q/K 向量旋转一个与位置成正比的角度，使点积只依赖两个位置的差。" data-en="RoPE">RoPE</span>，用旋转角度让点积天然带上「相距多远」。同时每个子层的输出都加回它的输入（残差连接），否则梯度传不回来。</li>
+    <li data-step="5"><strong>套上因果掩码。</strong>训练目标是预测下一个词，所以位置 i 只允许看 ≤ i 的位置。做法是把 <code>i &lt; j</code> 的分数设成 <code>−∞</code>，softmax 后权重正好是 0。要留意：这是<strong>自回归</strong>（只往后写、不许偷看未来）的要求，不是注意力本身的要求——编码器与 M11 的 ViT 用的就是双向版本，每个位置看所有位置。</li>
+    <li data-step="6"><strong>多头：把维度切薄、并行多算几次。</strong>不是算一次 512 维注意力，而是算 8 次 64 维（本站沿用 Vaswani 等 2017 的 base 配置 [2026-10]），各自独立学，最后拼接再投影。于是不同头常常各有偏好：有的贴着上一个词，有的流向指代对象，有的跟着谓语。但「偏好」不等于「分工」，见下面这条。</li>
+    <li data-step="7"><strong>残差与位置编码。</strong>注意力本身读不出顺序。<strong>在不用掩码时</strong>，打乱输入只是把输出的行一起打乱——这叫<span class="term" data-def="打乱输入，输出按同样的方式打乱，而不是保持不变；池化才是保持不变。" data-en="permutation equivariant">排列等变</span>，注意不是「排列不变」。而一旦套上第 ⑤ 步的因果掩码，掩码按<strong>位置索引</strong>（j ≤ i）生效，打乱还会改变每个位置能看见哪些词，输出内容必然跟着变。所以顺序信息必须由位置编码显式提供：早期是加一张「位置向量表」（绝对位置编码，正弦版本的公式与频率设计见本节末尾的公式块），如今主流是<span class="term" data-def="旋转位置编码：按位置把 Q/K 向量旋转一个与位置成正比的角度，使点积只依赖两个位置的差。" data-en="RoPE">RoPE</span>，用旋转角度让点积天然带上「相距多远」。同时每个子层的输出都加回它的输入（<span class="term" data-def="把子层的输入直接加到它的输出上，保住恒等路径与梯度通路。" data-en="residual connection">残差连接</span>）：一是让子层只需学「改动量」，二是给梯度留一条不经过任何权重的高速路。没有它，梯度要穿过整串子层连乘，随深度急剧衰减，深层反而训得更差——不是「传不回来」，而是传回来的已经被压平。</li>
+    <li data-step="8"><strong>层归一化：把每个位置的向量自己拉平。</strong><span class="term" data-def="把同一个词元的各特征分量拉回均值 0、方差 1，再乘学出来的缩放、加学出来的平移。" data-en="LayerNorm">层归一化（LayerNorm）</span>算的是<strong>同一个词元内部</strong>那 512 个分量的均值与方差，沿特征维归一，不看别的词元、也不看整个批次。这正是它与批归一化的区别，也是它能用于变长序列、能逐位置独立生效的原因。归一化放在哪一段上是有分歧的：<span class="badge badge--debate">存在争议</span> 原论文用的是<strong>后接式</strong>（子层输出先与输入相加，再归一化），梯度幅度随深度增长、要靠仔细的参数初始化与学习率预热才训得深；今天多数新模型用<strong>前接式</strong>（先归一化再进子层），梯度更平、更容易加深加大学习率，但若干消融报告称其最终质量略逊于调好的后接式。两派都没赢下全部证据 [2026-10]，本站两种都列出，不作裁决。</li>
+    <li data-step="9"><strong>前馈网络：读完之后的逐位置加工。</strong>注意力只负责「把别的位置的内容搬过来」，搬来之后要有人处理它。这一步对<strong>每个位置独立</strong>做一次两层全连接：先升维到 4d，过一个<span class="term" data-def="给网络加入非线性的逐元素开关。" data-en="activation function">激活函数</span>，再降回 d。它不含任何跨位置运算，所以计算量随 n <strong>线性</strong>增长（O(n·d²)），与注意力的 O(n²·d) 是两笔账。按原论文配置 d=512、d<sub>ff</sub>=2048 推算：注意力四组投影共 4d²≈105 万参数，前馈两层共 2·d·d<sub>ff</sub>≈210 万——<strong>一层里三分之二的关键参数在前馈，不在注意力</strong>。这也是「n 不够大时计算量并不由平方项主导」的原因。把两笔账按单位数摆一摆（每次乘加算一个单位）：注意力那张表的计算量是 2n²d，前馈是 2n·d·d<sub>ff</sub>，两者相除得 n / d<sub>ff</sub>——所以在 n = d<sub>ff</sub> = 2048 处持平，序列比它短时前馈反而更贵（n=512 时注意力表只有前馈的四分之一）。若把注意力那四组投影（4n·d²）也算进注意力这一侧，持平点提前到 n = 2d = 1024。两种口径都说明同一件事：平方项要到几千词元才开始压过前馈。</li>
+    <li data-step="10"><strong>键值缓存：为什么自回归解码可以只算一行。</strong><span class="term" data-def="自回归解码时把算过的键与值留在显存里复用，每步只新增一行查询，历史不再重算。" data-en="KV cache">键值缓存（KV cache）</span>成立的前提正是第 ⑤ 步的因果掩码：生成第 t 个词元时，它只需要「当前 Q 那一行 × 历史所有 K/V」，而历史词元的 K、V 一旦算出就不会再变（它们看不见未来）。于是每步从「重算整张 n×n 表」降到「算一行、追加两列」。代价是这块缓存必须常驻显存，且随上下文<strong>线性</strong>增长——那笔账 M10 第 ⑥ 步会算（每词元 128 KiB，128k 上下文 16 GiB）。它省的是算力，不是内存。</li>
   </ol>
+
+  <div class="callout callout--warn">
+    <p><strong>「查询 / 键 / 值」这套说法，对下面几件事不成立：</strong></p>
+    <p><strong>一，模型里没有真正的检索。</strong>没有符号匹配，没有命中判定，也没有「j 身上带着 i 要的那个东西」。分数只是 W<sub>Q</sub>、W<sub>K</sub> 投影之后的一次内积，同一对 (i, j) 在不同上下文、不同训练阶段会得到不同分数。</p>
+    <p><strong>二，没有哪个头被指定管哪种关系。</strong>「这个头管指代、那个头管句法主语」几乎都是在模型外面统计出来、再回贴上去的<strong>事后归因</strong>。头之间高度冗余：训练后剪掉许多头，在同一任务的多数评测上几乎不掉分（Michel 等，2019 [2026-10]）——但只留 1–2 个头与一个都不留差别很大，换到别的任务上退化也会显现。</p>
+    <p><strong>三，Q、K 不是「只有匹配、没有内容」。</strong>它们同样是同一份输入投影出来的，含语义信息；只是它们的乘积只进入打分，不直接进入输出。</p>
+    <p>把它当<strong>读代码时的地图</strong>用，别当<strong>模型里的事实</strong>用。</p>
+  </div>
 
   <div class="figure" data-fig="m07-qkv-1">
     <div class="figure__inner">
@@ -62,7 +78,7 @@
         </g>
         <line class="arrow" x1="218" y1="70" x2="256" y2="70"></line>
 
-        <text x="260" y="16" class="t-sm faint">③ 分数矩阵（行=Q，列=K）</text>
+        <text x="260" y="16" class="t-sm faint">③ softmax 后的权重（行和=1）</text>
         <g data-step="3">
           <!-- 3x3 网格，下三角为因果掩码允许区。
                用 .cell 而非 .box：.box 的 fill 是 CSS 声明，优先级高于这里的
@@ -99,10 +115,56 @@
           <text x="404" y="108" class="t-xs muted">局部，3 成回溯到「猫」—— 指代消解的痕迹</text>
         </g>
         <text x="10" y="178" class="t-sm muted">整张表随输入变化而重新生成；W_Q / W_K / W_V 才是训练出来的固定参数。</text>
-        <text x="10" y="196" class="t-xs faint">注意力的计算量与显存都随词元数平方增长（n×n 张表），这是长上下文昂贵的根源。</text>
+        <text x="10" y="196" class="t-xs faint">分数表随 n² 增长，前馈只随 n 线性；长上下文另有位置外推与 softmax 摊薄两笔代价。</text>
       </svg>
     </div>
-    <figcaption>怎么看：按行读：每个词元的 Q 与前面所有词元的 K 点积 → 归一化成一行的权重 → 用这行权重去混合所有 V。灰色 ✕ 是被因果掩码屏蔽的位置。左侧步骤条上的编号可点，会高亮图中对应环节。</figcaption>
+    <figcaption>怎么看：按行读：每个词元的 Q 与前面所有词元的 K 点积 → 归一化成一行的权重 → 用这行权重去混合所有 V。灰色 ✕ 是被因果掩码屏蔽的位置。③ 那一格里的 1.0 / .2 .8 / .3 .1 .6 是 softmax <strong>之后</strong>的权重（每行相加=1），不是点积分数：未缩放的点积在 d<sub>k</sub>=64 时典型幅度是 ±8 这个量级，把它们当分数会得出完全错误的量级直觉。左侧步骤条上的编号可点，会高亮图中对应环节（本图只覆盖第 ①–④ 步）。</figcaption>
+  </div>
+
+  <div class="figure" data-fig="m07-block-flow-2">
+    <div class="figure__inner">
+      <div class="fig__grid" style="grid-template-columns:1fr">
+        <div class="fig__head">一个 Transformer 层的完整接线</div>
+        <div class="fig__row">
+          <span class="fig__tag">主干</span>
+          <span class="fig__box"><b>嵌入＋位置编码</b></span>
+          <span class="fig__arrow">→</span>
+          <span class="fig__box fig__box--a"><b>多头注意力</b></span>
+          <span class="fig__arrow">→</span>
+          <span class="fig__box fig__box--g"><b>Add ＆ Norm</b></span>
+          <span class="fig__arrow">→</span>
+          <span class="fig__box fig__box--w"><b>前馈网络</b></span>
+          <span class="fig__arrow">→</span>
+          <span class="fig__box fig__box--g"><b>Add ＆ Norm</b></span>
+          <span class="fig__arrow">→</span>
+          <span class="fig__box fig__box--sun"><b>下一层</b></span>
+        </div>
+        <div class="fig__grid" style="grid-template-columns:repeat(2,1fr)">
+          <div class="fig__row fig__row--sub">
+            <span class="fig__tag">原论文</span>
+            <span class="fig__pill fig__pill--mute">x</span>
+            <span class="fig__arrow">→</span>
+            <span class="fig__pill fig__pill--a">子层</span>
+            <span class="fig__arrow">＋x→</span>
+            <span class="fig__pill fig__pill--g">归一化</span>
+            <span class="fig__arrow">→</span>
+            <span class="fig__pill fig__pill--mute">输出</span>
+          </div>
+          <div class="fig__row fig__row--sub">
+            <span class="fig__tag">今日主流</span>
+            <span class="fig__pill fig__pill--mute">x</span>
+            <span class="fig__arrow">→</span>
+            <span class="fig__pill fig__pill--g">归一化</span>
+            <span class="fig__arrow">→</span>
+            <span class="fig__pill fig__pill--a">子层</span>
+            <span class="fig__arrow">＋x→</span>
+            <span class="fig__pill fig__pill--mute">输出</span>
+          </div>
+        </div>
+        <div class="fig__note">两段 Add ＆ Norm 就是第 ⑦⑧ 步；「前馈网络」是第 ⑨ 步；掩码在第 ⑤ 步。下方两格是同一条链的两种接法。</div>
+      </div>
+    </div>
+    <figcaption>怎么看：从上往下读，这是能在白板上重画出来的主干：注意力负责「把别的位置的内容搬过来」，前馈负责「把搬来的东西加工一下」，Add 是残差（把输入加回去），Norm 是层归一化。左侧两个小面板的区别只有一个：<strong>归一化放在残差相加之前还是之后</strong>——这就是第 ⑧ 步里那桩没有定论的争议。本图不参与左侧步骤条的高亮。</figcaption>
   </div>
 
   <div class="math-block math">
@@ -114,28 +176,46 @@
   <div class="math-block math">
     s<span class="sub">ij</span><span class="op">′</span> <span class="op">=</span>
     <span class="cases"><span class="case__row"><span>s<span class="sub">ij</span></span><span class="case__cond">当 j ≤ i</span></span><span class="case__row"><span>−∞</span><span class="case__cond">当 j &gt; i（不许看未来）</span></span></span>
-    <span class="reads">「第 i 个位置的查询想读第 j 个词元：j 在过去就放行（s 就是步骤 ② 算出的分数），j 在未来就设成 −∞。」exp(−∞) = 0，所以 softmax 之后未来位置的权重正好是 0——这就是步骤 ⑤ 的因果掩码。矩阵形式写出来是一个下三角可用的 n×n 表。</span>
+    <span class="reads">「第 i 个位置的查询想读第 j 个词元：j 在过去就放行（s 就是步骤 ② 算出的分数），j 在未来就设成 −∞。」exp(−∞) = 0，所以 softmax 之后未来位置的权重正好是 0——这就是步骤 ⑤ 的因果掩码。矩阵形式写出来是一个下三角可用的 n×n 表。反过来读它也提醒我们：掩码盯的是<strong>位置编号</strong>，不是词元的身份，所以打乱词元会改变每一行能看见谁。</span>
+  </div>
+
+  <div class="math-block math">
+    FFN(x) <span class="op">=</span> max<span class="bigg">(</span>0<span class="bigg">,</span> xW<span class="sub">1</span> <span class="op">+</span> b<span class="sub">1</sub><span class="bigg">)</span> W<span class="sub">2</span> <span class="op">+</span> b<span class="sub">2</span>
+    <span class="reads">「把这个位置的向量先乘一个升维矩阵、过一道取正的非线性，再乘一个降维矩阵加回来；每个位置各算各的，互相不看。」x 的形状是 [d]，W₁ 是 [d × 4d]，W₂ 是 [4d × d]，所以输出形状与输入一致，能直接走残差相加。</span>
+  </div>
+
+  <div class="math-block math">
+    PE<span class="bigg">(</span>pos<span class="bigg">,</span> i<span class="bigg">)</span> <span class="op">=</span>
+    <span class="cases"><span class="case__row"><span>sin<span class="bigg">(</span>pos · 10000<sup>−2i/d</sup><span class="bigg">)</span></span><span class="case__cond">i 为偶数维</span></span><span class="case__row"><span>cos<span class="bigg">(</span>pos · 10000<sup>−2i/d</sup><span class="bigg">)</span></span><span class="case__cond">i 为奇数维（与 i−1 同频）</span></span></span>
+    <span class="reads">「给第 pos 个位置、第 i 对维度填一个正弦值，频率随 i 一路变慢。」分母从 1 涨到约 10⁴，所以不同维度的波长从 2π（约 6.3 个位置）一直拉到约 6 万个位置：每个维度是一把刻度不同的尺子，近处靠快尺分辨、远处靠慢尺分辨。这也解释了它为什么在超出训练时见过的距离之后失效：慢尺走到了从没被训练过的新刻度上，快尺却已经绕了许多圈、给出的相位与前面重复，两头的尺度一起失去可用信号。今天的模型多用 RoPE 或直接可学习的「位置向量表」，而不是这张正弦表。</span>
+  </div>
+
+  <div class="math-block math">
+    LN(x) <span class="op">=</span> γ <span class="op">⊙</span> <span class="frac"><span class="num">x <span class="op">−</span> μ</span><span class="den">√<span style="border-top:1px solid;display:inline-block">σ² <span style="font-size:0.7em">+</span> ε</span></span></span> <span class="op">+</span> β
+    <span class="reads">「把这一个词元自己的 d 个分量减掉它们的均值、除以它们的标准差，再逐维乘上学出来的缩放 γ、加上学出来的平移 β。」μ 与 σ² 只在<strong>同一个位置的各特征分量</strong>上求，不跨词元、也不跨批次——这就是第 ⑧ 步说的「沿特征维归一」。</span>
   </div>
 
   <details class="math-detail">
-    <summary>展开：为什么要除以 √d，以及为什么 O(n²) 无法回避</summary>
+    <summary>展开：为什么要除以 √d，以及为什么在显式两两比较这一族里 O(n²) 难以回避</summary>
     <div class="math-detail__body prose">
-      <p><strong>关于 √d。</strong>假设 Q、K 各分量是均值 0、方差 1 的独立随机变量，那么它们点积（d<sub>k</sub> 项相加）的方差是 d<sub>k</sub>，标准差约 √d<sub>k</sub>。不缩放的话，d<sub>k</sub>=64 时分数会普遍落在 ±8 之外，softmax 会把几乎全部质量堆到最大那一项，梯度趋近 0，训练停滞。除以 √d<sub>k</sub> 把方差拉回 1。</p>
-      <p><strong>关于平方复杂度。</strong>注意力要显式建立「每对位置之间的关系」，n 个位置的两两组合就是 n²。词元从 4k 涨到 128k（32 倍），注意力计算与那张分数表的显存就涨 1024 倍。工业界的缓解方案（滑窗、分块、线性近似、以及把 K/V 缓存下来避免重复算）都是在绕这张表——但绕不开「每个词都要和上下文比一遍」这件事本身。</p>
+      <p><strong>关于 √d。</strong>假设 Q、K 各分量是均值 0、方差 1 的独立随机变量，那么它们点积（d<sub>k</sub> 项相加）的方差是 d<sub>k</sub>，标准差约 √d<sub>k</sub>。不缩放的话，d<sub>k</sub>=64 时分数的标准差就是 √64 = 8：按这个正态假设，约三分之二的一行分数落在 ±8 <strong>之内</strong>（±1σ 概率 68.3%），而不是「普遍落在 ±8 之外」。真正的问题是极差：按 n 个正态样本的期望极差 2·E[max] 估算，一行 4 个分数就拉开约 2.06σ ≈ 16 个单位，一行 512 个能拉到约 6.1σ ≈ 49 个单位。softmax 是取指数再归一，差 16 个单位就意味着两边的权重差 e¹⁶ ≈ 890 万倍，几乎全部质量堆到最大那一项，权重对分数不再敏感，训练停滞。除以 √d<sub>k</sub> 把方差拉回 1。</p>
+      <p><span class="badge badge--simplify">已简化：这三条假设（独立、零均值、单位方差）只在初始化时近似成立；训练后 Q、K 的分量相关、方差也不再是 1，所以「点积方差 = d」是一个量级正确的启发式理由，而不是定理。原论文自己也只把它当作一种可能的解释。</span></p>
+      <p><strong>关于平方复杂度。</strong>注意力要显式建立「每对位置之间的关系」，n 个位置的两两组合就是 n²。词元从 4k 涨到 128k（32 倍），<strong>训练与 prefill 阶段</strong>要摆整张 n×n 分数表，算力与显存就是 32²=1024 倍。但增量解码不必摆整表：每一步只算当前那一行（第 ⑩ 步的键值缓存），这时真正随上下文线性增长的是缓存，不是那张表（M10 第 ⑥ 步）——两笔账别混。还要留意「平方」只是注意力那一部分：同层的前馈是 O(n·d²)，随 n 线性（第 ⑨ 步）。</p>
+      <p>至于平方是否<strong>必然</strong>：<span class="badge badge--debate">存在争议</span> 一派认为只要想要「每个位置都与全上下文建立联系」，两两比较的代价就绕不开，工业界的滑窗、分块、键值缓存都只是在常数与显存上做文章；另一派（线性注意力、状态空间模型、检索式稀疏）主张不做全对比较也能行，代价是要引入近似、额外的召回机制或在长距离精确检索上让步 [2026-10]。本站把两种立场并列，不裁决。</p>
     </div>
   </details>
 </seg>
 
 <seg name="demo">
   <h4>它到底在看哪里</h4>
-  <p>下面这张矩阵就是第 ③ 步的产物。真实大模型的注意力矩阵有几百行几百列，这里用一个 9 词短句、4 个头演示同一件事。</p>
+  <p>下面这张矩阵就是第 ③ 步的产物： softmax <strong>之后</strong>的权重，每行相加等于 1。真实大模型的注意力矩阵有几百行几百列，这里用一个 9 词元的短句、4 个头演示同一件事。</p>
 </seg>
 
 <seg name="misconception">
   <details class="myth">
     <summary>「注意力权重就是模型思考的过程，看它看哪里就知道它在想什么。」</summary>
     <div class="myth__body">
-      <p><strong>为何会有这个误解：</strong>太多文章把热力图当「可解释性」卖，因为「模型看这个字是因为那个字」听起来正好回答了「为什么」。</p>
+      <p><strong>为何会有这个误解：</strong>太多文章把热力图当「可解释性」卖，因为「模型看这个位置是因为那个位置」听起来正好回答了「为什么」。加上「查询 / 键 / 值」这套检索词汇本身就在暗示「它在找理由」。</p>
       <p class="myth__truth">正确说法：注意力权重只告诉你「这一层这个头的输出被哪些位置的 V 影响了」，它是<strong>计算路径</strong>，不是<strong>理由</strong>。经过几十层混合与残差之后，最终输出与某个高权重位置之间的因果关系早已被反复改写；同一句话换个头、换个层，热力图会完全不同。它可以当线索，不能当解释。</p>
     </div>
   </details>
@@ -143,36 +223,37 @@
     <summary>「Transformer 能处理长文本，是因为它有一个能装下整篇文章的记忆模块。」</summary>
     <div class="myth__body">
       <p><strong>为何会有这个误解：</strong>RNN 时代「隐藏状态 = 记忆」的说法太牢固，人们自然以为 Transformer 也有个更大的同类。</p>
-      <p class="myth__truth">正确说法：Transformer <strong>没有独立的记忆模块</strong>。它的「记忆」就是上下文本身 + 权重矩阵里的参数。所谓窗口长度，指的是这一次前向传播里同时摆着多少个词元；窗口外的内容不是「忘了」，而是<strong>根本没被计算</strong>。这也解释了为什么把同样的话换个顺序放进上下文，答案可能变化。</p>
+      <p class="myth__truth">正确说法：Transformer <strong>没有独立的记忆模块</strong>。它的「记忆」就是上下文本身 + 权重矩阵里的参数。所谓窗口长度，指的是这一次前向传播里同时摆着多少个词元；窗口外的内容不是「忘了」，而是<strong>根本没被计算</strong>。这也解释了为什么把同样的话换个顺序放进上下文，答案可能变化——第 ⑤ 步的掩码是按位置编号生效的，顺序一变，每个位置能看见的集合就变了。</p>
     </div>
   </details>
   <details class="myth">
     <summary>「多头注意力就是多个模型投票，取多数意见。」</summary>
     <div class="myth__body">
-      <p><strong>为何会有这个误解：</strong>「头」让人联想到「多个视角再综合」，投票是日常里最熟悉的综合方式。</p>
-      <p class="myth__truth">正确说法：头不是投票，而是<strong>把一次昂贵的全维度比较拆成几次便宜的窄维度比较</strong>，各学一种关系，最后把所有头的输出拼接起来再做一次线性投影——是一次求和，不是几次表决。没有任何环节在做「多数决」。实践中还有相当比例的注意力头接近休眠，删掉不影响性能。</p>
+      <p><strong>为何会有这个误解：</strong>「头」让人联想到「多个视角再综合」，投票是日常里最熟悉的综合方式；而「每个头负责一种语法关系」这类说法又给「各投一票」提供了看似合理的脚本。</p>
+      <p class="myth__truth">正确说法：头不是投票，而是<strong>把一次昂贵的全维度比较拆成几次便宜的窄维度比较</strong>，各学一种加权方式，最后把所有头的输出拼接起来再做一次线性投影——是一次求和，不是几次表决。没有任何环节在做「多数决」。实践中许多注意力头接近休眠：训练后剪掉它们，在同一任务的多数评测上几乎不掉分（Michel 等，2019 [2026-10]）——但只留 1–2 个头与一个都不留差别很大，换到别的任务或微调场景上，退化也会显现，所以「既然能剪就说明头不重要」是过度外推。</p>
     </div>
   </details>
 </seg>
 
 <seg name="takeaway">
   <blockquote class="takeaway__line">注意力不是理解，是每次前向都重新算一遍的加权平均。</blockquote>
+  <p>顺序信息也来自数据规模之外的东西：它是第 ⑦ 步那样被<strong>显式设计</strong>进模型的（位置编码、掩码的位置索引），不是从更多词元里自己长出来的。带着这句去 M08。</p>
 
   <div class="quiz">
-    <p class="quiz__q">自测：把输入的 5 个词元顺序打乱，如果模型完全没有位置编码，注意力输出会怎样？</p>
-    <label class="quiz__opt"><input type="radio" name="q-m07" data-right="1"><span>输出跟着一起打乱，内容不变——注意力本身对顺序不敏感</span></label>
-    <label class="quiz__opt"><input type="radio" name="q-m07"><span>输出完全不变，因为注意力会重新排序</span></label>
+    <p class="quiz__q">自测：把输入的 5 个词元顺序打乱，其他什么都不改。注意力的输出会怎样？</p>
+    <label class="quiz__opt"><input type="radio" name="q-m07" data-right="1"><span>不加因果掩码时输出只是行跟着打乱（排列等变）；套上掩码后内容也会变</span></label>
+    <label class="quiz__opt"><input type="radio" name="q-m07"><span>输出完全不变，因为注意力会把词重新排回原来的顺序</span></label>
     <label class="quiz__opt"><input type="radio" name="q-m07"><span>无法计算，因为因果掩码要求顺序</span></label>
     <div class="quiz__fb">
-      <p data-for="no"><strong>再想一步：</strong>因果掩码依赖的是「谁在前」，但掩码本身也是按位置索引施加的。关键在于注意力分数只由 Q 与 K 的点积决定，点积不知道「第 3 个」是什么意思。所以打乱输入只是把输出的行一起打乱——这正是第 ⑦ 步必须显式注入位置信息的原因。</p>
-      <p data-for="ok"><strong>对了。</strong>这正是机制拆解第 ⑦ 步的全部要点：注意力本身是<strong>排列不变</strong>的，顺序必须由位置编码额外提供。RoPE 之所以成为主流，就是因为它把顺序编码进旋转角度，让点积天然读出「相距多远」。带着这个结论去 M08：顺序信息也来自数据规模之外的东西。</p>
+      <p data-for="no"><strong>再想一步：</strong>注意力分数确实只由 Q 与 K 的点积决定，点积不知道「第 3 个」是什么意思——所以<strong>不加掩码</strong>时，打乱输入只是把输出的行一起打乱，这叫排列等变（不是排列不变：每一行的内容跟着走）。但第 ⑤ 步的因果掩码是按<strong>位置编号</strong>（j ≤ i）施加的：原来排在第 1 位的词元被打到第 4 位，它现在能看见的是第 1–4 位，而原来只有第 1 位——可见集合变了，这一行的加权平均自然跟着变。掩码也不会让计算「失败」，它只是限制谁可见。</p>
+      <p data-for="ok"><strong>对了。</strong>这正是机制拆解第 ⑦ 步的全部要点：注意力本身是<strong>排列等变</strong>的，顺序必须由位置编码额外提供，而掩码本身还额外引入了对位置编号的依赖。RoPE 之所以成为主流，就是因为它把顺序编码进旋转角度，让点积天然读出「相距多远」。带着这个结论去 M08：顺序信息也来自数据规模之外的东西。</p>
     </div>
     <p class="quiz__result" aria-live="polite"></p>
   </div>
 
   <ul class="nextlinks">
     <li><a href="#m08">M08 预训练与规模定律：这套骨架放大一万倍会发生什么</a></li>
-    <li><a href="#m10">M10 解码与采样：算出分布之后，怎么挑一个字</a></li>
+    <li><a href="#m10">M10 解码与采样：算出分布之后，怎么挑下一个词元</a></li>
     <li><a href="#m06">M06 序列建模的瓶颈：注意力是为了解决什么问题出现的</a></li>
   </ul>
 </seg>

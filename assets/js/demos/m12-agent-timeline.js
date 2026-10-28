@@ -17,6 +17,34 @@
      期望首次出错的步数 1/(1−p)：0.95 → 20 步、0.90 → 10 步、0.99 → 100 步（截到 20）
    演示里这两个量分开标注，避免读者把「跌破一半」与「期望出错」混为一谈。
 
+    「一阶修正」开关（corr）的数值契约 —— 按代码实算重写：
+      模型：每一步以恒定概率 CATCH = 0.5 把「本步的失手」当场纠正回来，于是
+        p_eff = 1 − (1−p)(1−CATCH) = (1+p)/2，存活率仍是 p_eff^N —— **仍是指数，只是底数变大**。
+        旧实现写成 p + 0.03(k−1) 逐步累加再钳到 1：p=0.95 时第 3 步起完全水平、10 步 93%，
+        p=0.90 时 10 步 80%（契约却是 35%），演示出的恰是 myth 3 要破除的那个结论，已废弃。
+      corr 关（纯 p^N）：p=0.95 → 10 步 60% / 15 步 46% / 20 步 36%，跌破一半第 14 步
+                        p=0.90 → 10 步 35% / 15 步 21% / 20 步 12%，跌破一半第 7 步
+      corr 开（p_eff） ：p=0.95 → p_eff=0.975 → 10 步 78% / 15 步 68% / 20 步 60%
+                        p=0.90 → p_eff=0.950 → 10 步 60% / 15 步 46% / 20 步 36%，跌破一半第 14 步
+                        p=0.99 → p_eff=0.995 → 10 步 95% / 15 步 93% / 20 步 90%（仍逐格下降）
+                        p=0.80 → p_eff=0.900 → 10 步 35% / 15 步 21% / 20 步 12%，跌破一半第 7 步
+      「20 步内跌破一半」在 p=0.95 + corr 下不再出现（灰虚线隐去，读数写「20 步内不会」）——
+        这是「纠错把衰减变慢」的正确读法，不是「衰减停了」：曲线上每一步仍在往下走。
+        阈值：corr 后 20 步内不再跌破一半 ⟺ p_eff > 0.5^(1/20) = 0.9659 ⟺ p > 0.932，
+        按 0.01 步长的滑块就是 p ≥ 0.94 起（默认 p=0.95 正落在这一档）。
+        整条滑块上的对照（纯 p → corr 后「跌破一半的步数」）：
+          0.80→4 / 7、0.85→5 / 9、0.90→7 / 14、0.91→8 / 16、0.92→9 / 17、0.93→10 / 20、
+          0.94→12 / 无、0.95→14 / 无、0.96→17 / 无、0.97 及以上两种口径都不跌破。
+      期望首次出错步 1/(1−p_eff)：corr 下 0.95→40、0.90→20、0.99→200，一律截到 20；
+        所以 p=0.90 + corr 时红标记从第 10 步挪到第 20 步（并标「已超出本轨迹 15 步」）。
+      crit（红竖线 / 跑偏区 / 读数「期望第几步开始偏」）在 corr 开启后**同用修正后的 p_eff**：
+        旧实现按纯 p 算，与实线两套口径同屏，红竖线与实线穿 50% 的位置互相矛盾。
+      240 次固定种子重放（DK.rng(12007)、15 步）：corr 关 p=0.95→133 次失手、p=0.90→192 次；
+        corr 开 p=0.95→65 次、p=0.90→133 次、p=0.99→14 次。理论值 240(1−p_eff^15)：
+        纯 p=0.95→128.8、纯 p=0.90→190.6，与 133 / 192 同量级（抽样抖动）。
+      边界：corr 只建模「纠错」这一个方向。正文承诺的另一头——早期错误留在上下文里
+        污染后续输入、让后面的 p 更小——**不在这条曲线里**，见机制段第 ⑦ 步。
+
    诚实性（契约 §2.2 第 4 条）：轨迹是人工编排的样例，不是真实模型运行记录；
    概率模型为一阶近似。这句话常驻画布顶部，也写进 hint。
    契约遵守：所有控件挂 key；只用 DK.* 与 SVG；viewBox 逻辑坐标；
@@ -63,9 +91,9 @@
     {
       title: '第 1 轮 · 定时间',
       thought: ['它没有「现在」这个输入', '得先把日期取回来'],
-      action: ['{"tool":"calendar"}', '"date":"明天"}'],
+      action: ['{"tool":"calendar",', '"date":"明天"}'],
       obs: [
-        ['2026-10-24 周五', '日出 06:24 日落 17:41'],
+        ['2026-10-24 周六', '日出 06:24 日落 17:41'],
         ['（返回空）', '窗口里仍没有「现在」'],
         ['2023-10-24 周二', '（旧缓存的那一页）']
       ],
@@ -143,17 +171,18 @@
   ];
 
   /* ================= 数学：连乘衰减、临界步、有限重放、词元累积 ============ */
-  const clamp01 = (v) => DK.clamp(v, 0, 1);
-  /** 第 n 步「此前一路都对、且这一步也对」的概率。
-      corr=false → 纯 p^n；corr=true → p_eff(k)=p+0.03(k−1) 的一阶修正
-      （后面的步骤有机会发现并纠正前面的错；机制段已声明这是一阶近似） */
+  /** 一阶修正的纠错强度：每一步有 CATCH 的概率把本步的失手当场纠正回来 */
+  const CATCH = 0.5;
+  /** 单步等效正确率。corr 下 p_eff = 1 − (1−p)(1−CATCH) = (1+p)/2：
+      与 n 无关的**恒定**提升，所以存活率仍是 p_eff^N（仍是指数，只是底数变大）。
+      旧写法 p+0.03(k−1) 随 k 累加并被钳到 1，从第 3 步起完全水平，已废弃。 */
+  const pEff = (p, corr) => corr ? 1 - (1 - p) * (1 - CATCH) : p;
+  /** 第 n 步「此前一路都对、且这一步也对」的概率 = p_eff^n */
   function surv(n, p, corr) {
-    let s = 1;
-    for (let k = 1; k <= n; k++) s *= corr ? clamp01(p + 0.03 * (k - 1)) : p;
-    return s;
+    return Math.pow(pEff(p, corr), n);
   }
-  /** 期望首次出错步 = 几何分布均值 1/(1−p) */
-  const critStep = (p) => Math.min(NMAX, Math.max(1, Math.round(1 / (1 - DK.clamp(p, 0.8, 0.99)))));
+  /** 期望首次出错步 = 几何分布均值 1/(1−p_eff)（corr 开启后与曲线同口径） */
+  const critStep = (p, corr) => Math.min(NMAX, Math.max(1, Math.round(1 / (1 - pEff(DK.clamp(p, 0.8, 0.99), corr)))));
   /** 曲线跌破 50% 的步数（与上面那个量不同，图上分开标注） */
   function halfStep(p, corr) {
     for (let n = 1; n <= NMAX; n++) if (surv(n, p, corr) < 0.5) return n;
@@ -169,12 +198,12 @@
   /** 有限次重放：把「p^N 有多大」变成可以数出来的次数。种子固定 ⇒ 同参数同结果 */
   function replay(trials, steps, p, corr, seed) {
     const r = DK.rng(seed);
+    const q = pEff(DK.clamp(p, 0.8, 0.99), corr);   // 与曲线、红竖线同一个 p_eff
     let bad = 0, sumFirst = 0;
     for (let t = 0; t < trials; t++) {
       let first = 0;
       for (let k = 1; k <= steps; k++) {
-        const pk = corr ? clamp01(p + 0.03 * (k - 1)) : p;
-        if (r() >= pk) { first = k; break; }              // 这一步失手
+        if (r() >= q) { first = k; break; }          // 这一步失手
       }
       if (first) bad++;
       sumFirst += first || steps + 1;
@@ -413,7 +442,7 @@
       const corr = !!s.corr;
       const rd = f >= 16 ? 4 : Math.max(0, Math.ceil(f / 3) - 1);      // 当前轮下标
       const ph = f >= 16 ? 4 : (f === 0 ? 0 : f - 3 * Math.ceil(f / 3) + 3);
-      const crit = critStep(p);
+      const crit = critStep(p, corr);
       const half = halfStep(p, corr);
       const tok = tokensAt(Math.min(f, 15), q, s.loop);
       const overflow = tok > LIMIT;
@@ -433,7 +462,10 @@
         nd.oLines.forEach((t, j) => {
           t.textContent = ob[j];
           t.style.opacity = f >= i * 3 + 3 ? 1 : 0.25;
-          t.setAttribute('fill', q === 0 ? 'var(--c-ok)' : q === 1 ? 'var(--c-fg-muted)' : 'var(--c-err)');
+          /* 设色走 class，不走 fill 属性：`.demo-svg text{fill:var(--c-fg)}` 是
+             类+元素选择器（特异度 0-1-1），会静默压掉 presentation attribute
+             （0-0-0）。用属性设色等于没设——见 m13 演示文件头的同一条纪律。 */
+          t.setAttribute('class', 't-xs ' + (q === 0 ? 'good' : q === 1 ? 'muted' : 'bad'));
         });
         [0, 1, 2].forEach(k => {
           const onPhase = isCur && ph === k + 1;
@@ -450,7 +482,7 @@
       api._critLine.setAttribute('x1', cx.toFixed(1));
       api._critLine.setAttribute('x2', cx.toFixed(1));
       api._critLine.setAttribute('opacity', crit <= TRACK ? 1 : 0.35);
-      api._critLab.textContent = '期望第 ' + crit + ' 步开始偏（1/(1−p)）' + (crit > TRACK ? ' · 已超出本轨迹 ' + TRACK + ' 步' : '');
+      api._critLab.textContent = '期望第 ' + crit + ' 步开始偏（1/(1−' + (corr ? 'p_eff' : 'p') + ')）' + (crit > TRACK ? ' · 已超出本轨迹 ' + TRACK + ' 步' : '');
       api._critLab.setAttribute('x', DK.clamp(cx, 190, 500).toFixed(1));
 
       /* ---------------- 左下：当前步展开 ---------------- */
@@ -508,10 +540,13 @@
         api._halfV.setAttribute('x2', px(half).toFixed(1));
         api._halfV.setAttribute('opacity', 1);
       } else api._halfV.setAttribute('opacity', 0);
-      api._cap[0].textContent = 'p=' + p.toFixed(2) + '：10 步全对 ' + Math.round(surv(10, p, corr) * 100) +
+      api._cap[0].textContent = (corr ? 'p_eff=' + pEff(p, true).toFixed(3) : 'p=' + p.toFixed(2)) +
+        '：10 步全对 ' + Math.round(surv(10, p, corr) * 100) +
         '%，' + TRACK + ' 步 ' + Math.round(surv(TRACK, p, corr) * 100) + '%';
-      api._cap[1].textContent = '跌破一半在第 ' + (half || '20+') + ' 步（红竖线 = 期望出错第 ' + crit + ' 步，两者不同）';
-      api._cap[2].textContent = '实线=当前 p　点划线=同一 p 纯 p^N　灰虚线=0.95/0.90 参照';
+      api._cap[1].textContent = half ? '跌破一半在第 ' + half + ' 步（红竖线 = 期望出错第 ' + crit + ' 步，两者不同）'
+        : '20 步内不跌破一半（红竖线 = 期望出错第 ' + crit + ' 步）';
+      api._cap[2].textContent = corr ? '实线=p_eff^N　点划线=同一 p 纯 p^N　灰虚线=0.95/0.90 参照'
+        : '实线=当前 p　点划线=同一 p 纯 p^N　灰虚线=0.95/0.90 参照';
 
       /* ---------------- 窗口条 ---------------- */
       const scale = WIN.w / LIMIT;
@@ -533,7 +568,8 @@
       api._winMark.setAttribute('x1', (WIN.x + Math.min(tok, LIMIT) * scale).toFixed(1));
       api._winMark.setAttribute('x2', (WIN.x + Math.min(tok, LIMIT) * scale).toFixed(1));
       api._winLab.textContent = '已用 ' + tok + ' / ' + LIMIT + ' 词元' + (overflow ? '（溢出：最早几轮被挤出）' : '');
-      api._winLab.setAttribute('fill', overflow ? 'var(--c-err)' : 'var(--c-fg-muted)');
+      /* 同样走 class 不走 fill 属性（`.demo-svg text` 会压掉属性），溢出时才变红 */
+      api._winLab.setAttribute('class', 't-xs ' + (overflow ? 'bad' : 'muted'));
 
       /* ---------------- 底部脚注（左栏，不得伸到右面板下方） ---------------- */
       api._foot[0].textContent = '固定种子重放 ' + TRIALS + ' 次：' + rp.bad + ' 次在 ' + TRACK + ' 步内失手，'
@@ -570,22 +606,28 @@
     },
 
     hint: '<strong>你能改什么：</strong>' +
-      '<code>p ∈ [0.80, 0.99]</code> = 单步正确率（「此前一路都对、且这一步也对」的概率；这是教学刻度，不是任何模型的实测分数）；' +
+      '<code>p ∈ [0.80, 0.99]</code> = 在前各步都对的前提下、本步也正确的概率（这是教学刻度，不是任何模型的实测分数）；' +
       '<code>检索质量 ∈ {命中, 漏检, 脏命中}</code> = 第 ③ 段 Observation 从外部拿回什么；' +
       '<code>每步间隔 ∈ [300, 2000] ms</code> = 自动播放节奏（reduced-motion 下降级为直接给终帧）；' +
-      '两个开关：<em>重复检索</em>让 Observation 变长（看窗口条提前溢出），<em>一阶修正</em>把「后面的步骤有机会发现前面的错」加进连乘。' +
+      '两个开关：<em>重复检索</em>让 Observation 变长（看窗口条提前溢出），<em>一阶修正</em>把「每一步有恒定概率 0.5 把本步的失手纠正回来」加进连乘。' +
       '◀ ▶ 逐帧走，也可直接点任意一格跳到它的 Observation。<br>' +
       '<strong>拨动它你会看到：</strong>① 先逐帧走完第 1 轮：模型这一侧三次输出全是<strong>文本</strong>——Thought 是文本、' +
       'Action 是一段 JSON 文本、Observation 是程序执行完再把结果转成文本塞回来。' +
       '<em>没有任何一个箭头让模型动了一次手</em>，这就是「会说」变成「会做」的全部机制。' +
-      '② 把 p 从 0.95 拖到 0.90：右图 10 步全对从 60% 掉到 35%，同时时间线上的红标记从第 20 步（轨迹之外）挪到第 10 步——' +
-      '<em>你这条 15 步的轨迹从「大概能跑完」变成「跑不完」</em>；底部 240 次固定种子重放给的实测次数与这条线一致。' +
-      '③ 打开「一阶修正」：实线抬起而点划线（纯 p^N）不动——衰减会变慢，<strong>但不会变成不衰减</strong>，步数依然是成本。' +
+      '② 把 p 从 0.95 拖到 0.90（先别开一阶修正）：右图 10 步全对从 60% 掉到 35%，同时时间线上的红标记从第 20 步（轨迹之外）挪到第 10 步——' +
+      '<em>你这条 15 步的轨迹从「大概能跑完」变成「跑不完」</em>；底部 240 次固定种子重放给的实测次数与这条线一致' +
+      '（「平均首次失手」把 15 步内不失手的样本按第 16 步计入，所以它是删失后的下界）。' +
+      '③ 打开「一阶修正」：它把底数从 p 抬到 p_eff = (1+p)/2，实线抬起而点划线（纯 p^N）不动——' +
+      'p=0.95 时 10 步全对从 60% 升到 <strong>78%</strong>、15 步从 46% 升到 <strong>68%</strong>；p=0.90 时 10 步从 35% 升到 <strong>60%</strong>。' +
+      '衰减会变慢，<strong>但不会变成不衰减</strong>：曲线每一步仍在往下走（p=0.99 修正后 10 步 95%、20 步 90%），' +
+      'p=0.90 修正后跌破一半只是从第 7 步推迟到第 14 步；p 拨到 0.94 以上时修正后 20 步内才不再跌破一半、那条灰虚线才隐去' +
+      '（默认 p=0.95 正落在这一档）。<em>步数依然是成本</em>。注意这个开关只建模「纠错」这一个方向；反向的修正——早期错误留在上下文里污染后续输入、' +
+      '让后面的 p 更小——不在曲线里，见机制段第 ⑦ 步。' +
       '④ 切「漏检」：Observation 变空，最终答案流畅自信，却没有任何今天的观测，这是 M10 第 ⑤ 步的幻觉；' +
       '切「脏命中」：Observation 有内容、格式正常、分数很高，只是过期，答案反而<strong>更有底气地错</strong>。' +
       '⑤ 打开「重复检索」：窗口条一路涨到接近上限；在命中或脏命中档下它会顶破 1200 词元并标红「溢出」，' +
       '漏检档因为每次取回的内容更短，反而涨得最慢——<em>循环深度不是自由的，它受窗口长度约束</em>，' +
-      '而循环本身只会往窗口里加字。<br>' +
+      '而循环本身只会往窗口里加字。（1200 是把五轮观测装进画面的示意刻度，真实窗口量级见 M10。）<br>' +
       '<strong>对应机制段：</strong>第 ②③ 步（工具调用 = 输出结构化文本、ReAct 循环与 Observation 回填）、' +
       '第 ④ 步（记忆三层：短期窗口 / 长期检索 / 程序性提示词）、' +
       '第 ⑤ 步（RAG 靠改输入给下一词分布重新加权）、第 ⑥ 步（检索漏、检索脏、上下文挤三类失效）、' +

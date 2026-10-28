@@ -8,7 +8,7 @@
 <seg name="intuition">
   <p>我们先把两种结构各换成一个能握在手里的东西。</p>
   <p><strong>RNN 像一个人边读边在一张小纸条上做笔记。</strong>读到第 1 个词，写几行；读第 2 个词时，他手里只有「刚写的那张纸条」和「眼前这一个词」，于是把旧笔记擦掉重写。读完 100 个词，他交出的仍然是<strong>一张</strong>纸条。这张纸条叫<span class="term" data-def="RNN 逐步携带下去的中间向量，宽度固定，是下一步计算的输入之一。" data-en="hidden state">隐藏状态</span>。</p>
-  <p><strong>CNN 像拿一个小放大镜在图片上滑动。</strong>镜框只罩住 3×3 个格子，但同一副镜片被推到所有位置共用；看完一层换一层更深的镜片，视野就一圈圈扩大——扩大后的视野叫<span class="term" data-def="某个输出位置在原始输入上能看到多远的范围。" data-en="receptive field">感受野</span>。</p>
+  <p><strong>CNN 像拿一个小放大镜在图片上滑动。</strong>镜框只罩住 3×3 个格子，但同一副镜片被推到所有位置共用；看完一层换一层更深的镜片，一个输出位置能「看到」的输入范围就一圈圈扩大——这个范围叫<span class="term" data-def="某个输出位置在原始输入上能看到多远的范围。" data-en="receptive field">感受野</span>。</p>
 
   <div class="callout callout--warn">
     <p><strong>这两个类比对下面几件事不成立，务必记住：</strong></p>
@@ -24,11 +24,11 @@
   <h4>两种结构，各卡在不同的地方</h4>
   <ol class="steps">
     <li data-step="1"><strong>CNN 只有两条规则：只看局部，且同一套<span class="term" data-def="乘在输入上的固定系数，训练后不再改变。" data-en="weight">权重</span>到处复用。</strong>一个 3×3 的<span class="term" data-def="卷积里那个被复用的小权重矩阵。" data-en="convolution kernel">卷积核</span>只有 9 个权重，却要在 28×28 图像的每个位置上都算一遍。「权重在位置间共享」写进梯度之后，猫在左上角和在右下角给出同一个判断，这叫<span class="term" data-def="输入平移，输出跟着平移，判断内容不变。" data-en="translation equivariance">平移等变</span>。</li>
-    <li data-step="2"><strong>视野靠堆层数扩大，不靠把镜片做大。</strong>两层 3×3 叠起来，第二层实际看到的是 5×5；L 层就是 2L+1。想让第 1 列的信息影响第 101 列的输出，得堆约 50 层——距离还是换成了层数。</li>
+    <li data-step="2"><strong>感受野靠堆层数扩大，不靠把镜片做大。</strong>两层 3×3 叠起来，第二层实际看到的是 5×5；L 层就是 2L+1。想让第 1 列的信息影响第 101 列的输出，得堆约 50 层——距离还是换成了层数。</li>
     <li data-step="3"><strong>RNN 是把同一组权重在时间上反复施加。</strong>把每一步摊开画出来，它就是一个深度等于序列长度、且每层权重完全相同的深网络。所以「长句子」在 RNN 里等价于「极深的网络」。</li>
     <li data-step="4"><strong>瓶颈一：串行。</strong>第 t 步的输入里有第 t−1 步的输出，所以它必须等。一整句话在 GPU 上只能一个词一个词地排队算，成千上万个并行单元大部分时间在干等；批处理只能救回一部分，长度本身救不回来。</li>
     <li data-step="5"><strong>瓶颈二：路径长度。</strong>要让第 100 个位置的误差回头修改「当初怎么处理第 1 个词」，梯度得沿链条回传 99 段，每段乘一次同一个矩阵。乘数大于 1 就爆炸，小于 1 就消失，两者都让学不动。</li>
-    <li data-step="6"><strong>LSTM / GRU 把关键路径上的连乘改成加法。</strong>它们另开一条「常开」的<span class="term" data-def="LSTM 里那条只被加减、不被反复重写的内部状态。" data-en="cell state">细胞状态</span>，再用<span class="term" data-def="由数据决定、取值 0 到 1 之间的逐元素开关。" data-en="gate">门</span>控制写多少、留多少。长距离信号因此能活着传回来，但路径仍然要一站站走，串行也一点没省。</li>
+    <li data-step="6"><strong>LSTM / GRU 把关键路径上的「权重矩阵连乘」换成「逐元素门的连乘」。</strong>它们另开一条「常开」的<span class="term" data-def="LSTM 里那条只被逐元素门缩放、再累加新内容的内部状态：它不经过整层权重矩阵的重投影，也不被激活函数压回固定区间。" data-en="cell state">细胞状态</span>，再用<span class="term" data-def="由数据决定、取值 0 到 1 之间的逐元素开关。" data-en="gate">门</span>控制写多少、留多少。路径<strong>仍然是连乘</strong>，变的只是乘数：从任意大小的矩阵换成可以由数据主动推到接近 1 的数，于是衰减的指数被压住。长距离信号因此能活着传回来，但路径仍然要一站站走，串行也一点没省。</li>
     <li data-step="7"><strong>要同时解决「路径长」和「串行」，就需要任意两个位置直接相连。</strong>一条边连通一切，路径长度恒为 1，所有位置一次算完。这正是下一模块<span class="term" data-def="按相关性为上下文各部分动态分配加权。" data-en="attention">注意力</span>出现的动机——它不是为了更「像人」，是为了把 99 段路压成 1 段。</li>
   </ol>
 
@@ -108,16 +108,17 @@
     <span class="op">≈</span>
     <span class="bigg">(</span>W<span class="sub">h</span><span class="sup">⊤</span><span class="bigg">)</span><span class="sup">99</span>
     <span class="op">∼</span> λ<span class="sup">99</span>
-    <span class="badge badge--simplify">已简化：把逐位置的 tanh′ 与真实雅可比吸收进一个标量 λ</span>
+    <span class="badge badge--simplify">已简化：把逐位置的 tanh′ 与真实雅可比吸收进一个标量 λ，并假设 W_h 近似正规</span>
     <span class="reads">回传的误差要先乘 99 次同一个矩阵的转置；连乘 99 次，这就是全部机制。</span>
   </div>
-  <p>把矩阵连乘的尺度用一个数 λ（读作 lambda，指 <code>W<sub>h</sub></code> 最大的那个<span class="term" data-def="矩阵作用时唯一不被改变方向的那些向量所对应的缩放倍数。" data-en="eigenvalue">特征值</span>）来代表，就能算出后果：λ = 0.9 时 <code>0.9⁵⁰ ≈ 0.005</code>，λ = 0.5 时 <code>0.5¹⁰⁰ ≈ 7.9×10⁻³¹</code>；反过来 λ = 1.1 时 <code>1.1⁵⁰ ≈ 117</code>，一次更新就能把权重踢飞。前者叫<span class="term" data-def="连乘使梯度指数级趋近 0，浅层与远距离参数几乎不更新。" data-en="vanishing gradient">梯度消失</span>，后者叫<span class="term" data-def="连乘使梯度指数级增大，参数被一步推出可行范围。" data-en="exploding gradient">梯度爆炸</span>。爆炸有土办法按住（把超过阈值的梯度整体缩回去，见 Pascanu 等人的 ICML 2013 论文 [2026-10]），消失没有——0 乘以任何阈值还是 0。</p>
+  <p>矩阵连乘的尺度用一个数 λ 来代表，就能算出后果：λ = 0.9 时 <code>0.9⁵⁰ ≈ 0.005</code>，λ = 0.5 时 <code>0.5¹⁰⁰ ≈ 7.9×10⁻³¹</code>；反过来 λ = 1.1 时 <code>1.1⁵⁰ ≈ 117</code>，一次更新就能把权重踢飞。前者叫<span class="term" data-def="连乘使梯度指数级趋近 0，浅层与远距离参数几乎不更新。" data-en="vanishing gradient">梯度消失</span>，后者叫<span class="term" data-def="连乘使梯度指数级增大，参数被一步推出可行范围。" data-en="exploding gradient">梯度爆炸</span>。爆炸有土办法按住（把超过阈值的梯度整体缩回去，见 Pascanu 等人的 ICML 2013 论文 [2026-10]），消失没有——0 乘以任何阈值还是 0。</p>
+  <p><strong>λ 到底是什么——这里最容易讲错。</strong>教材常把它写成「<code>W_h</code> 最大的那个<span class="term" data-def="矩阵作用时方向仍落在自己那条直线上的向量（可能被翻向）所对应的缩放倍数；重根时是一整组方向，不唯一。" data-en="eigenvalue">特征值</span>」，这个说法会在两个地方翻车。第一，<code>W_h</code> 一般<strong>不对称</strong>，特征值可以是负数甚至复数：按代数值挑「最大的那个」，λ = −2（模 2）会被读成比 1.5 更小，方向正好弄反。第二，非对称矩阵的特征向量基底可能很斜，即使每个特征值都小于 1，连乘也可以<strong>先放大一段再缩小</strong>（瞬态增长）。所以准确的口径分两种情形：矩阵正规（对称是其特例）时，连乘的量级由<strong>谱半径</strong> <code>ρ(W_h) = max|λᵢ|</code>（特征值<strong>模</strong>的最大值）决定；一般的非对称矩阵要换成<strong>最大奇异值</strong> <code>σ_max(W_h)</code> 作单步放大的上界，它才是「一步最多能被撑大多少」的那个量。本站只在一条主方向上看幅度，因此仍把这两个量统称 λ，并在上面那格标了「已简化」。读 <code>λ⁹⁹</code> 时请记住：<strong>它是「取模之后的乘数」，不是「最大的特征值」</strong>；真实的每步乘数还要再乘上 tanh′ ≤ 1。</p>
 
   <div class="figure" data-fig="m06-receptive-field-1">
     <div class="figure__inner">
       <svg viewBox="0 0 640 186" class="dgm" role="img" aria-labelledby="f6rf-t">
         <title id="f6rf-t">同一张输入上，1 层 3×3 卷积输出位置看到 3×3，2 层看到 5×5，3 层看到 7×7：感受野靠堆叠扩大</title>
-        <desc>三个相同的 7×7 方格网并排，代表同一张输入。每个网中央分别有 3×3、5×5、7×7 的高亮区域，正中一格用深色标出。下方标注层数与视野尺寸。</desc>
+        <desc>三个相同的 7×7 方格网并排，代表同一张输入。每个网中央分别有 3×3、5×5、7×7 的高亮区域，正中一格用深色标出。下方标注层数与感受野尺寸。</desc>
 
         <!-- 面板 A：1 层 -->
         <g data-step="1">
@@ -126,7 +127,7 @@
           <rect x="48" y="56" width="36" height="36" fill="var(--c-heat-2)" opacity=".55"></rect>
           <rect x="60" y="68" width="12" height="12" fill="var(--c-heat-3)"></rect>
           <text x="66" y="132" class="t-sm" text-anchor="middle">1 层</text>
-          <text x="66" y="146" class="t-xs muted" text-anchor="middle">视野 3×3</text>
+          <text x="66" y="146" class="t-xs muted" text-anchor="middle">感受野 3×3</text>
         </g>
 
         <!-- 面板 B：2 层 -->
@@ -136,7 +137,7 @@
           <rect x="244" y="44" width="60" height="60" fill="var(--c-heat-2)" opacity=".4"></rect>
           <rect x="268" y="68" width="12" height="12" fill="var(--c-heat-3)"></rect>
           <text x="274" y="132" class="t-sm" text-anchor="middle">2 层</text>
-          <text x="274" y="146" class="t-xs muted" text-anchor="middle">视野 5×5</text>
+          <text x="274" y="146" class="t-xs muted" text-anchor="middle">感受野 5×5</text>
         </g>
 
         <!-- 面板 C：3 层 -->
@@ -146,7 +147,7 @@
           <rect x="440" y="32" width="84" height="84" fill="var(--c-heat-2)" opacity=".3"></rect>
           <rect x="476" y="68" width="12" height="12" fill="var(--c-heat-3)"></rect>
           <text x="482" y="132" class="t-sm" text-anchor="middle">3 层</text>
-          <text x="482" y="146" class="t-xs muted" text-anchor="middle">视野 7×7</text>
+          <text x="482" y="146" class="t-xs muted" text-anchor="middle">感受野 7×7</text>
         </g>
 
         <g>
@@ -160,7 +161,7 @@
           <text x="350" y="55" class="t-xs faint">三张网是同一张输入（7×7）</text>
           <text x="334" y="75" class="t-xs faint">镜片只有一副：9 个权重到处复用</text>
         </g>
-        <text x="10" y="168" class="t-xs faint">已简化：3×3 核、步长 1、无填充，故第 L 层视野边长 = 2L+1；换核大小数字会变，规律不变。</text>
+        <text x="10" y="168" class="t-xs faint">已简化：3×3 核、步长 1、无填充，故第 L 层感受野边长 = 2L+1；换核大小数字会变，规律不变。</text>
       </svg>
     </div>
     <figcaption>怎么看：三张网是<strong>同一张输入</strong>，只有中央高亮范围不同——那是该层输出位置能追溯到的输入区域，即感受野。高亮边长依次是 3、5、7，即第 L 层看到 2L+1。镜片（权重）自始至终只有一副，被反复复用，所以参数不随位置增长。</figcaption>
@@ -176,7 +177,7 @@
   <table class="tbl tbl--scroll">
     <thead><tr><th>结构</th><th>一次计算里做什么</th><th>位置 1 ↔ n 的路径长度</th><th>并行性</th><th>为反向传播要留的激活</th></tr></thead>
     <tbody>
-      <tr><td>CNN</td><td>同一套局部权重同时作用在所有位置</td><td>约 L 层（3×3 时 ≈ ½n）</td><td>位置间完全并行</td><td>每层一张特征图，与序列长度无关</td></tr>
+      <tr><td>CNN</td><td>同一套局部权重同时作用在所有位置</td><td>约 L 层（3×3 时 ≈ ½n）</td><td>位置间完全并行</td><td>每层一张特征图，共 ≈ L × n × C：<strong>也随位置数 n 线性增长</strong>，只是同一层内 n 个位置共用一套权重</td></tr>
       <tr><td>RNN / LSTM</td><td>同一套权重在时间上重复 n 次</td><td><strong>n − 1</strong></td><td>完全串行</td><td>n × d，每步都得留着</td></tr>
       <tr><td>注意力（M07）</td><td>所有位置两两建立关系</td><td><strong>1</strong></td><td>一次矩阵乘，全部并行</td><td>n × n 的分数表（这是它的代价）</td></tr>
     </tbody>
@@ -186,7 +187,7 @@
     <summary>展开：显存和墙钟时间为什么是两笔不同的账</summary>
     <div class="math-detail__body prose">
       <p><strong>串行是时间账。</strong>反向传播要沿同一条链反着走，所以一个长度为 n 的句子至少需要 n 次前后依赖的矩阵乘。GPU 的并行单元在算第 t 步时无法提前算第 t+1 步——它连输入是什么都还不知道。把 batch 加大能填满单元，但墙钟时间仍由 n 决定，这就是「大语料训练慢」的主因。</p>
-      <p><strong>激活是空间账。</strong>RNN 每一步都要把 <code>h<sub>t</sub></code> 留着，因为求 <code>∂loss/∂W<sub>h</sub></code> 时每一项都要用到它，显存随 n 线性增长。注意力把每对位置的分数都存下来，显存随 n 平方增长。<strong>所以「注意力解决了序列建模」这句话要分开看：它买掉的是串行，买回来的是平方显存。</strong>后续所有加速工作（键值缓存、分块、滑窗）都是在还这笔账，见 M10。</p>
+      <p><strong>激活是空间账。</strong>RNN 每一步都要把 <code>h<sub>t</sub></code> 留着，因为求 <code>∂loss/∂W<sub>h</sub></code> 时每一项都要用到它，显存随 n 线性增长（工程上普遍做<strong>截断时间反向传播（truncated BPTT）</strong>：只回传固定窗口，于是这笔账按窗口大小算，代价是窗口之外的长距离改正意见被主动放弃）。注意力把每对位置的分数都存下来，显存随 n 平方增长。<strong>所以「注意力解决了序列建模」这句话要分开看：它买掉的是串行，买回来的是平方显存。</strong>后续工作分两类：分块、滑窗与线性近似是在<strong>压</strong>这张 n × n 的表；键值缓存（M10 第 ⑥ 步）省的是解码时每步重算整表的重复计算，代价是另开一笔随 n 线性增长的显存——它是换了一笔账，不是还了这笔账。</p>
       <p><strong>为什么加大隐藏状态救不了学习信号。</strong>d 变大只是让 W<sub>h</sub> 变成更大的方阵，连乘次数由 n 决定，一次没少；特征值谱只是更宽了，仍同时存在「远大于 1」和「远小于 1」的方向。这就是直觉段那句「纸条容量不是关键」的严格版本。</p>
     </div>
   </details>
@@ -194,7 +195,7 @@
 
 <seg name="demo">
   <h4>把连乘亲手乘一遍</h4>
-  <p>下面这个演示只做一件事：给定每步的缩放系数 λ 和距离 n，把 |梯度| = λⁿ 画出来，并把「注意力捷径：路径长度恒为 1」叠在旁边当对照。先别切对数轴——你会在<strong>线性</strong>轴上亲眼看见 0.005 和 0 长得一模一样。</p>
+  <p>下面这个演示只做一件事：给定每步的缩放系数 λ 和回传段数 n，把 |梯度| = λⁿ 画出来（这里的 n 直接就是<strong>连乘次数</strong>：按词来数，100 个词之间是 99 段，与机制段第 ⑤ 步同一个口径），并把「注意力捷径：路径长度恒为 1」叠在旁边当对照。先别切对数轴——你会在<strong>线性</strong>轴上亲眼看见 0.005 和 0 长得一模一样。</p>
 </seg>
 
 <seg name="misconception">

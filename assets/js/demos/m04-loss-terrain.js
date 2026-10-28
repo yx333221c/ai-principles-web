@@ -7,10 +7,21 @@
    碗形取 a = 3 ⇒ 临界 lr = 2/3 = 0.667。实测（200 步内冲出画面）：
      lr=0.665 未发散 · 0.670 第 124 步发散 · 0.680 第 32 步 · 0.700 第 13 步
    ── 动量（实测，勿凭理论断言）──
-   峡谷 a_x=0.05 / a_y=3（60:1），lr=0.30、200 步：
-     β=0    → L=1.8e-4，横向只挪到 x=−0.085（几乎走不动）
-     β=0.90 → L=1.9e-9，x=0（收敛）        ⇒ 动量加速的是【平坦方向】
-     β=0.98 → L=4.8e-3，且停在 x=−0.191    ⇒ β 过大反而震荡变慢
+   峡谷 L = 1.5x² + 0.025y² ⇒ ∇L = (3x, 0.05y)
+   ⇒ a_x = 3（横向【陡】）、a_y = 0.05（纵向【平】），各向异性 60:1。
+   轴向以【代码里的损失式】为准：下面每一行「几乎走不动」的都是【纵轴 y】，
+   「一步到位」的是横轴 x。本契约早先写成 a_x=0.05 / a_y=3，那是按转置轴向
+   算的，与代码相反；契约是全站改参的唯一凭据，写反会诱导误改代码常量。
+   lr=0.30、200 步、起点 (-1.75, 1.45)：
+     β=0    → 陡轴 x 一步剩 10%（−1.75→−0.175）；平轴 y 半衰 46 步、
+              200 步后 y≈0.071、L≈1.2e-4 —— 没走完的是 y，不是 x
+     β=0.90 → L≈2.8e-9（收敛）          ⇒ 动量加速的是【平坦方向 y】
+     β=0.98 → L≈6.3e-3（仍在振）        ⇒ β 过大反而收不下去
+   lr=0.50、200 步（内容文件误区第四条与 hint ③ 用的是这组）：
+     β=0.90 → L=1.5e-9（收敛）
+     β=0.98 → L=1.8e-2，末 40 步横向换边 17 次、摆幅 ±0.41
+   同一 lr 下 β=0.9 比 β=0.98 收得下去：β 的代价是反应迟钝，不是弹飞。
+   以上每行都可用本文件 TERRAIN.canyon + stepSim 从 (-1.75,1.45) 逐步复算。
    注意：在单个二次函数上动量会【放宽】稳定域（lr·a < 2(1+β)），
    所以本演示不说「动量吃掉安全余量」——那是错的。
    诚实性：地形是人工设定的二次/四次函数，不是真实损失面——画面上写明。
@@ -31,7 +42,8 @@
       note: '两轴曲率都是 a = 3 ⇒ 临界 lr = 2/a = 0.67'
     },
     /* L = 1.5x² + 0.025y² ⇒ ∇L = (3x, 0.05y)；横向 a=3 陡、纵向 a=0.05 平 ⇒ 60:1
-       轴向与内容文件的图解面板 A 一致（那张图画的是「横向每步撞壁、纵向推进不到 5%」），
+       轴向与内容文件的图解面板 A 一致（那张图画的是「横向每步撞壁 10/10、
+       纵向十步只推进 29%」——与本页数字和 verify-math 的复算同一口径），
        也与机制段第 ⑤ 步「横向往复被抹平，纵向推进被放大」一致。 */
     canyon: {
       name: '峡谷（各向异性 60:1：横陡纵平）',
@@ -142,7 +154,7 @@
       }));
       const ro = DK.readout([
         ['loss', '损失 L', ''], ['grad', '梯度范数', ''], ['step', '已走步数', ''],
-        ['crit', '临界 lr = 2/a', ''], ['state', '状态', '']
+        ['crit', '临界 lr（随优化器）', ''], ['state', '状态', '']
       ]);
       api._ro = ro;
       api.host.appendChild(ro);
@@ -241,27 +253,71 @@
       }).join(' '));
 
       const G = api.gauge;
-      const cx = G.x + DK.clamp(T.crit / G.max, 0, 1) * G.w;
+      /* 刻度线按【当前优化器自己的】临界定位，不再一律钉在地形的 2/a 上：
+         动量是 2(1+β)/a（渐近上界），Adam 没有这条标量临界就整条隐藏。
+         旧写法刻度恒为 2/a、标签恒写「临界 0.67」，读者选动量后把 lr 拨到 1.0
+         会看到「已过刻度却在收敛」——那是演示用图形反驳正文。 */
+      /* 各优化器自己的临界 lr：SGD = 2/a；动量 = 2(1+β)/a（渐近上界）；
+         Adam 按坐标归一步长，不存在这条标量临界（下面 gauge、verdict、读数三处共用） */
+      const optCrit = st.opt === 'sgd' ? T.crit : st.opt === 'mom' ? (1 + st.beta) * T.crit : null;
+      /* 刻度线只在存在这条界时才画；标签三种优化器都给，Adam 那格明写「不适用」，
+         避免只设 visibility=hidden 却把上一条（动量）的读数留在 DOM 里被读屏捞出来。 */
+      api.critTick.setAttribute('visibility', optCrit != null ? 'visible' : 'hidden');
+      api.critLabel.setAttribute('visibility', 'visible');
+      const cx = optCrit != null ? G.x + DK.clamp(optCrit / G.max, 0, 1) * G.w : G.x + G.w / 2;
       api.critTick.setAttribute('x1', cx.toFixed(1)); api.critTick.setAttribute('x2', cx.toFixed(1));
-      api.critLabel.setAttribute('x', DK.clamp(cx, G.x + 24, G.x + G.w - 24).toFixed(1));
-      api.critLabel.textContent = '临界 ' + T.crit.toFixed(2);
+      api.critLabel.setAttribute('x', DK.clamp(cx, G.x + 60, G.x + G.w - 60).toFixed(1));
+      api.critLabel.textContent = st.opt === 'sgd' ? 'SGD 临界 ' + T.crit.toFixed(2)
+        : st.opt === 'mom' ? '动量渐近界 ' + optCrit.toFixed(2)
+        : 'Adam：无这条界';
       api.lrMark.setAttribute('transform', 'translate(' + (G.x + DK.clamp(st.lr / G.max, 0, 1) * G.w).toFixed(1) + ',' + (G.y + 12) + ')');
 
-      const over = st.lr > T.crit, tiny = st.lr < T.crit / 12;
-      const g = T.grad(s.x, s.y), gn = Math.hypot(g[0], g[1]);
       const L = T.loss(s.x, s.y);
-      api.verdict.textContent = s.dead ? '已发散：小球冲出画面'
-        : over ? '超过临界值：每步都在放大误差'
-        : tiny ? '远小于临界值：几乎挪不动'
-        : '在临界值以内：可以收敛';
-      api.verdict.setAttribute('fill', (s.dead || over) ? 'var(--c-err)' : tiny ? 'var(--c-warn)' : 'var(--c-ok)');
-      /* 逐地形给可验证的解释，不做无依据断言 */
+      /* ── 状态判定：按【本次轨迹的实测结果】，不拿碗形的 2/a 去套动量/Adam ──
+         旧写法 `over = st.lr > T.crit` 里 T.crit = 2/a 只对无动量 SGD 成立，于是
+         lr=1.0、β=0.9（小球正常收敛）也被贴「每步都在放大误差」；鞍点 lr=0.1 反而被
+         贴「在临界值以内：可以收敛」——两处都是演示当场反驳正文（m04.html 误区第四条
+         明说动量把稳定域放宽到 lr·a < 2(1+β)）。现在：起步前只给【预测】，且预测用的是
+         该优化器自己的阈值；起步后一律看事实（末态损失 L 对初态损失 L0 的比值）。
+         措辞上限 ~20 个全角字：右栏只有 720−424=296px，长了会越出 viewBox
+         （scripts/verify-demos.js 第④项专抓这个）。 */
+      const L0 = T.loss(T.start[0], T.start[1]);
+      const g = T.grad(s.x, s.y), gn = Math.hypot(g[0], g[1]);
+      const ratio = L0 > 0 ? L / L0 : 0;
+      const zeroGrad = gn < 1e-9;
+      let verdict, vColor, vTag;
+      if (s.dead) { verdict = '已发散：小球冲出画面'; vColor = 'var(--c-err)'; vTag = '发散'; }
+      else if (s.step === 0) {
+        if (zeroGrad) { verdict = '起步前：此处梯度为零'; vColor = 'var(--c-warn)'; vTag = '零梯度'; }
+        else if (optCrit == null) { verdict = '起步前：Adam 无这条临界'; vColor = 'var(--c-warn)'; vTag = '待实测'; }
+        else if (st.lr > optCrit) { verdict = '预测：超过临界 ' + optCrit.toFixed(2); vColor = 'var(--c-err)'; vTag = '预测超临界'; }
+        else if (st.lr < optCrit / 12) { verdict = '预测：远小于临界 ' + optCrit.toFixed(2); vColor = 'var(--c-warn)'; vTag = '预测太慢'; }
+        else if (st.opt === 'sgd') { verdict = '预测：lr·a<2，渐近稳定'; vColor = 'var(--c-ok)'; vTag = '待实测'; }
+        /* 动量的这条界是【渐近】上界：lr 在它以内仍可能因头几步瞬态过冲先冲出画面
+           （β=0.9 实测约 1.20 起就第 2 步被甩出，而渐近界是 1.27）。所以措辞必须写
+           「渐近」，一旦真逃逸就由实测分支改口——不写这两档，页面就自相矛盾。 */
+        else { verdict = '预测：lr·a<2(1+β)，仅渐近'; vColor = 'var(--c-ok)'; vTag = '待实测'; }
+      }
+      else if (ratio > 1) { verdict = '实测：末态高于初态，误差在涨'; vColor = 'var(--c-err)'; vTag = '放大误差'; }
+      else if (ratio > 0.99 && zeroGrad) { verdict = '实测：梯度为零，没得可挪'; vColor = 'var(--c-warn)'; vTag = '零梯度'; }
+      else if (ratio > 0.99) { verdict = '实测：末态几乎没变'; vColor = 'var(--c-warn)'; vTag = '停滞'; }
+      /* 「已到底」必须排在「跑满 200 步」之前：β=0.90、lr=0.30 跑满 200 步且
+         已降到 2.8e-9，若先撞上步数上限就会被报成「没到底」——那又是一次现场反驳。 */
+      else if (ratio <= 1e-3) { verdict = '实测：已降 3 个数量级以上'; vColor = 'var(--c-ok)'; vTag = '收敛中'; }
+      else if (s.step >= MAXSTEP) { verdict = '实测：跑满 200 步没到底'; vColor = 'var(--c-warn)'; vTag = '未收敛'; }
+      else { verdict = '实测：正在下降'; vColor = 'var(--c-ok)'; vTag = '收敛中'; }
+      api.verdict.textContent = verdict;
+      api.verdict.setAttribute('fill', vColor);
+      /* 逐优化器给可验证的解释，不做无依据断言。
+         旧版 else 分支把 Adam 也说成「SGD 只看本批梯度」，选 Adam 时同样是口是心非。 */
       api.explain.textContent = st.opt === 'mom'
         ? '动量把一致方向累加到约 1/(1−β) = ' + (st.beta > 0 ? (1 / (1 - st.beta)).toFixed(0) : '1') + ' 倍；β 过大则反向过冲'
-        : 'SGD 只看本批梯度：平坦方向每步只挪 lr·a·距离';
+        : st.opt === 'adam'
+          ? 'Adam 每坐标每步最多挪 ≈lr，不按 2/a 判临界'
+          : 'SGD 只看本批梯度：平坦方向每步只挪 lr·a·距离';
       api.explain2.textContent = st.terrain === 'saddle' && gn < 0.5
         ? '梯度已趋零，但 L=' + L.toFixed(2) + ' 而谷底只有 3.59 —— 零梯度不等于最优'
-        : st.opt === 'adam' ? 'Adam 把每轴步长归一到 ≈lr，对曲率差异不敏感' : '';
+        : st.opt === 'adam' ? '代价是对曲率差异不敏感：陡轴也不会自动小步' : '';
 
       if (api._ro) {
         /* 损失可以小到 1e-9，固定三位小数会一律显示成 0.000，
@@ -270,14 +326,18 @@
         api._ro.set('loss', fmtL(L));
         api._ro.set('grad', (gn > 0 && gn < 1e-3) ? gn.toExponential(1) : DK.fmt(gn, 3));
         api._ro.set('step', s.step + ' / ' + MAXSTEP);
-        api._ro.set('crit', T.crit.toFixed(3));
-        api._ro.set('state', s.dead ? '发散' : over ? '超临界' : tiny ? '太慢' : '收敛中');
+        /* 「临界 lr」这一格按优化器给值：SGD 是 2/a，动量是 2(1+β)/a（渐近上界），
+           Adam 没有这条标量临界。标签本文件已写成「临界 lr（随优化器）」，
+           值里再带上公式名，读者不会把 2/a 当成全局真理。 */
+        api._ro.set('crit', optCrit == null ? '不适用（按坐标归一）'
+          : optCrit.toFixed(3) + (st.opt === 'mom' ? '（2(1+β)/a）' : '（2/a）'));
+        api._ro.set('state', vTag);
       }
     },
 
     onReset(api) { resetSim(api); },
 
-    hint: '<strong>你能改什么：</strong>学习率 lr ∈ [0.01, 1.2]（无量纲，就是「一步迈多远」的缩放）；' +
+    hint: '<strong>你能改什么：</strong>学习率 lr ∈ [0.01, 1.5]（无量纲，就是「一步迈多远」的缩放）；' +
       '动量 β ∈ [0, 0.98]（保留多少历史梯度，0 = 关闭动量）；三种地形、三种优化器。<br>' +
       '<strong>拨动它你会看到：</strong>① <em>碗形</em>两轴曲率都是 a = 3：把 lr 推过 <strong>0.67</strong>，小球在第 124 步弹飞；' +
       '0.665 还安全。这不是巧合——θ ← (1 − lr·a)θ，要 |1 − lr·a| &lt; 1 就必须 lr &lt; 2/a = 0.67，' +
@@ -286,13 +346,18 @@
       '纵向却要 46 步才走掉一半、跑满 200 步还剩 y ≈ 0.07——因为每步位移是 lr·a·距离，a 小 60 倍就慢 60 倍。' +
       '再把优化器换成带动量、β = 0.90：同一 lr 下纵向减半只要 10 步，损失从 1.2e-4 掉到 2.8e-9。' +
       '<em>动量加速的是「平坦方向」，不是「所有方向」</em>——陡方向本来就一步到位，无需帮忙；<br>' +
-      '③ 继续把 β 推到 0.98（lr = 0.50）：它<strong>不会</strong>弹飞（动量其实把稳定域放宽到 lr ≈ 1.22，' +
-      '远大于 SGD 的 0.67），但<strong>永远收不下去</strong>：最后 40 步里横向仍在 ±0.4 范围内换边 17 次，' +
+      '③ 继续把 β 推到 0.98（lr = 0.50）：它<strong>不会</strong>弹飞（动量把稳定域放宽，远大于 SGD 的 0.67，见下面第 ⑤ 条），' +
+      '但<strong>永远收不下去</strong>：最后 40 步里横向仍在 ±0.4 范围内换边 17 次，' +
       '损失在 1e-2 量级上下起伏；而 β = 0.90 同一 lr 下 200 步收敛到 L = 1.5e-9。' +
       'β 的代价是<strong>反应迟钝</strong>——接近谷底时它还在按旧方向冲，而不是「等效学习率变大」；<br>' +
       '④ <em>鞍点</em>：小球放在山脊正中央，梯度读数<strong>恒为 0</strong>——点「单步」或「自动播放」它一步都不动，' +
       '可损失停在 6，而两侧谷底只有 3.59。这就是机制段第 ⑦ 步的「卡住」：<strong>零梯度不是最优的信号</strong>。' +
       '想让它滑下去，只能点「轻推一把（噪声）」——对应机制段第 ④ 步：小批量梯度的随机噪声正是干这个用的。<br>' +
+      '⑤ 动量那两个「1.2」别混：<strong>渐近界</strong>是 lr·a &lt; 2(1+β)（碗形 a=3、β=0.9 → 1.27，β=0.98 → 1.32，量尺上那条「动量渐近界」刻度就是它）；' +
+      '而本演示只跑 200 步、|x|&gt;6 就判逃逸，所以<strong>实测</strong>临界更低（β=0.9 → 1.195，β=0.98 → 1.22，正文写的 lr≈1.20 就是这个）。' +
+      '中间那一段在渐近界内、却会因头几步<strong>瞬态过冲</strong>先被甩出画面：把 lr 拨到 1.25、β 保持 0.90，' +
+      '状态条第 0 步是「预测：lr·a&lt;2(1+β)，仅渐近」，点一步变「实测：末态高于初态，误差在涨」（L 已从 4.65 冲到 34.8），' +
+      '点两步变「已发散：小球冲出画面」（|x| 到 7.33 &gt; 6）——渐近结论说它终将收敛，有限步的它先飞了出去。<br>' +
       '<strong>对应机制段：</strong>第 ② 步（更新式）、第 ③ 步（lr 上限由曲率决定）、第 ⑤ 步（动量累加 1/(1−β)）、' +
       '第 ⑥ 步（Adam 自适应）、第 ⑦ 步（鞍点与高原）。'
   });

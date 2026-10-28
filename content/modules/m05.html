@@ -44,7 +44,7 @@
   <div class="math-block math">
     ReLU(z) <span class="op">=</span>
     <span class="cases"><span class="case__row"><span>z</span><span class="case__cond">当 z &gt; 0</span></span><span class="case__row"><span>0</span><span class="case__cond">当 z ≤ 0</span></span></span>
-    <span class="reads">「折线在 0 处折弯：正数原样放行，负数一律掐成零。」这就是步骤 ② 说的「非线性开关」——等价写法 max(0, z) 里的那个 max，取的就是这两行中较大的一个。</span>
+    <span class="reads">「折线在 0 处折弯：正数原样放行，负数一律掐成零。」这就是步骤 ③ 说的「非线性开关」——等价写法 max(0, z) 里的那个 max，取的就是这两行中较大的一个。</span>
   </div>
   <div class="math-block math">
     y <span class="op">=</span> W<span class="sub">2</span><span class="bigg">(</span>W<span class="sub">1</span>x <span class="op">+</span> b<span class="sub">1</span><span class="bigg">)</span> <span class="op">+</span> b<span class="sub">2</span>
@@ -77,7 +77,7 @@
         </g>
 
         <text x="10" y="72" class="t-sm faint">没有激活函数时，同一张图可以这样改写</text>
-        <g data-step="2">
+        <g data-step="3">
         <rect class="box box--a" x="10" y="84" width="40" height="26" rx="5"></rect><text x="30" y="101" class="t-sm" text-anchor="middle">x</text>
         <line x1="50" y1="97" x2="106" y2="97" stroke="var(--c-fg-muted)" stroke-width="1.6" marker-end="url(#m05-arw-f)"></line>
         <rect class="box box--w" x="110" y="84" width="120" height="26" rx="5"></rect><text x="170" y="101" class="t-sm" text-anchor="middle">W<tspan baseline-shift="sub">3</tspan>W<tspan baseline-shift="sub">2</tspan>W<tspan baseline-shift="sub">1</tspan></text>
@@ -97,7 +97,7 @@
         <desc>三个并排小坐标系，各画一条曲线：左为 S 形的 Sigmoid，中为过零点的 S 形 Tanh，右为负半轴贴零、正半轴斜上的 ReLU。每个面板下方标注该函数的毛病。</desc>
         <text x="10" y="14" class="t-sm faint">横轴 = 进入这个开关的值 z，纵轴 = 开关吐出的 φ(z)</text>
 
-        <g data-step="4">
+        <g data-step="6">
           <line class="grid-l" x1="30" y1="98" x2="180" y2="98"></line>
           <line class="grid-l" x1="105" y1="28" x2="105" y2="98"></line>
           <polyline fill="none" stroke="var(--c-accent)" stroke-width="2" points="30,94.7 42.5,92.7 55,89.7 67.5,85.3 80,79.2 92.5,71.5 105,63 117.5,54.5 130,46.8 142.5,40.8 155,36.3 167.5,33.3 180,31.3"></polyline>
@@ -105,7 +105,7 @@
           <text x="30" y="130" class="t-xs muted">输出挤在 0 与 1 之间</text>
           <text x="30" y="142" class="t-xs warm">两端躺平 → 局部导数趋 0</text>
         </g>
-        <g data-step="4">
+        <g data-step="6">
           <line class="grid-l" x1="245" y1="98" x2="395" y2="98"></line>
           <line class="grid-l" x1="320" y1="28" x2="320" y2="98"></line>
           <polyline fill="none" stroke="var(--c-accent)" stroke-width="2" points="245,97.8 257.5,97.5 270,96.7 282.5,94.7 295,89.7 307.5,79.2 320,63 332.5,46.8 345,36.3 357.5,31.3 370,29.3 382.5,28.5 395,28.2"></polyline>
@@ -113,7 +113,7 @@
           <text x="245" y="130" class="t-xs muted">以 0 为中心，−1 到 1</text>
           <text x="245" y="142" class="t-xs warm">同样两端饱和</text>
         </g>
-        <g data-step="4">
+        <g data-step="6">
           <line class="grid-l" x1="460" y1="98" x2="610" y2="98"></line>
           <line class="grid-l" x1="535" y1="28" x2="535" y2="98"></line>
           <polyline fill="none" stroke="var(--c-accent)" stroke-width="2" points="460,98 472.5,98 485,98 497.5,98 510,98 522.5,98 535,98 547.5,86.5 560,75 572.5,63.5 585,52 597.5,40.5 610,29"></polyline>
@@ -165,7 +165,7 @@
         <text x="10" y="14" class="t-sm faint">实线 = 前向（值往右流）· 橙色虚线 = 反向（梯度往左流）</text>
 
         <!-- 输入 -->
-        <g data-step="5">
+        <g data-step="7">
           <rect class="box box--a" x="20" y="40" width="60" height="26" rx="5"></rect>
           <text x="50" y="57" class="t-sm" text-anchor="middle">x₁ = 1.0</text>
           <rect class="box box--a" x="20" y="108" width="60" height="26" rx="5"></rect>
@@ -173,7 +173,7 @@
         </g>
 
         <!-- 前向连线 x → 隐藏 -->
-        <g data-step="5">
+        <g data-step="7">
           <line x1="80" y1="50" x2="194" y2="50" stroke="var(--c-fg-muted)" stroke-width="1.5" marker-end="url(#m05-arw-a)"></line>
           <line x1="80" y1="58" x2="194" y2="121" stroke="var(--c-fg-muted)" stroke-width="1.5" marker-end="url(#m05-arw-a)"></line>
           <line x1="80" y1="116" x2="194" y2="58" stroke="var(--c-fg-muted)" stroke-width="1.5" marker-end="url(#m05-arw-a)"></line>
@@ -195,7 +195,7 @@
         </g>
 
         <!-- 隐藏 → 输出 → 损失 -->
-        <g data-step="5">
+        <g data-step="7">
           <line x1="298" y1="46" x2="344" y2="78" stroke="var(--c-fg-muted)" stroke-width="1.5" marker-end="url(#m05-arw-a)"></line>
           <line x1="298" y1="128" x2="344" y2="94" stroke="var(--c-fg-muted)" stroke-width="1.5" marker-end="url(#m05-arw-a)"></line>
           <rect class="box box--a" x="348" y="72" width="86" height="30" rx="6"></rect>
@@ -204,7 +204,7 @@
           <text x="304" y="64" class="t-xs muted">v₁ = 0.8</text>
           <text x="304" y="118" class="t-xs muted">v₂ = 0.7</text>
         </g>
-        <g data-step="5">
+        <g data-step="7">
           <rect class="box" x="484" y="20" width="96" height="26" rx="6"></rect>
           <text x="532" y="37" class="t-sm" text-anchor="middle">目标 t = 1</text>
           <line x1="532" y1="46" x2="532" y2="68" stroke="var(--c-fg-muted)" stroke-width="1.5" marker-end="url(#m05-arw-a)"></line>
@@ -213,7 +213,7 @@
         </g>
 
         <!-- 反向：L → y → 隐藏 → 权重 -->
-        <g data-step="6">
+        <g data-step="8">
           <line x1="484" y1="78" x2="438" y2="78" stroke="var(--c-warn)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#m05-arw-b)"></line>
           <text x="440" y="72" class="t-xs warm">∂L/∂y = −0.76</text>
           <line x1="352" y1="74" x2="302" y2="52" stroke="var(--c-warn)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#m05-arw-b)"></line>
@@ -223,20 +223,21 @@
           <text x="86" y="200" class="t-xs warm">×0.5 = ∂L/∂w₂₁ −0.304</text>
           <line x1="198" y1="134" x2="84" y2="132" stroke="var(--c-warn)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#m05-arw-b)"></line>
         </g>
-        <g data-step="4">
+        <g data-step="6">
           <line x1="352" y1="98" x2="302" y2="122" stroke="var(--c-err)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#m05-arw-b)"></line>
           <text x="300" y="158" class="t-xs bad">ReLU′(−0.5) = 0 → 梯度到这就断</text>
           <text x="112" y="168" class="t-xs bad">∂L/∂w₁₂ = ∂L/∂w₂₂ = 0：这一轮不更新</text>
         </g>
 
         <text x="10" y="222" class="t-sm muted">沿路只出现两种运算：乘以下游传回来的数、乘上自己这一步的局部导数。没有任何一处需要「看懂整张图」。</text>
-        <text x="10" y="240" class="t-xs faint">数值取自下方手算例子（损失取 L = ½(y − t)²，暂无偏置）。第二个神经元演示的就是机制段第 ④ 步说的「负半轴死亡」。</text>
+        <text x="10" y="240" class="t-xs faint">数值取自下方手算例子（损失取 L = ½(y − t)²，暂无偏置）。第二个神经元演示的就是机制段第 ⑥ 步说的「负半轴死亡」。</text>
       </svg>
     </div>
     <figcaption>怎么看：从左往右读前向：x → 两个神经元 → y → L。再看橙色虚线，方向完全反过来：L 把 −0.76 交给 y，y 把它乘上自己的局部导数交给下游两路。到第二个神经元时局部导数是 0，梯度整条支路归零——责任分摊在这里演成了「查不到这个工位」。</figcaption>
   </div>
 
-  <p>下面把上图的反向过程逐行写成数字。我们从一个具体网络出发：输入 <code>x₁ = 1.0</code>、<code>x₂ = 0.5</code>；隐藏层权重 <code>w₁₁ = 0.5, w₂₁ = −0.4</code>（第一个神经元）与 <code>w₁₂ = −0.6, w₂₂ = 0.2</code>（第二个）；输出层权重 <code>v₁ = 0.8, v₂ = 0.7</code>；激活用 ReLU；目标 <code>t = 1</code>；损失 <code>L = ½(y − t)²</code>。</p>
+  <p>下面把上图的反向过程逐行写成数字。读表规则只有一条：<strong>每行的结果 = 上游传来的梯度 × 本行的局部导数</strong>。橙色梯度从 L 一路往左传；每传到一格，这一格的结果就同时发给连在它下面的那些权重——所以权重行的「上游」就是它所在那一格的梯度。<code>a₁</code> 与 <code>z₁</code> 两行的结果都是 −0.608，不是巧合：这两个量之间只隔一个 <code>φ′(z₁) = ReLU′(0.3) = 1</code>，闸门斜率不是 1 时它们就分开（下方折叠给了 Sigmoid 那一档）。</p>
+  <p>我们从一个具体网络出发：输入 <code>x₁ = 1.0</code>、<code>x₂ = 0.5</code>；隐藏层权重 <code>w₁₁ = 0.5, w₂₁ = −0.4</code>（第一个神经元）与 <code>w₁₂ = −0.6, w₂₂ = 0.2</code>（第二个）；输出层权重 <code>v₁ = 0.8, v₂ = 0.7</code>；激活用 ReLU；目标 <code>t = 1</code>；损失 <code>L = ½(y − t)²</code>。</p>
 
   <table class="tbl tbl--scroll">
     <caption class="sr-only">手算反向传播：每个环节的局部导数、上游梯度与最终梯度</caption>
@@ -247,10 +248,13 @@
       <tr><td><code>L</code></td><td>—</td><td>起点</td><td><code>1</code></td><td>损失对自己当然完全负责</td></tr>
       <tr><td><code>y = 0.24</code></td><td><code>∂L/∂y = y − t = −0.76</code></td><td><code>1</code></td><td><code>−0.76</code></td><td>差值本身，一步乘法都不用</td></tr>
       <tr><td><code>v₁ = 0.8</code></td><td><code>∂y/∂v₁ = a₁ = 0.3</code></td><td><code>−0.76</code></td><td><code>−0.228</code></td><td>乘上自己领用的那个输入</td></tr>
-      <tr><td><code>a₁ = 0.3</code></td><td><code>∂a₁/∂z₁ = ReLU′(0.3) = 1</code></td><td><code>−0.76</code></td><td><code>−0.608</code></td><td>闸门开着（斜率 1），原样传过去</td></tr>
+      <tr><td><code>a₁ = 0.3</code></td><td><code>∂y/∂a₁ = v₁ = 0.8</code></td><td><code>−0.76</code></td><td><code>∂L/∂a₁ = −0.608</code></td><td>乘上它领用的那个输出权重</td></tr>
+      <tr><td><code>z₁ = 0.3</code></td><td><code>∂a₁/∂z₁ = ReLU′(0.3) = 1</code></td><td><code>−0.608</code></td><td><code>∂L/∂z₁ = −0.608</code></td><td>闸门开着（斜率 1），原样传过去</td></tr>
       <tr><td><code>w₁₁ = 0.5</code></td><td><code>∂z₁/∂w₁₁ = x₁ = 1.0</code></td><td><code>−0.608</code></td><td><code>−0.608</code></td><td>又乘一次领用的输入</td></tr>
       <tr><td><code>w₂₁ = −0.4</code></td><td><code>∂z₁/∂w₂₁ = x₂ = 0.5</code></td><td><code>−0.608</code></td><td><code>−0.304</code></td><td>同一个上游，不同输入 → 不同责任</td></tr>
-      <tr><td><code>z₂ = −0.5</code></td><td><code>∂a₂/∂z₂ = ReLU′(−0.5) = 0</code></td><td><code>−0.532</code></td><td><code>0</code></td><td>闸门关死：上游再大也乘没了</td></tr>
+      <tr><td><code>v₂ = 0.7</code></td><td><code>∂y/∂v₂ = a₂ = 0</code></td><td><code>−0.76</code></td><td><code>0</code></td><td>出边同样冻住：它的局部导数就是自己的输出 0</td></tr>
+      <tr><td><code>a₂ = 0</code></td><td><code>∂y/∂a₂ = v₂ = 0.7</code></td><td><code>−0.76</code></td><td><code>∂L/∂a₂ = −0.532</code></td><td>第二个神经元也从 y 收到一份</td></tr>
+      <tr><td><code>z₂ = −0.5</code></td><td><code>∂a₂/∂z₂ = ReLU′(−0.5) = 0</code></td><td><code>−0.532</code></td><td><code>∂L/∂z₂ = 0</code></td><td>闸门关死：上游再大也乘没了</td></tr>
       <tr><td><code>w₁₂, w₂₂</code></td><td><code>x₁, x₂</code></td><td><code>0</code></td><td><code>0</code></td><td>这一轮这两个权重一动不动</td></tr>
       <tr><td>更新 <code>w₁₁</code></td><td><code>η = 0.5</code></td><td><code>−0.608</code></td><td><code>w₁₁ ← 0.804</code></td><td>重新前向算一遍：L 从 0.289 降到 0.134</td></tr>
     </tbody>
@@ -268,7 +272,7 @@
     <div class="math-detail__body prose">
       <p><strong>饱和为什么是连乘级别的伤害。</strong>Sigmoid 的局部导数是 <code>σ(z)·(1 − σ(z))</code>，它的最大值就是 z = 0 时的 0.25，永远不到 1。把上表里那个开着闸门的位置换成 Sigmoid，<code>z₁ = 0.3</code> 处 <code>σ′ ≈ 0.244</code>，于是 <code>∂L/∂w₁₁</code> 从 −0.608 缩到约 −0.149。20 层连乘，即使每层都给最好的 0.25，乘到第 1 层就是 0.25²⁰ ≈ 10⁻¹²：浅层参数收到的梯度是 0，它就再也不动。Tanh 同理（它最陡也只有 1，且饱和段更宽）。</p>
       <p><strong>为什么 ReLU 通常能扛住深度。</strong>正半轴斜率恒为 1，梯度不被压缩，只被 0/1 门控。代价就是那条死亡支路：只要某个神经元的加权输入对所有训练样本都落在负半轴，它所有入边的梯度恒为 0，这个神经元就此退出。</p>
-      <p><strong>多路相加。</strong>如果同一个 <code>a₁</code> 同时喂给下游三个神经元，那么 <code>∂L/∂a₁ = ∂L/∂v₁·a₁ + ∂L/∂v₂·a₁ + ∂L/∂v₃·a₁</code>——三条路径各自的乘积之和。框架把它实现成「每个节点维护一个梯度累加器，反向时 += 而不是 =」。这也是为什么同一个 batch 里多条样本的梯度要取平均：本质还是相加。</p>
+      <p><strong>多路相加。</strong>如果同一个 <code>a₁</code> 同时喂给下游三个神经元，那么 <code>∂L/∂a₁ = ∂L/∂z₂·v₂ + ∂L/∂z₃·v₃ + ∂L/∂z₄·v₄</code>——每条路径都是「那个下游节点的梯度 × 这条边的局部导数」，最后把到达同一格的数加起来。上面表格里 <code>a₁</code> 那一行只有 <code>v₁</code> 一项，正因为这个例子里它只喂给一个神经元。框架把它实现成「每个节点维护一个梯度累加器，反向时 += 而不是 =」。这也是为什么同一个 batch 里多条样本的梯度要取平均：本质还是相加。</p>
       <p><strong>为什么它便宜。</strong>前向已经把每个中间值算出来并存着了，反向只是把它们取出来做乘法。整个反向的乘加次数约为前向的两倍——这是结构上的粗略比例，不是某个模型的实测数字。<span class="badge badge--simplify">已简化</span> 真实实现还要考虑显存复用、检查点重算与并行切分。</p>
     </div>
   </details>
@@ -280,8 +284,8 @@
 
 <seg name="demo">
   <h4>手搭一个 3-1-1 的小网络，看责任怎么摊</h4>
-  <p>下面的计算图是固定的，权重由你亲手给。先点「前向计算」把值一路算到损失，再点「反向传播」，看梯度沿橙色虚线一个节点一个节点倒着点亮：每点亮一次，就是某一次乘法。颜色越深，代表那个节点本轮收到的梯度越大。</p>
-  <p class="demo__note">这个网络的训练目标是一条阶跃：输入 x₃ 为正就该输出 +1，为负就该输出 −1。它是教学用的合成任务，不是任何真实数据集。</p>
+  <p>下面的计算图是固定的，权重由你亲手给。先点「前向计算」把值一路算到损失，再点「反向传播」，看梯度沿橙色虚线一个节点一个节点倒着点亮：每点亮一次，就是链式法则里的一步——<strong>用上这个节点刚刚收到的那个数，再乘一次本节点的局部导数</strong>（只有头两步例外：第 7 帧是 ∂L/∂L = 1 这个起点，第 8 帧只做一次减法 y − t，还没开始乘）。颜色越深，代表那个节点本轮收到的梯度越大。</p>
+  <p class="demo__note">这个演示是一个<strong>单样本</strong>合成任务：期望输出恒为 t = +1，损失 L = ½(y − t)²；输入里 x₂ = 0.60、x₃ = −1.10 写死，可动的只有 x₁ 与三个权重 w₁ w₂ w₃。它不是任何真实数据集，也没有「分类」含义——想验证的只有一件事：梯度能不能一格一格算出来。演示里没有让 x₃ 变号的开关，所以别去找「x₃ 为正 / 为负」两档目标。</p>
 </seg>
 
 <seg name="misconception">
@@ -317,8 +321,8 @@
     <label class="quiz__opt"><input type="radio" name="q-m05"><span>层数越多越灵活，只是梯度更容易消失，所以要调小学习率</span></label>
     <label class="quiz__opt"><input type="radio" name="q-m05"><span>会算不动：层数一多，前向传播的数值就发散</span></label>
     <div class="quiz__fb">
-      <p data-for="no"><strong>回到机制段第 ③ 步再看一行：</strong><code>y = W₂₀(W₁₉(…(W₁x)))</code> 里没有任何东西挡住连乘，20 个权重矩阵可以先乘成一个 <code>W = W₂₀…W₁</code>，前向、反向都退化成这一层。所以问题不是「梯度太小」也不是「算不动」，而是这个网络<strong>压根没变得更能干</strong>——它仍然只能画直线和平面。梯度消失要有「饱和的激活函数」才成立（第 ④ 步），没有激活函数时连 φ′ 这个乘数都不存在。</p>
-      <p data-for="ok"><strong>对了，这正是第 ②③ 步的结论。</strong>非线性是唯一能让「深度」买到表达力的东西：多个 φ 把空间切成一段段折线，每段的高度由一组权重独立决定，合起来才能逼近复杂函数。带着这个结论去动手演示：把激活函数切成「无」，看那条输出曲线怎样塌成一条直线。然后去 M06，看同样的梯度问题在序列上会变成什么。</p>
+      <p data-for="no"><strong>回到机制段第 ③ 步再看一行：</strong><code>y = W₂₀(W₁₉(…(W₁x)))</code> 里没有任何东西挡住连乘，20 个权重矩阵可以先乘成一个 <code>W = W₂₀…W₁</code>，前向、反向都退化成这一层。所以问题不是「梯度太小」也不是「算不动」，而是这个网络<strong>压根没变得更能干</strong>——它仍然只能画直线和平面。链上的乘数有两类：激活的 <code>φ′</code> 与权重矩阵本身——删掉激活只是抽掉了 <code>φ′</code> 这一类（连它都不存在了），另一类照样连乘。真正决定「加深会不会把信号乘没」的是 M06 那把尺子：路径长度 × 每步乘数。</p>
+      <p data-for="ok"><strong>对了，这正是第 ③④⑤ 步的结论。</strong>非线性是唯一能让「深度」买到表达力的东西：多个 φ 把空间切成一段段折线，每段的高度由一组权重独立决定，合起来才能逼近复杂函数。带着这个结论去动手演示：把激活函数切成「无」，看那条输出曲线怎样塌成一条直线。然后去 M06，看同样的梯度问题在序列上会变成什么。</p>
     </div>
     <p class="quiz__result" aria-live="polite"></p>
   </div>

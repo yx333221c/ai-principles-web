@@ -229,10 +229,10 @@
         <p class="modmap__groupnote">当今所有大模型的共同骨架。本部分是全站难度峰值。</p>
         <ul class="modgrid">
           <li><article class="modcard" data-mod="m07" data-status="reviewed">
-            <header><span class="modcard__no">M07</span><span class="badge badge--lvl">难度 4·深入</span><span class="badge badge--time">~35 分钟</span><span class="badge badge--demo">旗舰演示</span><span class="badge badge--math">公式密集</span></header>
+            <header><span class="modcard__no">M07</span><span class="badge badge--lvl">难度 4·深入</span><span class="badge badge--time">~45 分钟</span><span class="badge badge--demo">旗舰演示</span><span class="badge badge--math">公式密集</span></header>
             <h4><a href="#m07">注意力与 Transformer</a></h4>
             <p class="modcard__tag">AI 学会「按需读取上下文」</p>
-            <p class="modcard__meta">~35 分钟 · 前置：03 05 06</p>
+            <p class="modcard__meta">~45 分钟 · 前置：03 05 06</p>
             <label class="modcard__done"><input type="checkbox" data-done="m07"><span>已读</span></label>
           </article></li>
         </ul>
@@ -271,7 +271,7 @@
           <li><article class="modcard" data-mod="m11" data-status="reviewed">
             <header><span class="modcard__no">M11</span><span class="badge badge--lvl">难度 3·进阶</span><span class="badge badge--time">~25 分钟</span></header>
             <h4><a href="#m11">多模态</a></h4>
-            <p class="modcard__tag">把图像翻译成模型能读的 token</p>
+            <p class="modcard__tag">把图像翻译成模型能读的词元</p>
             <p class="modcard__meta">~25 分钟 · 前置：07</p>
             <label class="modcard__done"><input type="checkbox" data-done="m11"><span>已读</span></label>
           </article></li>
@@ -339,16 +339,16 @@
         <article class="seg has-content" id="m01--mechanism" data-seg="mechanism">
           <h3>机制拆解</h3>
           <h4>先立住一件事：长度是概率的影子</h4>
-            <p>下面这条链条是本站最重要的四步等价。它会反复出现在 M02（损失函数）、M08（规模定律）里，只是换了名字。我们先在只有 4 个符号的世界里把它推干净。</p>
+            <p>下面这条链条（对应机制段第 ①②③⑤ 步）是本站最重要的等价关系。它会反复出现在 M02（损失函数）、M08（规模定律）里，只是换了名字。我们先在只有 4 个符号的世界里把它推干净。</p>
           
             <ol class="steps">
               <li data-step="1"><strong>给下一个符号分配概率。</strong>设字母表只有 4 个符号，我们手里的全部东西就是一个「看历史、给 4 个候选分概率」的函数，四个概率加起来等于 1。分得越偏，说明我们越有把握。</li>
               <li data-step="2"><strong>一个符号该付多少比特，就是它的惊讶度。</strong>把可能性砍一半算一次，所以概率为 1/2 的符号付 1 比特，1/8 的付 3 比特，即定的长度必须是 <code>−log₂ p</code>。原因很硬：两个独立事件同时发生，概率相乘，而我们要「付出的比特相加」——只有对数能把乘法变成加法。</li>
-              <li data-step="3"><strong>平均惊讶度就是信息熵 H。</strong>按概率加权：<code>H = 平均(−log₂ p)</code>。香农信源编码定理说：存在编码方案让实际平均长度任意接近 H，且<strong>没有任何无损编码能低于 H</strong>。所以 H 是这套概率给出的地板。<span class="badge badge--simplify">已简化</span>真实的二进制码长度只能是整数，会有取整损失；算术编码把「半个比特」摊到整条序列上才把差距消掉。</li>
-              <li data-step="4"><strong>于是「压缩器」和「下一符号预测器」是同一台机器。</strong>编码器一边读符号一边按概率把剩下的数值区间切小，解码器手里必须有<strong>同一套概率</strong>才能切回去——它猜错的瞬间就还原不出原文。省下的每一比特，都对应一次成功的预测；写「一个好的下一词预测器」和写「一个好的无损压缩器」，是同一件事的两种写法。</li>
-              <li data-step="5"><strong>压缩率是能力的一个可读分数。</strong>用「定长编码的比特数 ÷ 实际付出的比特数」表示。4 个符号定长要 2 比特/符号，如果概率给得好、平均只花 1.25 比特，压缩率就是 1.6 倍。地板（信息熵）只由数据里的规律决定，不是你说了算。</li>
-              <li data-step="6"><strong>纯随机为什么压不动。</strong>真随机的符号没有可预测的模式，再聪明的猜测也只能停在「四个各 1/4」。这时每个符号都付 2 比特，平均码长等于定长，压缩率 1.00 倍——一个比特都省不下来。因为没有任何一次预测能提前把可能性砍掉一半。你把一段随机数据丢给 zip，文件通常还会变大一点点，多出来的是它给自己记的账（块头、表）。<span class="badge badge--simplify">已简化</span>这里说「一个比特都省不下来」指的是无损编码的平均码长下限；实际压缩器还会受块结构、字典大小等额外开销影响。</li>
-              <li data-step="7"><strong>大模型做的事，只是把第 ① 步的概率算得更准。</strong>它看的不是「上一个符号」，而是整段上下文；它的「记住」全部存在参数里。单位换成人熟悉的英文：等概率假设下 26 个字母每个要 4.7 比特，香农 1951 年实测考虑前 8 个字母的统计效应后约 2.3 比特/字母，并把约 100 字母的长程效应外推到 1 比特/字母量级 [2026-10]。<span class="badge badge--simplify">已简化</span>香农的外推靠人工填空实验与树形近似，不是今天意义上的语言模型；这里只取它「上下文越长、码长越短」这个方向。</li>
+              <li data-step="3"><strong>平均惊讶度就是信息熵 H。</strong>按概率加权：<code>H = 平均(−log₂ p)</code>。香农信源编码定理（渐近形式）说：把符号<strong>成块</strong>编码、块足够长时，存在可解码的码让平均每符号码长任意接近 H；而对任何能唯一解码的码，平均码长都不低于 H。所以 H 是这套<strong>数据</strong>给出的地板，不由我们选的概率决定。<span class="badge badge--simplify">已简化</span>真实的二进制码长度只能是整数，会有取整损失；「任意接近 H」要靠分块与算术编码把「半个比特」摊到整条序列上才成立，单个符号做不到。</li>
+              <li data-step="4"><strong>于是「压缩器」和「下一符号预测器」是同一台机器。</strong>编码器一边读符号一边按概率把剩下的数值区间切小，解码器手里必须有<strong>同一套概率</strong>才能切回去：双方码表一有出入，区间边界就错位，一开始可能只是局部错字，随后整条流雪崩式还原不出。省下的每一比特都对应一次成功的预测，所以「写一个好的下一词预测器」和「写一个好的无损压缩器」是同一件事的两种写法。直觉段说的「猜得差只是多付一点、不会无法还原」，前提是双方<strong>共用同一套概率</strong>、只是这套猜得不准；这里说的是双方<strong>不一致</strong>的情形。</li>
+              <li data-step="5"><strong>压缩率是能力的一个可读分数。</strong>用「定长编码的比特数 ÷ 实际付出的比特数」表示。4 个符号定长要 2 比特/符号，如果概率给得好、平均只花 1.25 比特，压缩率就是 1.6 倍。地板（信息熵）只由数据里的规律决定，不是你说了算。要分清两个同名量：按数据的<strong>真实规律</strong>编，1.00 倍是压不动的地板；拿一套比定长更差的概率去编，实测值会低于 1.00——演示里「纯随机」那条模型线就是这个情形。</li>
+              <li data-step="6"><strong>纯随机为什么压不动。</strong>这里的「真随机」指的是<strong>连频率都无从偏向</strong>：我们唯一能说的只有「四个各 1/4」。这时每个符号都付 2 比特，平均码长等于定长，压缩率 1.00 倍——一个比特都省不下来。要压不动需要的是<strong>均匀</strong>，不只是「看不出先后规律」：本文开头那套 0.70/0.20/0.06/0.04 同样没有任何「上一个决定下一个」的规律，却因为频率偏斜而压得动（1.25 比特、1.6 倍）。你把一段随机数据丢给 zip，文件通常还会变大一点点，多出来的是它给自己记的账（块头、表）。<span class="badge badge--simplify">已简化</span>这里说「一个比特都省不下来」指的是无损编码的平均码长下限；实际压缩器还会受块结构、字典大小等额外开销影响。</li>
+              <li data-step="7"><strong>大模型做的事，本质上是在把第 ① 步的概率算准</strong>——它看的不只是「上一个符号」，而是整段上下文；它的「记住」全部存在参数里。这一档的基准也换了：定长从 2 比特/符号换成 26 个字母等概率时的 log₂26 ≈ 4.7 比特/字母，压缩率要按新基准重算。香农 1951 年的三档数字分属三种性质（Shannon, "Prediction and Entropy of Printed English", <cite>Bell System Technical Journal</cite> 30(1), 1951 [2026-10]）：等概率是<strong>纯推导</strong>的 4.7；约 4.5 与约 2.3 比特/字母是他用字母频率与 n 阶近似<strong>估出来</strong>的——2.3 对应「考虑前 8 个字母」的上下文；约 1 比特/字母则是把最多约 100 个<strong>字母</strong>（不是一百个词）的长程效应<strong>外推</strong>到的量级。<span class="badge badge--simplify">已简化</span>香农的外推靠人工填空实验与树形近似，不是今天意义上的语言模型；这里只取它「上下文越长、码长越短」这个方向。</li>
               <li data-step="8"><strong>省比特必须省在没见过的数据上才算能力。</strong>如果把原文抄进表里，在训练集上也算「预测准」，但对新数据一个比特都省不下。所以「压缩质量」真正度量的是<strong>可复用的规律</strong>，而不是记忆容量。这条是我们把「模型能力 ≈ 压缩质量」写在一起、而不是写成「≈ 背得多」的理由。</li>
             </ol>
           
@@ -398,6 +398,7 @@
                   <line class="arrow" x1="512" y1="66" x2="540" y2="66"></line>
           
                   <text x="544" y="16" class="t-sm faint">④ 压缩率</text>
+                  <text x="544" y="104" class="t-xs faint">＝第 ⑤ 步</text>
                   <g data-step="5">
                     <rect class="box box--g" x="544" y="28" width="84" height="60" rx="6"></rect>
                     <text x="552" y="46" class="t-xs">定长 2 比特</text>
@@ -424,7 +425,7 @@
                 <tr><td>纯随机</td><td>0.25 / 0.25 / 0.25 / 0.25</td><td>2.00</td><td>1.00 倍（压不动）</td></tr>
               </tbody>
             </table>
-            <p class="demo__note">表中概率是我们构造的示意值 <span class="badge badge--simplify">已简化</span>——真实英文的分布随上下文剧烈变化，香农 1951 年实测：孤立字母约 4.5 比特/字母，允许参考前 100 个词的上下文后降到约 2.3 比特/字母 [2026-10]。上下文越长、猜得越准，这条我们已经写进上表。</p>
+            <p class="demo__note">表中概率是我们构造的示意值 <span class="badge badge--simplify">已简化</span>——真实英文的分布随上下文剧烈变化。香农 1951 年的估计是：无上下文约 4.5 比特/字母，考虑前 8 个字母的上下文约 2.3 比特/字母，把最多约 100 个字母的长程效应外推到约 1 比特/字母量级（Shannon, "Prediction and Entropy of Printed English", <cite>Bell System Technical Journal</cite> 30(1), 1951）[2026-10]。上下文越长、猜得越准，这条我们已经写进上表。两处口径要注意：本表是<strong>无条件</strong>分布的熵，演示里那条「理论地板」线是<strong>给定上一个符号后</strong>的条件熵，数值不同属正常；而且上表那三行是示意值，只有本段里香农的 4.5 / 2.3 / 约 1 才是文献值。</p>
           
             <div class="figure" data-fig="m01-codec-loop-2">
               <div class="figure__inner">
@@ -468,15 +469,17 @@
             <details class="math-detail">
               <summary>展开：为什么「好的概率」不能瞎选，以及码长怎么真的做出来</summary>
               <div class="math-detail__body prose">
-                <p><strong>为什么长度必须是对数。</strong>我们要求两件事同时成立：① 概率越大的符号不该更长；② 两个独立事件一起发生，付出的长度要相加。而概率满足 p(p₁p₂) = p₁ × p₂ 是相乘的。能把「相乘」变成「相加」的函数只有对数，所以长度只能长成 <code>−log₂ p</code> 的样子（差一个常数底数，底数 2 就是选比特为单位）。</p>
-                <p><strong>码长怎么落地。</strong>给频繁符号短码、罕见符号长码，并要求任何一个码都不是另一个码的开头（前缀码），解码时就不用等分隔符。比如 A→0、B→10、C→1100、D→1101：A 平均 46 次出现只花 46 比特，D 出现 3 次就花 14 比特。这套码的平均长度是 1.34 比特/符号，比信息熵 1.25 高一点——高出来的那部分就是<strong>整数取整损失</strong>。把整条序列一起编码进一个区间（算术编码），长度才能贴着 H 走，这也是现代压缩器和大模型输出层的实际做法。</p>
+                <p><strong>为什么长度必须是对数。</strong>我们要求两件事同时成立：① 概率越大的符号不该更长；② 两个独立事件一起发生，付出的长度要相加。而独立事件同时发生的概率满足 <code>P(A∩B) = P(A) × P(B)</code>，是相乘的。能把「相乘」变成「相加」的函数只有对数，所以长度只能长成 <code>−log₂ p</code> 的样子（差一个常数底数，底数 2 就是选比特为单位）。</p>
+                <p><strong>码长怎么落地。</strong>给频繁符号短码、罕见符号长码，并要求任何一个码都不是另一个码的开头（前缀码），解码时就不用等分隔符。按第 ① 步那套概率 0.70 / 0.20 / 0.06 / 0.04，Huffman 给出的码是 A→0、B→10、C→110、D→111，码长 1/2/3/3。每 100 个符号里 A 出现 70 次、花 70×1＝70 比特，D 出现 4 次、花 4×3＝12 比特，四类合计 140 比特，所以平均 <strong>1.40 比特/符号</strong>。它比信息熵 1.25 高 0.15 比特，这 0.15 就是<strong>整数取整损失</strong>：码长只能是整数，而 −log₂0.70 这些「理想长度」不是。</p>
+                <p><strong>码选得不好，还要再亏一笔。</strong>换一套合法但不最优的前缀码，比如 A→0、B→10、C→1100、D→1101（码长 1/2/4/4），平均长度立刻涨到 0.70×1 + 0.20×2 + 0.06×4 + 0.04×4 = <strong>1.50 比特/符号</strong>。这 1.50 − 1.25 = 0.25 比特里，只有 0.15 是取整损失，多出来的 0.10 是「码没选对」的代价——两者要分开记账，不能都推给取整。</p>
+                <p><strong>把取整损失摊薄。</strong>把整条序列一起编码进一个区间（算术编码），付的长度是 <code>N·H + O(1)</code>：那笔端点与精度的固定开销被摊到 N 个符号上，序列越长，平均码长越接近 H——但单个符号永远做不到「正好等于 H」。这也是现代压缩器（如 zstd 用的 FSE/rANS）的实现思路；大模型本身不做区间编码，它只是按同一套概率给出下一个符号，两者的「码长」在数值上等价、做法不同。</p>
                 <p><strong>地板不由我们决定。</strong>对给定的数据源，H 是它自身规律强度的属性；我们能做的只是让自己的概率更接近它。这个「更接近」是可以精确度量的，多付的比特数叫 KL 散度——本站在 M02 里用「交叉熵 = 信息熵 + KL 散度」的形式把它请出来。</p>
                 <p><strong>「英语的熵到底是多少」有争议</strong> <span class="badge badge--debate">存在争议</span>：一派沿香农的 n 阶近似外推，认为足够长的上下文能把每字母的代价压到 1 比特量级；另一派指出「英语熵」依赖语料与书写规范（大小写、空格、拼写错误都改变数值），不是一个定义良好的常数。本站只使用「上下文越长、码长越短」这个没有争议的部分。</p>
               </div>
             </details>
           
             <div class="callout callout--key">
-              <p><strong>一句话记住这一节：</strong>把「预测下一个符号的概率」这件事做到多准，就等于把数据压到多小；单位是比特/符号，两者之差只来自取整和记法。</p>
+              <p><strong>一句话记住这一节：</strong>把「预测下一个符号的概率」这件事做到多准，就等于把数据压到多小；单位是比特/符号。剩下的差距只有两笔：码长只能是整数的取整损失，以及没选到最优码的代价（上面折叠段里 1.40 与 1.50 两组平均码长就是在算这两笔账）。</p>
             </div>
         </article>
         <article class="seg has-content" id="m01--demo" data-seg="demo">
@@ -485,7 +488,7 @@
                       <div class="demo__canvas"></div>
                       <div class="demo__controls"></div>
                     </div>
-          <p>下面的序列是我们造的合成数据（不是真实语料）：每次点 A/B/C/D 之一押「下一个符号」，猜中记 1 比特、猜错记 3 比特 <span class="badge badge--simplify">已简化</span>（真实做法是分配概率、按 −log₂ p 付长度，见机制段第 ② 步），然后盯着那四条累计线——「定长」「地板」「模型」「你」分得越开，说明这段数据里可挖的规律越多。</p>
+          <p>下面的序列是我们造的合成数据（不是真实语料）：每次点 A/B/C/D 之一押「下一个符号」，猜中记 1 比特、猜错记 3 比特 <span class="badge badge--simplify">已简化</span>。这两档只是「便宜 / 昂贵」的记分，<strong>不是任何真实码的码长</strong>：真实做法是给所有候选分配概率、按 −log₂ p 付长度（机制段第 ② 步），押中可能几乎不花钱、押错可以贵到没有上限，所以「你」那条线只用来看高低，不能拿来换算压缩率。画面里四条累计线的名字与线型是一一对上的：定长＝深色虚线、地板＝绿色、模型＝主色、你＝橙色。四者分得越开，说明这段数据里可挖的规律越多。</p>
         </article>
         <article class="seg has-content" id="m01--misconception" data-seg="misconception">
           <h3>常见误区</h3>
@@ -500,14 +503,14 @@
               <summary>「随机噪声压不动，是因为里面没有信息，没什么可留的。」</summary>
               <div class="myth__body">
                 <p><strong>为何会有这个误解：</strong>「信息」在日常用语里等于「有用的内容」，噪声自然被当成零。这个直觉太顺了，几乎没人会去检查。</p>
-                <p class="myth__truth">正确说法：在信息论里，恰恰相反——<strong>越随机，信息量越大</strong>。信息量衡量的是「有多少种可能结果被排除了」：一段纯随机符号每个都完全不可预测，所以每个都携带最大惊讶度，需要 2 比特（4 个符号时）。它压不动不是因为空，而是因为它太满：没有任何一条规律可以拿来省话。真正能压的是冗余，不是意义。</p>
+                <p class="myth__truth">正确说法：在信息论里，恰恰相反——<strong>越随机，信息量越大</strong>。信息量衡量的是「有多少种可能结果被排除了」：一段纯随机符号每个都完全不可预测，所以它的<strong>平均</strong>惊讶度顶到了这套字母表允许的上界 log₂4 = 2 比特/符号（4 个符号时），码长无法低于定长基准。单个罕见符号的惊讶度甚至可以远高于 2 比特——本页图解第 ② 格里那个 0.04 概率的符号就要 4.64 比特，只是它出现得少，加权后不改变结论。它压不动不是因为空，而是因为它太满：没有任何一条规律可以拿来省话。真正能压的是冗余，不是意义。</p>
               </div>
             </details>
             <details class="myth">
               <summary>「下一词预测就是死记硬背语料，和压缩八竿子打不着；大模型只是会说套话。」</summary>
               <div class="myth__body">
                 <p><strong>为何会有这个误解：</strong>「预测下一个」听起来很浅，像自动补全；而「压缩」听起来只是省磁盘。两者在宣传里从不一起出现，读者自然把它们归到不同阵营。</p>
-                <p class="myth__truth">正确说法：它们在数学上是同一件事——见机制段第 ④ 步（编码器与解码器必须共用同一套概率）。而且「背下来」在这条链上换不到任何好处：只在训练集上算得准的表，对新数据一个比特也省不下。能持续省比特的只有<strong>可复用的规律</strong>。这也是为什么有人直接把「压缩英文文本」当作 AI 能力的测量口径（Hutter Prize：参赛者要压一个 100 MB 的维基文本集合 [2026-10]）。</p>
+                <p class="myth__truth">正确说法：它们在数学上是同一件事——见机制段第 ④ 步（编码器与解码器必须共用同一套概率）。而且「背下来」在这条链上换不到任何好处：只在训练集上算得准的表，对新数据一个比特也省不下。能持续省比特的只有<strong>可复用的规律</strong>。这也是为什么有人直接把「压缩英文文本」当作 AI 能力的测量口径（Hutter Prize：参赛者要无损压缩 1 GB 的英文维基文本 enwik9，2020 年由 100 MB 的 enwik8 扩容而来，奖池 50 万欧元 <a href="http://prize.hutter1.net/" rel="noopener noreferrer">官网</a> [2026-10]）。</p>
               </div>
             </details>
             <details class="myth">
@@ -529,7 +532,7 @@
               <label class="quiz__opt"><input type="radio" name="q-m01"><span>因为压缩算法是为文字设计的，换成图片或其他格式就能压住它</span></label>
               <div class="quiz__fb">
                 <p data-for="no"><strong>再推一步：</strong>压缩省下的每一个比特，都来自一次成功的预测（机制段第 ④ 步）。随机符号的不可能性砍不动，任何猜测都只能停在「四个各 1/4」，于是平均码长 = log₂ 4 = 2 比特 = 定长基准，压缩率 1.00 倍。另外两个选项错在：①「没信息」刚好说反了——不可预测的信息量最大（第 2 条误区）；②「换个格式就能压」也不行，压不动来自数据本身没有规律，和它是图片还是文字无关。换成图片、音频也一样：真随机的部分一比特都省不下来。</p>
-                <p data-for="ok"><strong>对了。</strong>你已经抓住这条链的全部要点：概率 → 码长（−log₂ p）→ 平均（信息熵）→ 压缩率。据此就能用自己的话说清「模型能力 ≈ 对数据的压缩质量」：谁把下一个符号的概率算得更准，谁就付更少比特，而算得准的部分必须能推广到新数据上（第 ⑧ 步）。带着这个单位去 M02：那里它叫交叉熵与困惑度，是模型真正的打分方式。</p>
+                <p data-for="ok"><strong>对了。</strong>你已经抓住这条链的全部要点：概率 → 码长（−log₂ p）→ 平均（信息熵）→ 压缩率。据此就能用自己的话说清「模型能力 ≈ 对数据的压缩质量」：谁把下一个符号的概率算得更准，谁就付更少比特，而算得准的部分必须能推广到新数据上（第 ⑧ 步）。带着这个单位去 M02：那里它叫交叉熵与困惑度，是模型真正的打分方式。另外提醒一句：本页元数据里那句「AI 不是理解，而是预测下一个」是本站的<strong>立场</strong>而不是定论——「预测得准算不算理解」两派并列，见上面误区 4。</p>
               </div>
               <p class="quiz__result" aria-live="polite"></p>
             </div>
@@ -564,27 +567,27 @@
         <article class="seg has-content" id="m02--hook" data-seg="hook">
           <h3>开场钩子</h3>
           <p class="hook">同一份考卷，模型昨天报出的「错误分数」是 2.0，今天是 1.5。你不知道这算不算进步。换个说法：昨天它平均在 4 个答案里蒙，今天在 2.8 个里蒙——进步一眼可见。一个「错误分数」里，怎么会藏着一个「选项个数」？</p>
-            <p class="demo__note">只需要 M01 的结论：模型在做的事，是猜下一个词元。</p>
+            <p class="demo__note">只需要 M01 的结论：模型在做的事，是猜下一个词元。钩子里的 2.0 与 1.5 是教学示意值 <span class="badge badge--simplify">已简化</span>，和机制段两张手算表用的是同一组数。</p>
         </article>
         <article class="seg has-content" id="m02--intuition" data-seg="intuition">
           <h3>直觉与类比</h3>
-          <p>把预测想成<strong>猜价格节目里的押注</strong>。规则只有三条。第一，你手里有 100% 的筹码，必须<strong>全部</strong>分到三个答案上，一分不留。第二，开奖后，押在正确答案上的那份钱按 <span class="math">1/p</span> 翻倍返还。第三，押在别处的那些归零。</p>
-            <p>于是「押多少」变成一件很微妙的事。押对时翻的倍数是 <code>1/p</code>；对这个倍数取以 2 为底的对数，读出的就是「这一轮让财富翻了几次倍」。p = 1 时翻 1 倍，等于没赚；p = 1/8 时翻 8 倍，等于翻了 3 次。</p>
-            <p>关键的不对称藏在第三条里：想多赢，就得把筹码压得更集中；可一旦压错的恰好是开出的那个答案，<code>1/p</code> 会瞬间暴涨。<strong>越自信的错，罚得越重。</strong>把很多轮的翻倍次数取个平均，得到的那个数就是本站要讲的<span class="term" data-def="分类任务的损失：按真实频率加权的平均惊讶度，单位是比特。" data-en="cross-entropy">交叉熵</span>。</p>
+          <p>把预测想成<strong>猜价格节目里的押注</strong>。规则只有三条。第一，你手里有 100% 的筹码，必须<strong>全部</strong>分到三个答案上，一分不留。第二，开奖后，<strong>这一轮的记分倍数</strong>是 <span class="math">1/p</span>：押在正确答案上的那份钱按 1/p 返还，押在别处的归零。第三，记分倍数取对数，就是我们一路要累加的那个量。先说清楚：<strong>这是一套记分规则，不是真赌局</strong>——真的按自己报的概率把筹码分完去下注，每轮财富恰好原地不动（推导见下方折叠段）。</p>
+            <p>在这套记分里，「押多少」变成一件很微妙的事。押对时记的倍数是 <code>1/p</code>；对这个倍数取以 2 为底的对数，读出的就是「这一轮让记分翻了几次倍」。p = 1 时记 1 倍，等于没意外；p = 1/8 时记 8 倍，等于翻了 3 次。</p>
+            <p>关键的不对称藏在第二条里：想把记分做小，就得把筹码押得集中；可一旦押错的恰好是开出的那个答案，<code>1/p</code> 会瞬间暴涨。<strong>越自信的错，罚得越重。</strong>把很多轮的记分倍数取对数、再按真实频率加权平均，得到的那个数就是本站要讲的<span class="term" data-def="分类任务的损失：按真实频率加权的平均惊讶度，单位是比特。" data-en="cross-entropy">交叉熵</span>。</p>
           
             <div class="callout callout--warn">
               <p><strong>这个类比对下面三件事不成立，请把边界一起记住：</strong></p>
               <ul>
                 <li><strong>「筹码必须分完」不是策略，是定义。</strong>模型没有筹码，也不关心输赢。它先输出一堆<span class="term" data-def="softmax 之前的实数分数，可正可负，本身没有归一化含义。" data-en="logit">未归一化得分</span>，再由 softmax 强行压成份额之和等于 1 的<span class="term" data-def="给每个可能结果分配一个 0 到 1 之间的份额，且所有份额加起来正好是 1。" data-en="probability distribution">概率分布</span>。分满是数学要求，不是谨慎。</li>
-                <li><strong>押错不会真的出局。</strong>训练里每一轮的惩罚只落在「这一句」上，取平均之后继续下一句。一次押得极错只是让那一格的<span class="term" data-def="参数该往哪个方向挪、挪多少的指引；越陡的惩罚给出越大的梯度。" data-en="gradient">梯度</span>更大，不会把模型清零，也不会让整轮训练作废。</li>
-                <li><strong>这里没有「赚得多」。</strong>这个数只看倍数，不看本金：1 元变 2 元，和 100 万变成 200 万，在它眼里是同一个值。所以它衡量的是<strong>意外程度</strong>，不是实际得失。</li>
+                <li><strong>押错不会真的出局。</strong>训练里每一轮的惩罚只落在「这一格」上，取平均之后继续下一格。一次押得极错只是让那一格的<span class="term" data-def="损失上升最快的方向；要让损失下降，得沿负梯度挪。越陡的惩罚给出越大的梯度。" data-en="gradient">梯度</span>更大，不会把模型清零，也不会让整轮训练作废。</li>
+                <li><strong>这里没有「赚得多」。</strong>记分只看倍数，不看本金：1 元变 2 元，和 100 万变成 200 万，在它眼里是同一个值。所以它衡量的是<strong>意外程度</strong>，不是实际得失——更别说它压根不是赌局，只是把 −log₂ p 累起来的记账。</li>
               </ul>
             </div>
         </article>
         <article class="seg has-content" id="m02--mechanism" data-seg="mechanism">
           <h3>机制拆解</h3>
           <h4>先把三件事分开：一个答案的惊讶度、一个分布的熵、用错分布的代价</h4>
-            <p>我们要走的路只有一条：<strong>概率 → 惊讶度 → 平均 → 再指数回去</strong>。四步做完，「错误分数」和「选项个数」就会露出它们是同一个东西的两面。</p>
+            <p>我们要走的路只有一条：<strong>概率 → 惊讶度 → 平均 → 再指数回去</strong>。这条四步链条对应下面第 ①②③⑥ 步，第 ④⑤ 步是它的两个推论（用错分布要多付多少、以及为什么最小化它就等于最小化 KL）。四步做完，「错误分数」和「选项个数」就会露出它们是同一个东西的两面。</p>
           
             <ol class="steps">
               <li data-step="1"><strong>模型输出的是分布，不是答案。</strong>词表里每个候选词元都拿到一个份额，全体相加等于 1。分布不回答「哪个最可能」，它回答「每个各占多少」——这是它比「猜一个答案」信息量大得多的原因，也是它能被求导的原因。</li>
@@ -593,7 +596,7 @@
                   I<span class="bigg">(</span>x<span class="bigg">)</span> <span class="op">=</span> −log<span class="sub">2</span> p<span class="bigg">(</span>x<span class="bigg">)</span>
                   <span class="reads">读作：一个结果的惊讶度，等于它的概率取倒数、再取以 2 为底的对数；概率越小，这个数越大。</span>
                 </div>
-              <li data-step="3"><strong>把惊讶度按真实频率加权平均，就是熵。</strong>如果世界的真实频率是 <code>q</code>，那么「平均每条消息带来多少意外」是下面这个期望，记作<span class="term" data-def="一个分布自身的平均惊讶度，是编码它所需平均比特数的下限。" data-en="entropy">熵</span> <code>H(q)</code>。它是<strong>数据本身的属性</strong>：再好的模型也压不到它以下。</li>
+              <li data-step="3"><strong>把惊讶度按真实频率加权平均，就是熵。</strong>如果世界的真实频率是 <code>q</code>，那么「平均每条消息带来多少意外」是下面这个期望，记作<span class="term" data-def="一个分布自身的平均惊讶度，是编码它所需平均比特数的下限。" data-en="entropy">熵</span> <code>H(q)</code>。它是<strong>数据本身的属性</strong>：再好的模型，<strong>长期平均</strong>也压不到它以下（注意是平均——单格可以更低：手算第二遍里「咖啡」那一格的贡献只有 0.37 比特，真开到咖啡时那一句的损失也只有 0.74 比特，都低于地板 1.49）。</li>
                 <div class="math-block math">
                   H<span class="bigg">(</span>q<span class="bigg">)</span> <span class="op">=</span> −<span class="bigg">∑</span><span class="sub">i</span> q<span class="sub">i</span> <span class="op">·</span> log<span class="sub">2</span> q<span class="sub">i</span>
                   <span class="reads">读作：熵是「每个结果的惊讶度」按「它真实出现的频率」加权后的总和，也就是世界自带的平均意外量。</span>
@@ -686,7 +689,7 @@
             </div>
           
             <h4>手算第一遍：真实标签是「茶」</h4>
-            <p>模型对「他早上喝一杯__」给出三个份额：咖啡 0.60、茶 0.20、水 0.20。开出的答案是<strong>茶</strong>。按第 ② 步与第 ③ 步，只有开出的那一格计入平均。</p>
+            <p>模型对「他早上喝一杯__」给出三个份额：咖啡 0.60、茶 0.20、水 0.20。开出的答案是<strong>茶</strong>。按第 ② 步与第 ③ 步，只有开出的那一格计入平均；这一句只有一位词元，它的经验分布是 one-hot，所以「这一格的交叉熵」数值上就等于那一格的惊讶度。</p>
             <table class="tbl">
               <thead>
                 <tr><th>候选答案</th><th>模型份额 p</th><th>惊讶度 −log₂p</th><th>是真实标签？</th><th>对损失的贡献</th></tr>
@@ -695,7 +698,7 @@
                 <tr><td>咖啡</td><td>0.60</td><td>0.74 bit</td><td>否</td><td>0</td></tr>
                 <tr><td><strong>茶</strong></td><td>0.20</td><td>2.32 bit</td><td><strong>是</strong></td><td><strong>1 × 2.32 = 2.32 bit</strong></td></tr>
                 <tr><td>水</td><td>0.20</td><td>2.32 bit</td><td>否</td><td>0</td></tr>
-                <tr><td>交叉熵 H(q,p)</td><td colspan="3">= 2.32 bit</td><td>这一句的损失</td></tr>
+                <tr><td>交叉熵 H(q,p)</td><td colspan="3">= 2.32 bit</td><td>这一格（这一位词元）的损失</td></tr>
                 <tr><td>困惑度 2<sup>2.32</sup></td><td colspan="3">= 5.00 个选项</td><td>等效于 5 选 1 瞎蒙</td></tr>
               </tbody>
             </table>
@@ -712,7 +715,7 @@
                 <tr><td>茶</td><td>0.30</td><td>0.20</td><td>2.32 bit</td><td>0.70 bit</td></tr>
                 <tr><td>水</td><td>0.20</td><td>0.20</td><td>2.32 bit</td><td>0.46 bit</td></tr>
                 <tr><td><strong>交叉熵 H(q,p)</strong></td><td colspan="4"><strong>= 1.53 bit</strong> ← 这就是<span class="term" data-def="衡量预测与真实差多少的单一数值，本站用交叉熵作为分类任务的损失。" data-en="loss">损失</span></td></tr>
-                <tr><td>熵 H(q)（地板价）</td><td colspan="4">= 1.49 bit → 任何模型都压不到它以下</td></tr>
+                <tr><td>熵 H(q)（地板价）</td><td colspan="4">= 1.49 bit → 任何模型的<strong>长期平均</strong>都压不到它以下（单格可以更低）</td></tr>
                 <tr><td>KL(q‖p)</td><td colspan="4">= 1.53 − 1.49 = 0.04 bit → 模型的分布只差一点点</td></tr>
                 <tr><td>困惑度 2<sup>1.53</sup></td><td colspan="4">= 2.89 个选项；若模型押的分布恰好等于 q，则为 2<sup>1.49</sup> = 2.80</td></tr>
               </tbody>
@@ -720,18 +723,20 @@
             <p>两遍算完，「错误分数」和「选项个数」的关系就露出来了：交叉熵是<strong>平均意外</strong>，困惑度是它的<strong>指数形式</strong>。中间那个 KL，才是模型真正该被惩罚的部分——它扣掉了数据本身不可预测的那一份。</p>
           
             <div class="callout callout--key">
-              <p><strong>必须记住的一条换算：</strong>困惑度 8 ⇔ 交叉熵 3 bit ⇔ 平均表现等价于在 8 个等可能答案里蒙一个 ⇔ 蒙对率 1/8 = 12.5%。反过来，如果一个模型的困惑度是 8，它并不是「只在 8 个词里选」，而是<strong>它的平均不确定性和 8 选一差不多大</strong>。</p>
+              <p><strong>必须记住的一条换算：</strong>困惑度 8 ⇔ 交叉熵 3 bit ⇔ 平均表现等价于在 8 个等可能答案里蒙一个 ⇔ <strong>等效</strong>蒙对率 1/8 = 12.5%。注意最后那个数是<strong>换算值，不是它的实际准确率</strong>：一个困惑度 8 的模型，实际 top-1 准确率通常明显高于 12.5%（它大多时候押得很准，偶尔一次极端意外把平均拉回 3 bit）。反过来，如果一个模型的困惑度是 8，它并不是「只在 8 个词里选」，而是<strong>它的平均不确定性和 8 选一差不多大</strong>。</p>
             </div>
           
             <div class="callout callout--note">
-              <p>给这两个单位两个能摸到的端点。<strong>地板是困惑度 1</strong>（<code>0 bit</code>，模型百分之百确定），<strong>天花板是词表大小</strong>：若模型对全部候选词元<strong>均匀瞎猜</strong>，交叉熵恰好等于 <code>log₂ V</code>，困惑度恰好等于 <code>V</code>。词表在 3.2 万到 12.8 万之间（2023–2024 年的主流开源模型）[2026-10]，于是天花板就是 15.0～17.0 bit、困惑度 32000～128000。<strong>「困惑度 8」落在这两端之间、非常靠下的位置。</strong></p>
-              <p>读论文时还要盯住单位：同一份预测，用 <code>log₂</code> 记是比特，用 <code>ln</code> 记是 nat（<code>1 nat ≈ 1.44 bit</code>），规模定律类论文又常报 bits-per-byte（按字节而非词元平均，与词表大小无关）[2026-10]。所以两篇论文里同样写着「损失 2.0」的曲线，可能根本不是同一个量纲——能横比的只有<strong>同一数据集、同一单位</strong>下的困惑度。</p>
+              <p>给这两个单位两个能摸到的端点。<strong>地板是困惑度 1</strong>（<code>0 bit</code>，模型百分之百确定），<strong>天花板是词表大小</strong>：若模型输出<strong>均匀分布</strong>（等于什么都不知道），那么对任何真实分布，交叉熵都恰好等于 <code>log₂ V</code>，困惑度恰好等于 <code>V</code>。2023–2024 年主流开源模型的词表多在 3.2 万到 15.2 万之间（LLaMA 2 是 32,000、LLaMA 3 是 128,256、Qwen2 是 152,064）[2026-10]，于是天花板约 15.0～17.2 bit、困惑度 32000～152064。</p>
+              <p><strong>但「困惑度 8 到底低不低」要先换单位才能回答。</strong>这里的比特是<strong>每词元</strong>，而 M01 引的香农数字是<strong>每字母</strong>：2.3 比特/字母按英文一个词约 4.7 个字母换算，约合每词 2.3×4.7 ≈ 10.8 比特，等效困惑度 2<sup>10.8</sup> ≈ 1.8×10³；他最乐观的长程外推约 1 比特/字母，约合每词 4.7 比特、等效困惑度约 26（这两步换算都是纯推导，用的就是 M01 里那两个数，且只作量级参照——词元熵并不严格等于字母熵乘词长）。对照下来，「困惑度 8」<strong>离天花板（上万）很远，也低于香农外推换算出的每词元量级 ≈26</strong>，所以它确实是个偏低的数；但别读成「模型只剩 8 个候选词可挑」，那是等效选项数，不是词表。</p>
+              <p>读论文时还要盯住单位：同一份预测，用 <code>log₂</code> 记是比特，用 <code>ln</code> 记是 nat（<code>1 nat ≈ 1.44 bit</code>），规模定律类论文又常报 bits-per-byte（按字节而非词元平均，与词表大小无关）[2026-10]。所以两篇论文里同样写着「损失 2.0」的曲线，可能根本不是同一个量纲——能横比的只有<strong>同一数据集、同一单位（还得同一分词口径）</strong>下的交叉熵或困惑度：困惑度只是交叉熵的单调变换，同一份数据上两者一样可比，而且换了分词口径，连「每个词元是多少」都不成立。</p>
             </div>
           
             <details class="math-detail">
-              <summary>展开：为什么押注的「翻倍率」平均值正好是交叉熵，以及 nat 与 bit 的换算</summary>
+              <summary>展开：记分倍数怎么平均成交叉熵、真赌局为什么只给 KL，以及 nat 与 bit 的换算</summary>
               <div class="math-detail__body prose">
-                <p><strong>押注一侧。</strong>假设每轮你把全部财富按 <code>p</code> 分给三个答案，开出的答案给 <code>1/p</code> 的赔率。跑 <code>n</code> 轮之后财富倍数是各轮倍数的乘积 <code>∏ (1/p<sub>开出的那个</sub>)</code>。取对数把乘积变成求和：对数财富 = <code>Σ −log₂ p</code>。当 n 足够大，各答案的出现频率趋于 <code>q</code>，于是<strong>每轮平均的对数财富增长</strong>就是 <code>−Σ q<sub>i</sub> log₂ p<sub>i</sub></code>，即交叉熵。最大化长期对数财富 = 最小化交叉熵。这条路径在信息论里叫最优赌注（Kelly 准则）与编码长度的对偶。<span class="badge badge--simplify">已简化</span> 这里省掉了「各轮独立同分布」「可以无限次重下注」两个前提，真实语料的前后词元是相关的，所以只有逐词元平均时才近似成立。</p>
+                <p><strong>记分一侧（为什么平均下来就是交叉熵）。</strong>直觉段那套「按 1/p 记一笔倍数」是<strong>记分规则</strong>：第 i 类开出时记的倍数是 <code>1/p<sub>i</sub></code>，与你把筹码分给谁无关。跑 <code>n</code> 轮，记分总倍数是各轮之积 <code>∏ (1/p<sub>开出的那个</sub>)</code>；取对数把乘积变成求和，当 n 足够大、各答案出现频率趋于 <code>q</code>，<strong>每轮平均对数记分</strong>就是 <code>−Σ q<sub>i</sub> log₂ p<sub>i</sub></code>，即交叉熵。把记分做小 = 最小化交叉熵。<span class="badge badge--simplify">已简化</span> 这一步要求「各轮独立同分布」，真实语料的前后词元是相关的，所以只有逐词元平均时才近似成立。</p>
+                <p><strong>真赌局一侧（这里得到的不是交叉熵）。</strong>若把「按 p 分完筹码」当成真下注，赔率 1/p<sub>i</sub>，那么开出 i 时你的<strong>财富乘数是 f<sub>i</sub>/p<sub>i</sub></strong>（f 是你押在 i 上的份额），不是 1/p<sub>i</sub>。逐轮平均对数增长是 <code>G(f) = Σ q<sub>i</sub>·log₂(f<sub>i</sub>/p<sub>i</sub>)</code>。两个直接后果：按 <code>f = p</code> 下注 ⇒ <code>G = 0</code>，每轮财富原地不动；按 <code>f = q</code> 下注（知道真相）⇒ <code>G = KL(q‖p)</code>，这也是 G 的最大值。所以真实的凯利（Kelly）最优赌注与编码长度的对偶 <span class="badge badge--simplify">已简化</span>（本站只取这一对应关系，不讲下注策略。标准出处是 Cover &amp; Thomas《Elements of Information Theory》第 2 版第 6 章〈Gambling and Data Compression〉：§6.1「The Horse Race」证明的是<strong>「最优下注与任意下注的对数增长率之差 = KL」</strong>，§6.4「The Entropy of English」才把这条对偶用回压缩英文文本——那里没有「增长率 = 交叉熵」这回事）给出的量是 <strong>KL，不是交叉熵</strong>；交叉熵比它多出世界自带的那一项 <code>H(q)</code>。由于 H(q) 与模型参数无关，「最大化增长率」与「最小化交叉熵」在<strong>优化意义上</strong>仍然等价——只差一个常数。我们的表 2 正好可以把这条对上：q=(0.50,0.30,0.20)、p=(0.60,0.20,0.20) 时交叉熵 1.53 bit，而真赌局的最大对数增长只有 KL = 1.53 − 1.49 = 0.04 bit（财富每轮只翻 2<sup>0.04</sup> ≈ 1.03 倍）。附带一个容易踩的坑：当标签是 one-hot 时 H(q)=0，交叉熵与 KL 数值相等（第 ① 遍手算里两者都是 2.32），于是「财富增长 = 交叉熵」在这个特例下看着成立，一旦 q 不平（第 ② 遍就有 H(q)=1.49）立刻露馅。</p>
                 <p><strong>单位一侧。</strong>本站全程用 <code>log₂</code>，单位是 bit。工程实现里用的是自然对数 <code>ln</code>，单位叫 nat，PyTorch 的交叉熵损失返回的就是 nat。换算是 <code>1 nat = 1/ln2 ≈ 1.4427 bit</code>，困惑度相应写成 <code>exp(损失)</code> 而不是 <code>2^损失</code>。选底数只换单位，不换结论：底数换成 2 是为了让「困惑度 = 等效选项数」这条等式一眼可读。<span class="badge badge--simplify">已简化</span> 本页所有数字都是 bit。</p>
                 <p><strong>形状一侧。</strong>交叉熵对某个模型份额 <code>p<sub>j</sub></code> 的导数是 <code>−q<sub>j</sub>/p<sub>j</sub></code>，再穿过 softmax 变成「预测与真实的差」。这就是为什么损失能求导、能反传（M05）：惊讶度里的对数不是装饰，它把「乘法赔率」摊平成可加的惩罚，又把极小概率的惩罚拉得非常陡。</p>
               </div>
@@ -739,7 +744,7 @@
         </article>
         <article class="seg has-content" id="m02--demo" data-seg="demo">
           <h3>动手演示</h3>
-                    <div class="demo" data-demo="m02-entropy-bars" data-demo-title="惊喜度与熵">
+                    <div class="demo" data-demo="m02-entropy-bars" data-demo-title="惊讶度与熵">
                       <div class="demo__canvas"></div>
                       <div class="demo__controls"></div>
                     </div>
@@ -752,7 +757,7 @@
               <summary>「损失低就等于准确率高。」</summary>
               <div class="myth__body">
                 <p><strong>为何会有这个误解：</strong>训练日志里只有一行 loss 在往下掉，准确率往往不上屏幕；而两者在简单任务上的确经常同向变化，于是「越低越准」成了最容易得到的经验。</p>
-                <p class="myth__truth">正确说法：准确率只数「谁排第一」，交叉熵惩罚的是「你把多少份额押在了错的答案上」。一个模型可以 top-1 准确率更高但损失更高（它的分布更平，第一名的份额不够大）；也可以损失很低却仍然答错——它只是没把足够的概率给正确答案，而错误答案恰好也没被它压到第一名之外。两者不一致的那种情形叫<span class="term" data-def="模型的自信程度与它实际正确率是否匹配；不匹配就是过度自信。" data-en="calibration">校准</span>失准，是安全评估里独立于准确率的一条指标（M13）。</p>
+                <p class="myth__truth">正确说法：准确率只数「谁排第一」，交叉熵惩罚的是「你把多少份额押在了错的答案上」。一个模型可以 top-1 准确率更高但损失更高（它的分布更平，第一名的份额不够大）；也可以损失很低却仍然答错——它只是没把足够的概率给正确答案，而错误答案恰好也没被它压到第一名之外。两者不同向只说明「押注是否留住正确可能」和「第一名是谁」不是同一件事。要检查「模型报出的概率配不配得上它的实际正确率」，那是另一个独立属性——<span class="term" data-def="报出的置信度与实际正确率是否一致；不一致即失准，危害主要来自过度自信。" data-en="calibration">校准</span>，它是安全评估里与准确率并列的一条指标（M13）。</p>
               </div>
             </details>
             <details class="myth">
@@ -766,14 +771,14 @@
               <summary>「困惑度低，说明模型读懂了这段文字。」</summary>
               <div class="myth__body">
                 <p><strong>为何会有这个误解：</strong>困惑度常被当作「语言能力的分数」引用，而评测集通常是通顺、规范、可预测性很高的文本，两者一起营造出「低分 = 读懂」的印象。</p>
-                <p class="myth__truth">正确说法：困惑度只度量<strong>分布匹配</strong>，而下一词预测里有大量位置的正确答案是「把前文抄下来」或「补完一个套话」。一个把上下文复读得很好的模型，困惑度可以非常低，却对文本里唯一的提问束手无策。反过来，一段模型从未见过的规范文本，困惑度会显著升高，但这不代表模型变笨了。这也是为什么能力评估（M13）要用任务正确率而不是困惑度。</p>
+                <p class="myth__truth">正确说法：困惑度只度量<strong>分布匹配</strong>，而下一词预测里有大量位置的正确答案是「把前文抄下来」或「补完一个套话」。一个把上下文复读得很好的模型，困惑度可以非常低，却对文本里唯一的提问束手无策。反过来，一段模型从未见过的规范文本，困惑度会显著升高，但这不代表模型变笨了。这也是为什么能力评估（M13）要用任务正确率而不是困惑度。至于「把困惑度当语言能力的代理指标到底行不行」 <span class="badge badge--debate">存在争议</span>：本站的窄立场（能持续省比特才算能力、但不构成能力的充分定义）写在 M01 误区 4。</p>
               </div>
             </details>
             <details class="myth">
               <summary>「熵、交叉熵、KL 是同一个东西的三个名字。」</summary>
               <div class="myth__body">
                 <p><strong>为何会有这个误解：</strong>三个公式长得几乎一样，都是「概率 × 对数概率」再求和；而且教程里经常混着写，读者只能当成同义词。</p>
-                <p class="myth__truth">正确说法：它们回答三个不同的问题。熵 <code>H(q)</code> 只涉及一个分布，是<strong>世界本身</strong>的平均意外（地板价）。交叉熵 <code>H(q,p)</code> 涉及两个分布，是<strong>用 p 去编码 q</strong> 的实际花费，也是训练时的损失。KL 是<strong>多花的那部分</strong>：<code>KL = 交叉熵 − 熵</code>，只有两个分布完全相同时才是 0。训练里最小化交叉熵之所以等价于最小化 KL，纯粹是因为评测数据的熵是个与参数无关的常数——把常数换一批数据就变了，所以「A 模型损失比 B 低」在数据集不同时毫无意义，而「KL 谁更小」才是可比的。</p>
+                <p class="myth__truth">正确说法：它们回答三个不同的问题。熵 <code>H(q)</code> 只涉及一个分布，是<strong>世界本身</strong>的平均意外（地板价）。交叉熵 <code>H(q,p)</code> 涉及两个分布，是<strong>用 p 去编码 q</strong> 的实际花费，也是训练时的损失。KL 是<strong>多花的那部分</strong>：<code>KL = 交叉熵 − 熵</code>，只有两个分布完全相同时才是 0。训练里最小化交叉熵之所以等价于最小化 KL，纯粹是因为评测数据的熵是个与参数无关的常数。但别顺着这一步走过头：把常数换一批数据就变了，而 <strong>KL 里的 q 本来就是数据分布</strong>——换数据集 = 换 q = 换 KL 的基准。所以跨数据集时，报交叉熵没有意义，报 KL 同样没有意义；<strong>两个模型只有在同一份评测数据（还得同一单位、同一分词口径）上，交叉熵或等价的 KL 才可互比</strong>。这也正是困惑度必须连数据集一起报的原因。</p>
               </div>
             </details>
         </article>
@@ -788,7 +793,7 @@
               <label class="quiz__opt"><input type="radio" name="q-m02"><span>它的错误率是 3%，因为困惑度低到个位就基本不会错</span></label>
               <div class="quiz__fb">
                 <p data-for="no"><strong>再想一步：</strong>bit 这个单位本身就是「2 的几次方」。3 个比特对应 2³ = 8 个等可能选项，不是 3 个；而困惑度是<strong>意外程度</strong>的换算，跟错误率不是同一个量。手算一遍：如果模型把概率均分给 8 个答案，每个是 1/8，开出的那个惊讶度是多少？</p>
-                <p data-for="ok"><strong>对了。</strong>这就是第 ⑥ 步的全部要点：perp = 2<sup>H</sup>，交叉熵 3 bit ⇔ 困惑度 8 ⇔ 蒙对率 1/8。但要把它的前半句也记住：这只是<strong>分布匹配的等效选项数</strong>，不是正确率，也不是理解程度。带着这个数去看 M10：温度与核采样改的正是这个分布的形状，困惑度会随温度一起变。</p>
+                <p data-for="ok"><strong>对了。</strong>这就是第 ⑥ 步的全部要点：perp = 2<sup>H</sup>，交叉熵 3 bit ⇔ 困惑度 8 ⇔ <strong>等效</strong>蒙对率 1/8。但要把它的前半句也记住：这只是<strong>分布匹配的等效选项数</strong>，不是正确率，也不是理解程度。带着这个数去看 M10：温度与核采样改的正是这个分布的形状，困惑度会随温度一起变。</p>
               </div>
               <p class="quiz__result" aria-live="polite"></p>
             </div>
@@ -852,7 +857,7 @@
               <li data-step="4"><strong>矩阵 = 对整个空间的一次线性变换。</strong>它把每一支箭头搬到新位置，规则只有两条：原点不动，原本平行且等距的网格搬完仍然平行且等距。旋转、拉伸、剪切都是矩阵。</li>
               <li data-step="5"><strong>矩阵乘向量 = 施加这次变换。</strong>最省解的读法是看列：矩阵的第 1 列就是「横轴单位箭头」被搬去的地方，第 2 列是「竖轴单位箭头」的落点。两条基向量落到哪，整个空间就怎么被搬。</li>
               <li data-step="6"><strong>特征向量 = 变换后方向不变的箭头，特征值 = 被拉伸的倍数。</strong>搬动整张地图时，绝大多数箭头的方向都被改掉了；只有少数几条直线上的箭头，搬完仍落在自己原来那条直线上——它们只是被拉长或压短。特征值为负表示方向被翻转成反向。</li>
-              <li data-step="7"><strong>嵌入是学出来的坐标，不是人定的坐标。</strong>我们没有规定「第 37 轴表示动物」。训练目标只是「常被一起用到的对象要靠近」，坐标轴为了让整体距离最短而自由生长。所以某根轴恰好与「性别」相关是巧合，不是设计。</li>
+              <li data-step="7"><strong>嵌入是学出来的坐标，不是人定的坐标。</strong>我们没有规定「第 37 轴表示动物」。但「靠训练压出坐标」有三种不同的目标，压力来源并不相同。<strong>静态词向量</strong>（word2vec 那一代）的目标里就写着这件事：给共现的词对打高分、给随机凑成的词对打低分——「靠近」就是目标本身。<strong>大模型的词元嵌入</strong>是被下一词预测训出来的：目标只问「下一个词猜得准不准」，「靠近」不在目标里，它只是能互换用法的词元顺带拿到的副产品。<strong>检索用的句向量</strong>才由对比目标同时要求两件事——配对的句子靠近、不配对的拉开。本页开头举的三个模型属于第二类。所以某根轴恰好与「性别」相关是巧合，不是设计；而「距离近」到底承诺了什么，得先问这份坐标是被哪一种目标压出来的 <span class="badge badge--simplify">已简化</span> 这里每类目标只给一句话：下一词预测的损失式在 M02，对比目标的损失式在 M11，静态词向量的负采样目标本站不展开。</li>
             </ol>
           
             <div class="figure" data-fig="m03-vector-field-1">
@@ -1025,7 +1030,7 @@
               </div>
             </details>
           
-            <p>最后是第三件事：<strong>这些坐标是学出来的</strong>。我们从不规定第几根轴表示什么。训练时唯一的压力是「一起出现的对象要靠近」，几万根轴为了把这个条件满足得尽可能好，自己长成了一个怪形状坐标系。于是「意义」并不住在某一根轴上，而住在<strong>箭头之间的夹角</strong>里。</p>
+            <p>最后是第三件事：<strong>这些坐标是学出来的</strong>。我们从不规定第几根轴表示什么。要记住的是「靠近」有时是目标、有时只是副产品：静态词向量里，训练时唯一的压力就是「一起出现的对象要靠近」，几百到上万根轴（本页例子里是 896 根）为了把这个条件满足得尽可能好，自己把点阵拉成怪形状；大模型的词元嵌入没有这一项压力，它被要求的是猜准下一个词，能预测得动才顺带让可互换的词元落到相近的位置。于是「意义」并不住在某一根轴上，而住在<strong>箭头之间的夹角</strong>里——但夹角为什么长成这样，取决于当初喂给模型的是哪一种目标。</p>
           
             <div class="math-block math">
               <span class="vec">v</span><span class="sub">国王</span> <span class="op">−</span> <span class="vec">v</span><span class="sub">男人</span> <span class="op">+</span> <span class="vec">v</span><span class="sub">女人</span>
@@ -1049,7 +1054,7 @@
               <summary>「嵌入的第 N 个维度代表『性别』，还有一个维度代表『善恶』。」</summary>
               <div class="myth__body">
                 <p><strong>为何会有这个误解：</strong>科普配图习惯给坐标轴涂上颜色、标上「礼貌轴」「情绪轴」，因为读者需要看得见抓手；另外一些论文确实报告了「沿某方向移动能改变性别表述」的实验结果，很容易被读成「模型里有性别这一栏」。</p>
-                <p class="myth__truth">正确说法：单个坐标数字没有任何人类语义。896 根轴是训练时为了满足「相似对象靠近」而自由生长的记账方向，没有一根是被设计来表示性别的 [2026-10]。所谓「性别方向」是人事后拿一批成对样本测出来的<strong>统计方向</strong>，往往还是几个轴的组合，而且换一个模型、换一层，方向就变。因果关系是反的：不是「因为有性别轴所以行为有性别差」，而是「因为行为有性别差，我们才量出这么一个方向」。</p>
+                <p class="myth__truth">正确说法：单个坐标数字没有任何人类语义。896 根轴是训练时自己长出来的记账方向——它们为什么大致呈现「相似对象靠近」，取决于喂给模型的目标（机制段第 ⑦ 步：静态词向量把这句话直接写成目标，大模型只是猜下一词时顺带得到它），没有一根轴是被设计来表示性别的 [2026-10]。所谓「性别方向」是人事后拿一批成对样本测出来的<strong>统计方向</strong>，往往还是几个轴的组合，而且换一个模型、换一层，方向就变。因果关系是反的：不是「因为有性别轴所以行为有性别差」，而是「因为行为有性别差，我们才量出这么一个方向」。</p>
               </div>
             </details>
             <details class="myth">
@@ -1070,7 +1075,7 @@
               <summary>「维度越多越像人脑，所以 12288 维比 300 维更『懂』。」</summary>
               <div class="myth__body">
                 <p><strong>为何会有这个误解：</strong>「表示能力」被等同于「精细程度」，而人脑神经元数量巨大，于是高维 = 高级似乎顺理成章。</p>
-                <p class="myth__truth">正确说法：维度是<strong>预算</strong>，不是理解力。多一根轴就多一分能把对象分得更开的能力，但也多一分把噪声当结构的浪费；GPT-3 175B 的模型宽度是 12288，Qwen2.5-0.5B 是 896 [2026-10]，后者同样能完成类比与检索。真正决定「像不像」的是坐标之间的夹角是否反映了实际共现关系，而这来自训练数据与目标，不来自维度数字本身。</p>
+                <p class="myth__truth">正确说法：维度是<strong>预算</strong>，不是理解力。多一根轴就多一分能把对象分得更开的能力，但也多一分把噪声当结构的浪费；GPT-3 175B 的模型宽度是 12288，Qwen2.5-0.5B 是 896 [2026-10]，后者同样能完成类比与检索。真正决定「像不像」的是坐标之间的夹角是否反映了实际的使用关系，而这来自训练数据与目标，不来自维度数字本身。</p>
               </div>
             </details>
         </article>
@@ -1227,9 +1232,9 @@
               ∇L <span class="op">=</span> <span class="bigg">(</span><span class="frac"><span class="num">∂L</span><span class="den">∂θ<span class="sub">1</span></span></span>, <span class="op">…</span>, <span class="frac"><span class="num">∂L</span><span class="den">∂θ<span class="sub">D</span></span></span><span class="bigg">)</span>
               <span class="op">,</span>
               <span class="vec">θ</span> <span class="op">←</span> <span class="vec">θ</span> <span class="op">−</span> lr <span class="op">·</span> ∇L(<span class="vec">θ</span>)
-              <span class="reads">「把每根轴的瞬时斜率排成一支箭头，它指损失涨得最快的方向；更新就是逆着箭头，每根轴各挪『学习率 × 该轴斜率』那么远。」</span>
+              <span class="reads">「把每根轴的瞬时斜率排成一支箭头，它指损失涨得最快的方向；更新就是逆着箭头，每根轴各挪『学习率 × 该轴斜率』那么远。『最快』只在两个前提下成立：步子无穷小、且各轴按同一把欧氏尺子量——换一把尺子（例如公式 ⑤ 的按坐标归一），最陡方向本身就变了。」</span>
             </div>
-            <p>维度必须写清：θ 与 ∇L 都是 D 维向量，D 和参数量相同（GPT-3 是 1750 亿 ≈ 全球每人分到一个英文单词（2020）[2026-10]）。lr 是一个标量，全局共享。「梯度指路」这件事的全部内容，就是这个负号。</p>
+            <p>维度必须写清：θ 与 ∇L 都是 D 维向量，D 和参数量相同（GPT-3 是 1750 亿 ≈ 2020 年全球每人分到约 22 个英文单词：175×10⁹ ÷ 78×10⁹ ≈ 22.4，人口取联合国 2020 年估计值 [2026-10]）。lr 是一个标量，全局共享。「梯度指路」这件事的全部内容，就是这个负号。</p>
           
             <h4>公式 ③ — 小批量：用抽样冒充整体，期望相同、方差非零</h4>
             <div class="math-block math">
@@ -1301,7 +1306,7 @@
                   <span class="reads">「每一步都把到谷底的比例乘以同一个数 (1 − lr·a)，所以整条轨迹是一个等比数列。」</span>
                 </div>
                 <p>要距离不断缩小，需要 |1 − lr·a| &lt; 1，也就是 0 &lt; lr·a &lt; 2。三种情形：lr·a = 1 一步到位；1 &lt; lr·a &lt; 2 每次过冲但幅度递减；lr·a &gt; 2 幅度递增，即发散。这就是「太大就发散」的全部机制，它不依赖任何玄学，只依赖一个乘法系数是否超过 −1。</p>
-                <p><strong>为什么曲率小就学不动。</strong>同一把 lr 在 L = ½aθ² 上每步只把距离乘 (1 − lr·a)。a = 0.06、lr = 0.08 时是 0.9952，走完 99% 的剩余距离要约 1150 步 [2026-10]。不是梯度方向错了，是这一步实在太短。</p>
+                <p><strong>为什么曲率小就学不动。</strong>同一把 lr 在 L = ½aθ² 上每步只把距离乘 (1 − lr·a)。a = 0.06、lr = 0.08 时是 0.9952，走完 99% 的剩余距离要约 957 步（按 ln 0.01 ÷ ln 0.9952 推算，本页可复算；反过来 1150 步对应的是 99.6%）。不是梯度方向错了，是这一步实在太短。</p>
                 <p><strong>偏差修正。</strong>Adam 的 m、u 从零起步，前几步被 β 压得偏低，所以实际用的是 m̂ = m / (1 − β₁<span class="sup">t</span>)、û = u / (1 − β₂<span class="sup">t</span>)，t 是步数。t 大了以后分母趋近 1，这两条几乎不影响结果。</p>
                 <p><strong>为什么鞍点几乎不可能是局部极小。</strong>临界点处每根轴的曲率符号近似独立；要成为局部极小需要 D 根轴全部为正。若正负各半，概率是 2<sup>−D</sup>：D = 10 时约千分之一，D = 10⁸ 时是彻底的零（Dauphin 等，2014）[2026-10]。这个论证假设了曲率符号独立同分布，现实损失面并不完全满足，所以它是量级上的直觉而非定理 <span class="badge badge--debate">存在争议</span>。</p>
                 <p><span class="badge badge--simplify">已简化</span> 上面所有推导都在「局部二次近似」下进行：任何光滑函数在一点点范围内都像碗。真实损失面还有噪声、约束与随训练变化的形状。</p>
@@ -1444,7 +1449,7 @@
             <div class="math-block math">
               ReLU(z) <span class="op">=</span>
               <span class="cases"><span class="case__row"><span>z</span><span class="case__cond">当 z &gt; 0</span></span><span class="case__row"><span>0</span><span class="case__cond">当 z ≤ 0</span></span></span>
-              <span class="reads">「折线在 0 处折弯：正数原样放行，负数一律掐成零。」这就是步骤 ② 说的「非线性开关」——等价写法 max(0, z) 里的那个 max，取的就是这两行中较大的一个。</span>
+              <span class="reads">「折线在 0 处折弯：正数原样放行，负数一律掐成零。」这就是步骤 ③ 说的「非线性开关」——等价写法 max(0, z) 里的那个 max，取的就是这两行中较大的一个。</span>
             </div>
             <div class="math-block math">
               y <span class="op">=</span> W<span class="sub">2</span><span class="bigg">(</span>W<span class="sub">1</span>x <span class="op">+</span> b<span class="sub">1</span><span class="bigg">)</span> <span class="op">+</span> b<span class="sub">2</span>
@@ -1477,7 +1482,7 @@
                   </g>
           
                   <text x="10" y="72" class="t-sm faint">没有激活函数时，同一张图可以这样改写</text>
-                  <g data-step="2">
+                  <g data-step="3">
                   <rect class="box box--a" x="10" y="84" width="40" height="26" rx="5"></rect><text x="30" y="101" class="t-sm" text-anchor="middle">x</text>
                   <line x1="50" y1="97" x2="106" y2="97" stroke="var(--c-fg-muted)" stroke-width="1.6" marker-end="url(#m05-arw-f)"></line>
                   <rect class="box box--w" x="110" y="84" width="120" height="26" rx="5"></rect><text x="170" y="101" class="t-sm" text-anchor="middle">W<tspan baseline-shift="sub">3</tspan>W<tspan baseline-shift="sub">2</tspan>W<tspan baseline-shift="sub">1</tspan></text>
@@ -1497,7 +1502,7 @@
                   <desc>三个并排小坐标系，各画一条曲线：左为 S 形的 Sigmoid，中为过零点的 S 形 Tanh，右为负半轴贴零、正半轴斜上的 ReLU。每个面板下方标注该函数的毛病。</desc>
                   <text x="10" y="14" class="t-sm faint">横轴 = 进入这个开关的值 z，纵轴 = 开关吐出的 φ(z)</text>
           
-                  <g data-step="4">
+                  <g data-step="6">
                     <line class="grid-l" x1="30" y1="98" x2="180" y2="98"></line>
                     <line class="grid-l" x1="105" y1="28" x2="105" y2="98"></line>
                     <polyline fill="none" stroke="var(--c-accent)" stroke-width="2" points="30,94.7 42.5,92.7 55,89.7 67.5,85.3 80,79.2 92.5,71.5 105,63 117.5,54.5 130,46.8 142.5,40.8 155,36.3 167.5,33.3 180,31.3"></polyline>
@@ -1505,7 +1510,7 @@
                     <text x="30" y="130" class="t-xs muted">输出挤在 0 与 1 之间</text>
                     <text x="30" y="142" class="t-xs warm">两端躺平 → 局部导数趋 0</text>
                   </g>
-                  <g data-step="4">
+                  <g data-step="6">
                     <line class="grid-l" x1="245" y1="98" x2="395" y2="98"></line>
                     <line class="grid-l" x1="320" y1="28" x2="320" y2="98"></line>
                     <polyline fill="none" stroke="var(--c-accent)" stroke-width="2" points="245,97.8 257.5,97.5 270,96.7 282.5,94.7 295,89.7 307.5,79.2 320,63 332.5,46.8 345,36.3 357.5,31.3 370,29.3 382.5,28.5 395,28.2"></polyline>
@@ -1513,7 +1518,7 @@
                     <text x="245" y="130" class="t-xs muted">以 0 为中心，−1 到 1</text>
                     <text x="245" y="142" class="t-xs warm">同样两端饱和</text>
                   </g>
-                  <g data-step="4">
+                  <g data-step="6">
                     <line class="grid-l" x1="460" y1="98" x2="610" y2="98"></line>
                     <line class="grid-l" x1="535" y1="28" x2="535" y2="98"></line>
                     <polyline fill="none" stroke="var(--c-accent)" stroke-width="2" points="460,98 472.5,98 485,98 497.5,98 510,98 522.5,98 535,98 547.5,86.5 560,75 572.5,63.5 585,52 597.5,40.5 610,29"></polyline>
@@ -1565,7 +1570,7 @@
                   <text x="10" y="14" class="t-sm faint">实线 = 前向（值往右流）· 橙色虚线 = 反向（梯度往左流）</text>
           
                   <!-- 输入 -->
-                  <g data-step="5">
+                  <g data-step="7">
                     <rect class="box box--a" x="20" y="40" width="60" height="26" rx="5"></rect>
                     <text x="50" y="57" class="t-sm" text-anchor="middle">x₁ = 1.0</text>
                     <rect class="box box--a" x="20" y="108" width="60" height="26" rx="5"></rect>
@@ -1573,7 +1578,7 @@
                   </g>
           
                   <!-- 前向连线 x → 隐藏 -->
-                  <g data-step="5">
+                  <g data-step="7">
                     <line x1="80" y1="50" x2="194" y2="50" stroke="var(--c-fg-muted)" stroke-width="1.5" marker-end="url(#m05-arw-a)"></line>
                     <line x1="80" y1="58" x2="194" y2="121" stroke="var(--c-fg-muted)" stroke-width="1.5" marker-end="url(#m05-arw-a)"></line>
                     <line x1="80" y1="116" x2="194" y2="58" stroke="var(--c-fg-muted)" stroke-width="1.5" marker-end="url(#m05-arw-a)"></line>
@@ -1595,7 +1600,7 @@
                   </g>
           
                   <!-- 隐藏 → 输出 → 损失 -->
-                  <g data-step="5">
+                  <g data-step="7">
                     <line x1="298" y1="46" x2="344" y2="78" stroke="var(--c-fg-muted)" stroke-width="1.5" marker-end="url(#m05-arw-a)"></line>
                     <line x1="298" y1="128" x2="344" y2="94" stroke="var(--c-fg-muted)" stroke-width="1.5" marker-end="url(#m05-arw-a)"></line>
                     <rect class="box box--a" x="348" y="72" width="86" height="30" rx="6"></rect>
@@ -1604,7 +1609,7 @@
                     <text x="304" y="64" class="t-xs muted">v₁ = 0.8</text>
                     <text x="304" y="118" class="t-xs muted">v₂ = 0.7</text>
                   </g>
-                  <g data-step="5">
+                  <g data-step="7">
                     <rect class="box" x="484" y="20" width="96" height="26" rx="6"></rect>
                     <text x="532" y="37" class="t-sm" text-anchor="middle">目标 t = 1</text>
                     <line x1="532" y1="46" x2="532" y2="68" stroke="var(--c-fg-muted)" stroke-width="1.5" marker-end="url(#m05-arw-a)"></line>
@@ -1613,7 +1618,7 @@
                   </g>
           
                   <!-- 反向：L → y → 隐藏 → 权重 -->
-                  <g data-step="6">
+                  <g data-step="8">
                     <line x1="484" y1="78" x2="438" y2="78" stroke="var(--c-warn)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#m05-arw-b)"></line>
                     <text x="440" y="72" class="t-xs warm">∂L/∂y = −0.76</text>
                     <line x1="352" y1="74" x2="302" y2="52" stroke="var(--c-warn)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#m05-arw-b)"></line>
@@ -1623,20 +1628,21 @@
                     <text x="86" y="200" class="t-xs warm">×0.5 = ∂L/∂w₂₁ −0.304</text>
                     <line x1="198" y1="134" x2="84" y2="132" stroke="var(--c-warn)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#m05-arw-b)"></line>
                   </g>
-                  <g data-step="4">
+                  <g data-step="6">
                     <line x1="352" y1="98" x2="302" y2="122" stroke="var(--c-err)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#m05-arw-b)"></line>
                     <text x="300" y="158" class="t-xs bad">ReLU′(−0.5) = 0 → 梯度到这就断</text>
                     <text x="112" y="168" class="t-xs bad">∂L/∂w₁₂ = ∂L/∂w₂₂ = 0：这一轮不更新</text>
                   </g>
           
                   <text x="10" y="222" class="t-sm muted">沿路只出现两种运算：乘以下游传回来的数、乘上自己这一步的局部导数。没有任何一处需要「看懂整张图」。</text>
-                  <text x="10" y="240" class="t-xs faint">数值取自下方手算例子（损失取 L = ½(y − t)²，暂无偏置）。第二个神经元演示的就是机制段第 ④ 步说的「负半轴死亡」。</text>
+                  <text x="10" y="240" class="t-xs faint">数值取自下方手算例子（损失取 L = ½(y − t)²，暂无偏置）。第二个神经元演示的就是机制段第 ⑥ 步说的「负半轴死亡」。</text>
                 </svg>
               </div>
               <figcaption>怎么看：从左往右读前向：x → 两个神经元 → y → L。再看橙色虚线，方向完全反过来：L 把 −0.76 交给 y，y 把它乘上自己的局部导数交给下游两路。到第二个神经元时局部导数是 0，梯度整条支路归零——责任分摊在这里演成了「查不到这个工位」。</figcaption>
             </div>
           
-            <p>下面把上图的反向过程逐行写成数字。我们从一个具体网络出发：输入 <code>x₁ = 1.0</code>、<code>x₂ = 0.5</code>；隐藏层权重 <code>w₁₁ = 0.5, w₂₁ = −0.4</code>（第一个神经元）与 <code>w₁₂ = −0.6, w₂₂ = 0.2</code>（第二个）；输出层权重 <code>v₁ = 0.8, v₂ = 0.7</code>；激活用 ReLU；目标 <code>t = 1</code>；损失 <code>L = ½(y − t)²</code>。</p>
+            <p>下面把上图的反向过程逐行写成数字。读表规则只有一条：<strong>每行的结果 = 上游传来的梯度 × 本行的局部导数</strong>。橙色梯度从 L 一路往左传；每传到一格，这一格的结果就同时发给连在它下面的那些权重——所以权重行的「上游」就是它所在那一格的梯度。<code>a₁</code> 与 <code>z₁</code> 两行的结果都是 −0.608，不是巧合：这两个量之间只隔一个 <code>φ′(z₁) = ReLU′(0.3) = 1</code>，闸门斜率不是 1 时它们就分开（下方折叠给了 Sigmoid 那一档）。</p>
+            <p>我们从一个具体网络出发：输入 <code>x₁ = 1.0</code>、<code>x₂ = 0.5</code>；隐藏层权重 <code>w₁₁ = 0.5, w₂₁ = −0.4</code>（第一个神经元）与 <code>w₁₂ = −0.6, w₂₂ = 0.2</code>（第二个）；输出层权重 <code>v₁ = 0.8, v₂ = 0.7</code>；激活用 ReLU；目标 <code>t = 1</code>；损失 <code>L = ½(y − t)²</code>。</p>
           
             <table class="tbl tbl--scroll">
               <caption class="sr-only">手算反向传播：每个环节的局部导数、上游梯度与最终梯度</caption>
@@ -1647,10 +1653,13 @@
                 <tr><td><code>L</code></td><td>—</td><td>起点</td><td><code>1</code></td><td>损失对自己当然完全负责</td></tr>
                 <tr><td><code>y = 0.24</code></td><td><code>∂L/∂y = y − t = −0.76</code></td><td><code>1</code></td><td><code>−0.76</code></td><td>差值本身，一步乘法都不用</td></tr>
                 <tr><td><code>v₁ = 0.8</code></td><td><code>∂y/∂v₁ = a₁ = 0.3</code></td><td><code>−0.76</code></td><td><code>−0.228</code></td><td>乘上自己领用的那个输入</td></tr>
-                <tr><td><code>a₁ = 0.3</code></td><td><code>∂a₁/∂z₁ = ReLU′(0.3) = 1</code></td><td><code>−0.76</code></td><td><code>−0.608</code></td><td>闸门开着（斜率 1），原样传过去</td></tr>
+                <tr><td><code>a₁ = 0.3</code></td><td><code>∂y/∂a₁ = v₁ = 0.8</code></td><td><code>−0.76</code></td><td><code>∂L/∂a₁ = −0.608</code></td><td>乘上它领用的那个输出权重</td></tr>
+                <tr><td><code>z₁ = 0.3</code></td><td><code>∂a₁/∂z₁ = ReLU′(0.3) = 1</code></td><td><code>−0.608</code></td><td><code>∂L/∂z₁ = −0.608</code></td><td>闸门开着（斜率 1），原样传过去</td></tr>
                 <tr><td><code>w₁₁ = 0.5</code></td><td><code>∂z₁/∂w₁₁ = x₁ = 1.0</code></td><td><code>−0.608</code></td><td><code>−0.608</code></td><td>又乘一次领用的输入</td></tr>
                 <tr><td><code>w₂₁ = −0.4</code></td><td><code>∂z₁/∂w₂₁ = x₂ = 0.5</code></td><td><code>−0.608</code></td><td><code>−0.304</code></td><td>同一个上游，不同输入 → 不同责任</td></tr>
-                <tr><td><code>z₂ = −0.5</code></td><td><code>∂a₂/∂z₂ = ReLU′(−0.5) = 0</code></td><td><code>−0.532</code></td><td><code>0</code></td><td>闸门关死：上游再大也乘没了</td></tr>
+                <tr><td><code>v₂ = 0.7</code></td><td><code>∂y/∂v₂ = a₂ = 0</code></td><td><code>−0.76</code></td><td><code>0</code></td><td>出边同样冻住：它的局部导数就是自己的输出 0</td></tr>
+                <tr><td><code>a₂ = 0</code></td><td><code>∂y/∂a₂ = v₂ = 0.7</code></td><td><code>−0.76</code></td><td><code>∂L/∂a₂ = −0.532</code></td><td>第二个神经元也从 y 收到一份</td></tr>
+                <tr><td><code>z₂ = −0.5</code></td><td><code>∂a₂/∂z₂ = ReLU′(−0.5) = 0</code></td><td><code>−0.532</code></td><td><code>∂L/∂z₂ = 0</code></td><td>闸门关死：上游再大也乘没了</td></tr>
                 <tr><td><code>w₁₂, w₂₂</code></td><td><code>x₁, x₂</code></td><td><code>0</code></td><td><code>0</code></td><td>这一轮这两个权重一动不动</td></tr>
                 <tr><td>更新 <code>w₁₁</code></td><td><code>η = 0.5</code></td><td><code>−0.608</code></td><td><code>w₁₁ ← 0.804</code></td><td>重新前向算一遍：L 从 0.289 降到 0.134</td></tr>
               </tbody>
@@ -1668,7 +1677,7 @@
               <div class="math-detail__body prose">
                 <p><strong>饱和为什么是连乘级别的伤害。</strong>Sigmoid 的局部导数是 <code>σ(z)·(1 − σ(z))</code>，它的最大值就是 z = 0 时的 0.25，永远不到 1。把上表里那个开着闸门的位置换成 Sigmoid，<code>z₁ = 0.3</code> 处 <code>σ′ ≈ 0.244</code>，于是 <code>∂L/∂w₁₁</code> 从 −0.608 缩到约 −0.149。20 层连乘，即使每层都给最好的 0.25，乘到第 1 层就是 0.25²⁰ ≈ 10⁻¹²：浅层参数收到的梯度是 0，它就再也不动。Tanh 同理（它最陡也只有 1，且饱和段更宽）。</p>
                 <p><strong>为什么 ReLU 通常能扛住深度。</strong>正半轴斜率恒为 1，梯度不被压缩，只被 0/1 门控。代价就是那条死亡支路：只要某个神经元的加权输入对所有训练样本都落在负半轴，它所有入边的梯度恒为 0，这个神经元就此退出。</p>
-                <p><strong>多路相加。</strong>如果同一个 <code>a₁</code> 同时喂给下游三个神经元，那么 <code>∂L/∂a₁ = ∂L/∂v₁·a₁ + ∂L/∂v₂·a₁ + ∂L/∂v₃·a₁</code>——三条路径各自的乘积之和。框架把它实现成「每个节点维护一个梯度累加器，反向时 += 而不是 =」。这也是为什么同一个 batch 里多条样本的梯度要取平均：本质还是相加。</p>
+                <p><strong>多路相加。</strong>如果同一个 <code>a₁</code> 同时喂给下游三个神经元，那么 <code>∂L/∂a₁ = ∂L/∂z₂·v₂ + ∂L/∂z₃·v₃ + ∂L/∂z₄·v₄</code>——每条路径都是「那个下游节点的梯度 × 这条边的局部导数」，最后把到达同一格的数加起来。上面表格里 <code>a₁</code> 那一行只有 <code>v₁</code> 一项，正因为这个例子里它只喂给一个神经元。框架把它实现成「每个节点维护一个梯度累加器，反向时 += 而不是 =」。这也是为什么同一个 batch 里多条样本的梯度要取平均：本质还是相加。</p>
                 <p><strong>为什么它便宜。</strong>前向已经把每个中间值算出来并存着了，反向只是把它们取出来做乘法。整个反向的乘加次数约为前向的两倍——这是结构上的粗略比例，不是某个模型的实测数字。<span class="badge badge--simplify">已简化</span> 真实实现还要考虑显存复用、检查点重算与并行切分。</p>
               </div>
             </details>
@@ -1684,8 +1693,8 @@
                       <div class="demo__controls"></div>
                     </div>
           <h4>手搭一个 3-1-1 的小网络，看责任怎么摊</h4>
-            <p>下面的计算图是固定的，权重由你亲手给。先点「前向计算」把值一路算到损失，再点「反向传播」，看梯度沿橙色虚线一个节点一个节点倒着点亮：每点亮一次，就是某一次乘法。颜色越深，代表那个节点本轮收到的梯度越大。</p>
-            <p class="demo__note">这个网络的训练目标是一条阶跃：输入 x₃ 为正就该输出 +1，为负就该输出 −1。它是教学用的合成任务，不是任何真实数据集。</p>
+            <p>下面的计算图是固定的，权重由你亲手给。先点「前向计算」把值一路算到损失，再点「反向传播」，看梯度沿橙色虚线一个节点一个节点倒着点亮：每点亮一次，就是链式法则里的一步——<strong>用上这个节点刚刚收到的那个数，再乘一次本节点的局部导数</strong>（只有头两步例外：第 7 帧是 ∂L/∂L = 1 这个起点，第 8 帧只做一次减法 y − t，还没开始乘）。颜色越深，代表那个节点本轮收到的梯度越大。</p>
+            <p class="demo__note">这个演示是一个<strong>单样本</strong>合成任务：期望输出恒为 t = +1，损失 L = ½(y − t)²；输入里 x₂ = 0.60、x₃ = −1.10 写死，可动的只有 x₁ 与三个权重 w₁ w₂ w₃。它不是任何真实数据集，也没有「分类」含义——想验证的只有一件事：梯度能不能一格一格算出来。演示里没有让 x₃ 变号的开关，所以别去找「x₃ 为正 / 为负」两档目标。</p>
         </article>
         <article class="seg has-content" id="m05--misconception" data-seg="misconception">
           <h3>常见误区</h3>
@@ -1721,8 +1730,8 @@
               <label class="quiz__opt"><input type="radio" name="q-m05"><span>层数越多越灵活，只是梯度更容易消失，所以要调小学习率</span></label>
               <label class="quiz__opt"><input type="radio" name="q-m05"><span>会算不动：层数一多，前向传播的数值就发散</span></label>
               <div class="quiz__fb">
-                <p data-for="no"><strong>回到机制段第 ③ 步再看一行：</strong><code>y = W₂₀(W₁₉(…(W₁x)))</code> 里没有任何东西挡住连乘，20 个权重矩阵可以先乘成一个 <code>W = W₂₀…W₁</code>，前向、反向都退化成这一层。所以问题不是「梯度太小」也不是「算不动」，而是这个网络<strong>压根没变得更能干</strong>——它仍然只能画直线和平面。梯度消失要有「饱和的激活函数」才成立（第 ④ 步），没有激活函数时连 φ′ 这个乘数都不存在。</p>
-                <p data-for="ok"><strong>对了，这正是第 ②③ 步的结论。</strong>非线性是唯一能让「深度」买到表达力的东西：多个 φ 把空间切成一段段折线，每段的高度由一组权重独立决定，合起来才能逼近复杂函数。带着这个结论去动手演示：把激活函数切成「无」，看那条输出曲线怎样塌成一条直线。然后去 M06，看同样的梯度问题在序列上会变成什么。</p>
+                <p data-for="no"><strong>回到机制段第 ③ 步再看一行：</strong><code>y = W₂₀(W₁₉(…(W₁x)))</code> 里没有任何东西挡住连乘，20 个权重矩阵可以先乘成一个 <code>W = W₂₀…W₁</code>，前向、反向都退化成这一层。所以问题不是「梯度太小」也不是「算不动」，而是这个网络<strong>压根没变得更能干</strong>——它仍然只能画直线和平面。链上的乘数有两类：激活的 <code>φ′</code> 与权重矩阵本身——删掉激活只是抽掉了 <code>φ′</code> 这一类（连它都不存在了），另一类照样连乘。真正决定「加深会不会把信号乘没」的是 M06 那把尺子：路径长度 × 每步乘数。</p>
+                <p data-for="ok"><strong>对了，这正是第 ③④⑤ 步的结论。</strong>非线性是唯一能让「深度」买到表达力的东西：多个 φ 把空间切成一段段折线，每段的高度由一组权重独立决定，合起来才能逼近复杂函数。带着这个结论去动手演示：把激活函数切成「无」，看那条输出曲线怎样塌成一条直线。然后去 M06，看同样的梯度问题在序列上会变成什么。</p>
               </div>
               <p class="quiz__result" aria-live="polite"></p>
             </div>
@@ -1771,7 +1780,7 @@
           <h3>直觉与类比</h3>
           <p>我们先把两种结构各换成一个能握在手里的东西。</p>
             <p><strong>RNN 像一个人边读边在一张小纸条上做笔记。</strong>读到第 1 个词，写几行；读第 2 个词时，他手里只有「刚写的那张纸条」和「眼前这一个词」，于是把旧笔记擦掉重写。读完 100 个词，他交出的仍然是<strong>一张</strong>纸条。这张纸条叫<span class="term" data-def="RNN 逐步携带下去的中间向量，宽度固定，是下一步计算的输入之一。" data-en="hidden state">隐藏状态</span>。</p>
-            <p><strong>CNN 像拿一个小放大镜在图片上滑动。</strong>镜框只罩住 3×3 个格子，但同一副镜片被推到所有位置共用；看完一层换一层更深的镜片，视野就一圈圈扩大——扩大后的视野叫<span class="term" data-def="某个输出位置在原始输入上能看到多远的范围。" data-en="receptive field">感受野</span>。</p>
+            <p><strong>CNN 像拿一个小放大镜在图片上滑动。</strong>镜框只罩住 3×3 个格子，但同一副镜片被推到所有位置共用；看完一层换一层更深的镜片，一个输出位置能「看到」的输入范围就一圈圈扩大——这个范围叫<span class="term" data-def="某个输出位置在原始输入上能看到多远的范围。" data-en="receptive field">感受野</span>。</p>
           
             <div class="callout callout--warn">
               <p><strong>这两个类比对下面几件事不成立，务必记住：</strong></p>
@@ -1787,11 +1796,11 @@
           <h4>两种结构，各卡在不同的地方</h4>
             <ol class="steps">
               <li data-step="1"><strong>CNN 只有两条规则：只看局部，且同一套<span class="term" data-def="乘在输入上的固定系数，训练后不再改变。" data-en="weight">权重</span>到处复用。</strong>一个 3×3 的<span class="term" data-def="卷积里那个被复用的小权重矩阵。" data-en="convolution kernel">卷积核</span>只有 9 个权重，却要在 28×28 图像的每个位置上都算一遍。「权重在位置间共享」写进梯度之后，猫在左上角和在右下角给出同一个判断，这叫<span class="term" data-def="输入平移，输出跟着平移，判断内容不变。" data-en="translation equivariance">平移等变</span>。</li>
-              <li data-step="2"><strong>视野靠堆层数扩大，不靠把镜片做大。</strong>两层 3×3 叠起来，第二层实际看到的是 5×5；L 层就是 2L+1。想让第 1 列的信息影响第 101 列的输出，得堆约 50 层——距离还是换成了层数。</li>
+              <li data-step="2"><strong>感受野靠堆层数扩大，不靠把镜片做大。</strong>两层 3×3 叠起来，第二层实际看到的是 5×5；L 层就是 2L+1。想让第 1 列的信息影响第 101 列的输出，得堆约 50 层——距离还是换成了层数。</li>
               <li data-step="3"><strong>RNN 是把同一组权重在时间上反复施加。</strong>把每一步摊开画出来，它就是一个深度等于序列长度、且每层权重完全相同的深网络。所以「长句子」在 RNN 里等价于「极深的网络」。</li>
               <li data-step="4"><strong>瓶颈一：串行。</strong>第 t 步的输入里有第 t−1 步的输出，所以它必须等。一整句话在 GPU 上只能一个词一个词地排队算，成千上万个并行单元大部分时间在干等；批处理只能救回一部分，长度本身救不回来。</li>
               <li data-step="5"><strong>瓶颈二：路径长度。</strong>要让第 100 个位置的误差回头修改「当初怎么处理第 1 个词」，梯度得沿链条回传 99 段，每段乘一次同一个矩阵。乘数大于 1 就爆炸，小于 1 就消失，两者都让学不动。</li>
-              <li data-step="6"><strong>LSTM / GRU 把关键路径上的连乘改成加法。</strong>它们另开一条「常开」的<span class="term" data-def="LSTM 里那条只被加减、不被反复重写的内部状态。" data-en="cell state">细胞状态</span>，再用<span class="term" data-def="由数据决定、取值 0 到 1 之间的逐元素开关。" data-en="gate">门</span>控制写多少、留多少。长距离信号因此能活着传回来，但路径仍然要一站站走，串行也一点没省。</li>
+              <li data-step="6"><strong>LSTM / GRU 把关键路径上的「权重矩阵连乘」换成「逐元素门的连乘」。</strong>它们另开一条「常开」的<span class="term" data-def="LSTM 里那条只被逐元素门缩放、再累加新内容的内部状态：它不经过整层权重矩阵的重投影，也不被激活函数压回固定区间。" data-en="cell state">细胞状态</span>，再用<span class="term" data-def="由数据决定、取值 0 到 1 之间的逐元素开关。" data-en="gate">门</span>控制写多少、留多少。路径<strong>仍然是连乘</strong>，变的只是乘数：从任意大小的矩阵换成可以由数据主动推到接近 1 的数，于是衰减的指数被压住。长距离信号因此能活着传回来，但路径仍然要一站站走，串行也一点没省。</li>
               <li data-step="7"><strong>要同时解决「路径长」和「串行」，就需要任意两个位置直接相连。</strong>一条边连通一切，路径长度恒为 1，所有位置一次算完。这正是下一模块<span class="term" data-def="按相关性为上下文各部分动态分配加权。" data-en="attention">注意力</span>出现的动机——它不是为了更「像人」，是为了把 99 段路压成 1 段。</li>
             </ol>
           
@@ -1871,16 +1880,17 @@
               <span class="op">≈</span>
               <span class="bigg">(</span>W<span class="sub">h</span><span class="sup">⊤</span><span class="bigg">)</span><span class="sup">99</span>
               <span class="op">∼</span> λ<span class="sup">99</span>
-              <span class="badge badge--simplify">已简化：把逐位置的 tanh′ 与真实雅可比吸收进一个标量 λ</span>
+              <span class="badge badge--simplify">已简化：把逐位置的 tanh′ 与真实雅可比吸收进一个标量 λ，并假设 W_h 近似正规</span>
               <span class="reads">回传的误差要先乘 99 次同一个矩阵的转置；连乘 99 次，这就是全部机制。</span>
             </div>
-            <p>把矩阵连乘的尺度用一个数 λ（读作 lambda，指 <code>W<sub>h</sub></code> 最大的那个<span class="term" data-def="矩阵作用时唯一不被改变方向的那些向量所对应的缩放倍数。" data-en="eigenvalue">特征值</span>）来代表，就能算出后果：λ = 0.9 时 <code>0.9⁵⁰ ≈ 0.005</code>，λ = 0.5 时 <code>0.5¹⁰⁰ ≈ 7.9×10⁻³¹</code>；反过来 λ = 1.1 时 <code>1.1⁵⁰ ≈ 117</code>，一次更新就能把权重踢飞。前者叫<span class="term" data-def="连乘使梯度指数级趋近 0，浅层与远距离参数几乎不更新。" data-en="vanishing gradient">梯度消失</span>，后者叫<span class="term" data-def="连乘使梯度指数级增大，参数被一步推出可行范围。" data-en="exploding gradient">梯度爆炸</span>。爆炸有土办法按住（把超过阈值的梯度整体缩回去，见 Pascanu 等人的 ICML 2013 论文 [2026-10]），消失没有——0 乘以任何阈值还是 0。</p>
+            <p>矩阵连乘的尺度用一个数 λ 来代表，就能算出后果：λ = 0.9 时 <code>0.9⁵⁰ ≈ 0.005</code>，λ = 0.5 时 <code>0.5¹⁰⁰ ≈ 7.9×10⁻³¹</code>；反过来 λ = 1.1 时 <code>1.1⁵⁰ ≈ 117</code>，一次更新就能把权重踢飞。前者叫<span class="term" data-def="连乘使梯度指数级趋近 0，浅层与远距离参数几乎不更新。" data-en="vanishing gradient">梯度消失</span>，后者叫<span class="term" data-def="连乘使梯度指数级增大，参数被一步推出可行范围。" data-en="exploding gradient">梯度爆炸</span>。爆炸有土办法按住（把超过阈值的梯度整体缩回去，见 Pascanu 等人的 ICML 2013 论文 [2026-10]），消失没有——0 乘以任何阈值还是 0。</p>
+            <p><strong>λ 到底是什么——这里最容易讲错。</strong>教材常把它写成「<code>W_h</code> 最大的那个<span class="term" data-def="矩阵作用时方向仍落在自己那条直线上的向量（可能被翻向）所对应的缩放倍数；重根时是一整组方向，不唯一。" data-en="eigenvalue">特征值</span>」，这个说法会在两个地方翻车。第一，<code>W_h</code> 一般<strong>不对称</strong>，特征值可以是负数甚至复数：按代数值挑「最大的那个」，λ = −2（模 2）会被读成比 1.5 更小，方向正好弄反。第二，非对称矩阵的特征向量基底可能很斜，即使每个特征值都小于 1，连乘也可以<strong>先放大一段再缩小</strong>（瞬态增长）。所以准确的口径分两种情形：矩阵正规（对称是其特例）时，连乘的量级由<strong>谱半径</strong> <code>ρ(W_h) = max|λᵢ|</code>（特征值<strong>模</strong>的最大值）决定；一般的非对称矩阵要换成<strong>最大奇异值</strong> <code>σ_max(W_h)</code> 作单步放大的上界，它才是「一步最多能被撑大多少」的那个量。本站只在一条主方向上看幅度，因此仍把这两个量统称 λ，并在上面那格标了「已简化」。读 <code>λ⁹⁹</code> 时请记住：<strong>它是「取模之后的乘数」，不是「最大的特征值」</strong>；真实的每步乘数还要再乘上 tanh′ ≤ 1。</p>
           
             <div class="figure" data-fig="m06-receptive-field-1">
               <div class="figure__inner">
                 <svg viewBox="0 0 640 186" class="dgm" role="img" aria-labelledby="f6rf-t">
                   <title id="f6rf-t">同一张输入上，1 层 3×3 卷积输出位置看到 3×3，2 层看到 5×5，3 层看到 7×7：感受野靠堆叠扩大</title>
-                  <desc>三个相同的 7×7 方格网并排，代表同一张输入。每个网中央分别有 3×3、5×5、7×7 的高亮区域，正中一格用深色标出。下方标注层数与视野尺寸。</desc>
+                  <desc>三个相同的 7×7 方格网并排，代表同一张输入。每个网中央分别有 3×3、5×5、7×7 的高亮区域，正中一格用深色标出。下方标注层数与感受野尺寸。</desc>
           
                   <!-- 面板 A：1 层 -->
                   <g data-step="1">
@@ -1889,7 +1899,7 @@
                     <rect x="48" y="56" width="36" height="36" fill="var(--c-heat-2)" opacity=".55"></rect>
                     <rect x="60" y="68" width="12" height="12" fill="var(--c-heat-3)"></rect>
                     <text x="66" y="132" class="t-sm" text-anchor="middle">1 层</text>
-                    <text x="66" y="146" class="t-xs muted" text-anchor="middle">视野 3×3</text>
+                    <text x="66" y="146" class="t-xs muted" text-anchor="middle">感受野 3×3</text>
                   </g>
           
                   <!-- 面板 B：2 层 -->
@@ -1899,7 +1909,7 @@
                     <rect x="244" y="44" width="60" height="60" fill="var(--c-heat-2)" opacity=".4"></rect>
                     <rect x="268" y="68" width="12" height="12" fill="var(--c-heat-3)"></rect>
                     <text x="274" y="132" class="t-sm" text-anchor="middle">2 层</text>
-                    <text x="274" y="146" class="t-xs muted" text-anchor="middle">视野 5×5</text>
+                    <text x="274" y="146" class="t-xs muted" text-anchor="middle">感受野 5×5</text>
                   </g>
           
                   <!-- 面板 C：3 层 -->
@@ -1909,7 +1919,7 @@
                     <rect x="440" y="32" width="84" height="84" fill="var(--c-heat-2)" opacity=".3"></rect>
                     <rect x="476" y="68" width="12" height="12" fill="var(--c-heat-3)"></rect>
                     <text x="482" y="132" class="t-sm" text-anchor="middle">3 层</text>
-                    <text x="482" y="146" class="t-xs muted" text-anchor="middle">视野 7×7</text>
+                    <text x="482" y="146" class="t-xs muted" text-anchor="middle">感受野 7×7</text>
                   </g>
           
                   <g>
@@ -1923,7 +1933,7 @@
                     <text x="350" y="55" class="t-xs faint">三张网是同一张输入（7×7）</text>
                     <text x="334" y="75" class="t-xs faint">镜片只有一副：9 个权重到处复用</text>
                   </g>
-                  <text x="10" y="168" class="t-xs faint">已简化：3×3 核、步长 1、无填充，故第 L 层视野边长 = 2L+1；换核大小数字会变，规律不变。</text>
+                  <text x="10" y="168" class="t-xs faint">已简化：3×3 核、步长 1、无填充，故第 L 层感受野边长 = 2L+1；换核大小数字会变，规律不变。</text>
                 </svg>
               </div>
               <figcaption>怎么看：三张网是<strong>同一张输入</strong>，只有中央高亮范围不同——那是该层输出位置能追溯到的输入区域，即感受野。高亮边长依次是 3、5、7，即第 L 层看到 2L+1。镜片（权重）自始至终只有一副，被反复复用，所以参数不随位置增长。</figcaption>
@@ -1939,7 +1949,7 @@
             <table class="tbl tbl--scroll">
               <thead><tr><th>结构</th><th>一次计算里做什么</th><th>位置 1 ↔ n 的路径长度</th><th>并行性</th><th>为反向传播要留的激活</th></tr></thead>
               <tbody>
-                <tr><td>CNN</td><td>同一套局部权重同时作用在所有位置</td><td>约 L 层（3×3 时 ≈ ½n）</td><td>位置间完全并行</td><td>每层一张特征图，与序列长度无关</td></tr>
+                <tr><td>CNN</td><td>同一套局部权重同时作用在所有位置</td><td>约 L 层（3×3 时 ≈ ½n）</td><td>位置间完全并行</td><td>每层一张特征图，共 ≈ L × n × C：<strong>也随位置数 n 线性增长</strong>，只是同一层内 n 个位置共用一套权重</td></tr>
                 <tr><td>RNN / LSTM</td><td>同一套权重在时间上重复 n 次</td><td><strong>n − 1</strong></td><td>完全串行</td><td>n × d，每步都得留着</td></tr>
                 <tr><td>注意力（M07）</td><td>所有位置两两建立关系</td><td><strong>1</strong></td><td>一次矩阵乘，全部并行</td><td>n × n 的分数表（这是它的代价）</td></tr>
               </tbody>
@@ -1949,7 +1959,7 @@
               <summary>展开：显存和墙钟时间为什么是两笔不同的账</summary>
               <div class="math-detail__body prose">
                 <p><strong>串行是时间账。</strong>反向传播要沿同一条链反着走，所以一个长度为 n 的句子至少需要 n 次前后依赖的矩阵乘。GPU 的并行单元在算第 t 步时无法提前算第 t+1 步——它连输入是什么都还不知道。把 batch 加大能填满单元，但墙钟时间仍由 n 决定，这就是「大语料训练慢」的主因。</p>
-                <p><strong>激活是空间账。</strong>RNN 每一步都要把 <code>h<sub>t</sub></code> 留着，因为求 <code>∂loss/∂W<sub>h</sub></code> 时每一项都要用到它，显存随 n 线性增长。注意力把每对位置的分数都存下来，显存随 n 平方增长。<strong>所以「注意力解决了序列建模」这句话要分开看：它买掉的是串行，买回来的是平方显存。</strong>后续所有加速工作（键值缓存、分块、滑窗）都是在还这笔账，见 M10。</p>
+                <p><strong>激活是空间账。</strong>RNN 每一步都要把 <code>h<sub>t</sub></code> 留着，因为求 <code>∂loss/∂W<sub>h</sub></code> 时每一项都要用到它，显存随 n 线性增长（工程上普遍做<strong>截断时间反向传播（truncated BPTT）</strong>：只回传固定窗口，于是这笔账按窗口大小算，代价是窗口之外的长距离改正意见被主动放弃）。注意力把每对位置的分数都存下来，显存随 n 平方增长。<strong>所以「注意力解决了序列建模」这句话要分开看：它买掉的是串行，买回来的是平方显存。</strong>后续工作分两类：分块、滑窗与线性近似是在<strong>压</strong>这张 n × n 的表；键值缓存（M10 第 ⑥ 步）省的是解码时每步重算整表的重复计算，代价是另开一笔随 n 线性增长的显存——它是换了一笔账，不是还了这笔账。</p>
                 <p><strong>为什么加大隐藏状态救不了学习信号。</strong>d 变大只是让 W<sub>h</sub> 变成更大的方阵，连乘次数由 n 决定，一次没少；特征值谱只是更宽了，仍同时存在「远大于 1」和「远小于 1」的方向。这就是直觉段那句「纸条容量不是关键」的严格版本。</p>
               </div>
             </details>
@@ -1961,7 +1971,7 @@
                       <div class="demo__controls"></div>
                     </div>
           <h4>把连乘亲手乘一遍</h4>
-            <p>下面这个演示只做一件事：给定每步的缩放系数 λ 和距离 n，把 |梯度| = λⁿ 画出来，并把「注意力捷径：路径长度恒为 1」叠在旁边当对照。先别切对数轴——你会在<strong>线性</strong>轴上亲眼看见 0.005 和 0 长得一模一样。</p>
+            <p>下面这个演示只做一件事：给定每步的缩放系数 λ 和回传段数 n，把 |梯度| = λⁿ 画出来（这里的 n 直接就是<strong>连乘次数</strong>：按词来数，100 个词之间是 99 段，与机制段第 ⑤ 步同一个口径），并把「注意力捷径：路径长度恒为 1」叠在旁边当对照。先别切对数轴——你会在<strong>线性</strong>轴上亲眼看见 0.005 和 0 长得一模一样。</p>
         </article>
         <article class="seg has-content" id="m06--misconception" data-seg="misconception">
           <h3>常见误区</h3>
@@ -2026,7 +2036,7 @@
           <p class="module__no">M07 · Transformer</p>
           <h2 id="m07-title">注意力与 Transformer</h2>
           <p class="module__tag">AI 学会「按需读取上下文」</p>
-          <div class="module__badges"><span class="badge badge--lvl">难度 4·深入</span><span class="badge badge--time">~35 分钟</span><span class="badge badge--demo">旗舰演示</span><span class="badge badge--math">公式密集</span></div>
+          <div class="module__badges"><span class="badge badge--lvl">难度 4·深入</span><span class="badge badge--time">~45 分钟</span><span class="badge badge--demo">旗舰演示</span><span class="badge badge--math">公式密集</span></div>
         </header>
         <div class="sectionnav" role="navigation" aria-label="M07 段落">
           <a href="#m07--hook">开场钩子</a>
@@ -2038,21 +2048,26 @@
         </div>
         <article class="seg has-content" id="m07--hook" data-seg="hook">
           <h3>开场钩子</h3>
-          <p class="hook">1950 年图灵断言：2000 年前不会有能骗过人的机器。今天它骗过了我们。可拆开内部，这台机器只做了一件简单到令人失望的事——用一堆数字加权平均另一堆数字。为什么这点算术，成了八年里 AI 最大的进展？</p>
-            <p class="demo__note">读这一段前，建议先看 M05（网络怎么学）与 M06（旧方法为什么记不住长句）。</p>
+          <p class="hook">1950 年图灵设过一个门槛：到 2000 年，机器该让询问者聊五分钟后、认出它是机器的把握不到七成。七十六年后回看，门槛松得惊人。可今天的系统拆开只做一件事：用一堆数字加权平均另一堆数字。这点算术凭什么成了这几年 AI 最大的进展？</p>
+            <p class="demo__note">读这一段前，建议先看 M03（向量与点积）、M05（网络怎么学）与 M06（旧方法为什么记不住长句）。</p>
         </article>
         <article class="seg has-content" id="m07--intuition" data-seg="intuition">
           <h3>直觉与类比</h3>
-          <p>把每个词元想成一张<strong>便签</strong>。模型读到第 7 个字时，手里握着前 7 张便签。</p>
-            <p>注意力做的一件事，是给这 7 张便签<strong>分配注意力预算</strong>：这个字该多参考第 3 张、少参考第 5 张，各分多少。分配完，按这个比例把便签上的内容加权混合成一份新摘要，作为当前位置的新表示。</p>
-            <p>「该给谁多分一点」不是人规定的，是模型从数据里学出来的。同一个句子，处理「它」这个字时预算会流向它指代的名词；处理动词时预算会流向它的主语。</p>
+          <p>把每个词元想成一张<strong>便签</strong>。模型读到第 7 个位置时，手里握着前 7 张便签。</p>
+            <p>注意力做的一件事，是给这 7 张便签<strong>分配注意力预算</strong>：这个位置该多参考第 3 张、少参考第 5 张，各分多少。分配完，按这个比例把便签上的内容加权混合成一份新摘要，作为当前位置的新表示。</p>
+            <p>「该给谁多分一点」不是人规定的，是模型从数据里学出来的。同一个句子，处理「它」这个位置时预算常流向它指代的名词；处理谓语时预算常流向主语——这是分析出来的<strong>偏好</strong>，不是写在代码里的规则。</p>
           
             <div class="callout callout--warn">
-              <p><strong>这个类比对下面两件事不成立，务必记住：</strong></p>
+              <p><strong>这个类比对下面三件事不成立，务必记住：</strong></p>
               <ul>
                 <li><strong>便签不是被人读的。</strong>便签上的内容是 <span class="term" data-def="把离散对象（词元、图像块）映射成连续向量的结果；向量的远近表示语义相似度。" data-en="embedding">嵌入</span>，是 512 个左右的数字，没有任何一个位置对应「一个词」。</li>
-                <li><strong>预算不是一次分配的。</strong>真实模型每一层、每一个<span class="term" data-def="把注意力拆成多组并行计算，各自学一种关系类型（如指代、邻接、主语-谓语）。" data-en="attention head">头</span>都在独立重新分配预算。一个 32 层的模型对同一个字做了上百次不同的「读便签」。</li>
+                <li><strong>预算不是一次分配的。</strong>真实模型每一层、每一个<span class="term" data-def="把注意力拆成多组并行计算，各组独立学自己的加权方式；偏好存在，事先分工不存在。" data-en="attention head">头</span>都在独立重新分配预算。一个 32 层的模型对同一个位置做了上百次不同的「读便签」。</li>
+                <li><strong>没有「找到」这回事。</strong>便签堆里不存在一张被检索命中的便签：打分是两次投影之后的一次内积，连续、可部分、会随上下文整体漂移。把「检索」当成模型内部的事实，这个类比就失效了（机制段步骤条之后的那条「对下面几件事不成立」给了具体边界）。</li>
               </ul>
+            </div>
+          
+            <div class="callout callout--note">
+              <p>钩子里那个门槛的<strong>方向</strong>值得多说一句：图灵 1950 年写的是「一台存储约 10⁹ 比特（按十进制 125 MB）的机器，能让平均询问者在五分钟询问后<strong>做对判断的概率不超过 70%</strong>」，也就是<strong>被骗率至少三成</strong>就算过关 <span class="badge badge--debate">存在争议</span>——这是一道宽松的<strong>下限式</strong>门槛，既不是「必须完全骗不过」，也不是「误判率要压到 30% 以下」（那反而是更严格的要求）。至于今天的大模型是否算「通过了图灵测试」，两派并列：一派认为在受控的短交谈实验里，它被判为人类一方的比例已远超图灵的预期；另一派认为测试措辞含糊，且常被引用的 2014 年那次「通过」（Eugene Goostman 程序伪装成 13 岁乌克兰少年，五分钟交谈后说服了 30 位评委中的 33%）刚过图灵那条三成线，且靠的是「外国人英语不好」这种人格设定来解释怪异回答，不足以支撑结论 [2026-10]。本站不裁决，只强调一点：无论判「通过」与否，模型内部做的仍然是下面这套加权平均。原文见 Turing《Computing Machinery and Intelligence》（Mind 59, 1950）。</p>
             </div>
         </article>
         <article class="seg has-content" id="m07--mechanism" data-seg="mechanism">
@@ -2061,14 +2076,25 @@
             <p>普通<span class="term" data-def="神经网络里乘在输入上的固定系数，训练后不再随输入改变。" data-en="weight">权重</span>是训练好就固定的。注意力最反直觉的地方在于：<strong>它每次前向传播都重新算一遍自己该用多少权重</strong>。权重不再是「参数」，而是「由当前输入决定的函数值」。这就是它能按需读取上下文的原因。</p>
           
             <ol class="steps">
-              <li data-step="1"><strong>每个词元生成三个向量。</strong>同一份输入经过三组不同的固定权重，分别投影出<span class="term" data-def="你想找什么：当前位置发出的查询。" data-en="query (Q)">查询 Q</span>、<span class="term" data-def="我能被什么找到：每个位置的可检索标签。" data-en="key (K)">键 K</span>、<span class="term" data-def="被找到之后实际交出的内容。" data-en="value (V)">值 V</span>。Q 与 K 是「匹配用的」，V 是「搬运用的」。</li>
-              <li data-step="2"><strong>两两点积，得到分数矩阵。</strong>第 i 个位置的 Q 和第 j 个位置的 K 做<span class="term" data-def="两个向量对应位置相乘再求和；方向越一致结果越大，因此衡量相似度。" data-en="dot product">点积</span>，得到一个 n×n 的分数表 <code>QKᵀ</code>（n 是词元数）。分数大 = 「i 想找的东西，j 身上有」。</li>
-              <li data-step="3"><strong>除以 √d，再按行做 softmax。</strong>把每行分数除以 <span class="math">√d</span>（d 是 K 向量的维度）后做 softmax，把一行分数变成「加起来等于 1」的权重。<span class="term" data-def="把一组任意实数压成正数且总和为 1 的分布：exp(xᵢ) / Σexp(xⱼ)。" data-en="softmax">softmax</span> 负责「放大的更大、压小的更小」，让模型敢把预算集中到一两个词上。除以 √d 是为了防止分数太大导致 softmax 饱和、梯度消失。</li>
+              <li data-step="1"><strong>每个词元生成三个向量。</strong>同一份输入经过三组不同的固定权重，分别投影出<span class="term" data-def="你想找什么：当前位置发出的查询。" data-en="query (Q)">查询 Q</span>、<span class="term" data-def="每个位置亮出的对名片：别人的查询来和它比方向一致性，是连续打分，不是查表命中。" data-en="key (K)">键 K</span>、<span class="term" data-def="按权重实际交出的内容：真正被搬进输出的那一份。" data-en="value (V)">值 V</span>。这个分工只是说：Q 与 K 只出现在打分里，V 才是被搬进输出的那一份；三者都来自同一份输入，都由训练决定。</li>
+              <li data-step="2"><strong>两两点积，得到分数矩阵。</strong>第 i 个位置的 Q 和第 j 个位置的 K 做<span class="term" data-def="两个向量对应位置相乘再求和；方向越一致结果越大，因此衡量相似度。" data-en="dot product">点积</span>，得到一个 n×n 的分数表 <code>QKᵀ</code>（n 是词元数）。分数大，只说明这两个投影方向对得齐——<strong>不是「命中」，也没有查表</strong>。</li>
+              <li data-step="3"><strong>除以 √d，再按行做 softmax。</strong>把每行分数除以 <span class="math">√d</span>（d 是 K 向量的维度）后做 softmax，把一行分数变成「加起来等于 1」的权重。<span class="term" data-def="把一组任意实数压成正数且总和为 1 的分布：exp(xᵢ) / Σexp(xⱼ)。" data-en="softmax">softmax</span> 负责「放大的更大、压小的更小」，让模型敢把预算集中到一两个位置。除以 √d 是为了防止分数太大把 softmax 推向 one-hot：那时权重对分数几乎不再敏感，Q/K 这条路就学不动了。</li>
               <li data-step="4"><strong>用权重对 V 加权求和。</strong>输出 = 权重 × 各位置的 V 相加。每个词元的新表示，就是它「按相关性读来的」上下文的加权平均。</li>
-              <li data-step="5"><strong>套上因果掩码。</strong>训练目标是预测下一个词，所以位置 i 只允许看 ≤ i 的位置。做法是把 <code>i &lt; j</code> 的分数设成 <code>−∞</code>，softmax 后权重正好是 0。这也解释了为什么注意力必须是单向的。</li>
-              <li data-step="6"><strong>多头：把维度切薄、并行多算几次。</strong>不是算一次 512 维注意力，而是算 8 次 64 维，各自独立学，最后拼接再投影。于是一个头可以专门盯「前一个词」，一个盯「指代对象」，一个盯「句法主语」。</li>
-              <li data-step="7"><strong>残差与位置编码。</strong>注意力本身<strong>完全不知道顺序</strong>——把输入打乱，输出只是跟着打乱，结果一模一样。所以必须显式注入位置信息：早期是加一张「位置向量表」（绝对位置编码），如今主流是<span class="term" data-def="旋转位置编码：按位置把 Q/K 向量旋转一个与位置成正比的角度，使点积只依赖两个位置的差。" data-en="RoPE">RoPE</span>，用旋转角度让点积天然带上「相距多远」。同时每个子层的输出都加回它的输入（残差连接），否则梯度传不回来。</li>
+              <li data-step="5"><strong>套上因果掩码。</strong>训练目标是预测下一个词，所以位置 i 只允许看 ≤ i 的位置。做法是把 <code>i &lt; j</code> 的分数设成 <code>−∞</code>，softmax 后权重正好是 0。要留意：这是<strong>自回归</strong>（只往后写、不许偷看未来）的要求，不是注意力本身的要求——编码器与 M11 的 ViT 用的就是双向版本，每个位置看所有位置。</li>
+              <li data-step="6"><strong>多头：把维度切薄、并行多算几次。</strong>不是算一次 512 维注意力，而是算 8 次 64 维（本站沿用 Vaswani 等 2017 的 base 配置 [2026-10]），各自独立学，最后拼接再投影。于是不同头常常各有偏好：有的贴着上一个词，有的流向指代对象，有的跟着谓语。但「偏好」不等于「分工」，见下面这条。</li>
+              <li data-step="7"><strong>残差与位置编码。</strong>注意力本身读不出顺序。<strong>在不用掩码时</strong>，打乱输入只是把输出的行一起打乱——这叫<span class="term" data-def="打乱输入，输出按同样的方式打乱，而不是保持不变；池化才是保持不变。" data-en="permutation equivariant">排列等变</span>，注意不是「排列不变」。而一旦套上第 ⑤ 步的因果掩码，掩码按<strong>位置索引</strong>（j ≤ i）生效，打乱还会改变每个位置能看见哪些词，输出内容必然跟着变。所以顺序信息必须由位置编码显式提供：早期是加一张「位置向量表」（绝对位置编码，正弦版本的公式与频率设计见本节末尾的公式块），如今主流是<span class="term" data-def="旋转位置编码：按位置把 Q/K 向量旋转一个与位置成正比的角度，使点积只依赖两个位置的差。" data-en="RoPE">RoPE</span>，用旋转角度让点积天然带上「相距多远」。同时每个子层的输出都加回它的输入（<span class="term" data-def="把子层的输入直接加到它的输出上，保住恒等路径与梯度通路。" data-en="residual connection">残差连接</span>）：一是让子层只需学「改动量」，二是给梯度留一条不经过任何权重的高速路。没有它，梯度要穿过整串子层连乘，随深度急剧衰减，深层反而训得更差——不是「传不回来」，而是传回来的已经被压平。</li>
+              <li data-step="8"><strong>层归一化：把每个位置的向量自己拉平。</strong><span class="term" data-def="把同一个词元的各特征分量拉回均值 0、方差 1，再乘学出来的缩放、加学出来的平移。" data-en="LayerNorm">层归一化（LayerNorm）</span>算的是<strong>同一个词元内部</strong>那 512 个分量的均值与方差，沿特征维归一，不看别的词元、也不看整个批次。这正是它与批归一化的区别，也是它能用于变长序列、能逐位置独立生效的原因。归一化放在哪一段上是有分歧的：<span class="badge badge--debate">存在争议</span> 原论文用的是<strong>后接式</strong>（子层输出先与输入相加，再归一化），梯度幅度随深度增长、要靠仔细的参数初始化与学习率预热才训得深；今天多数新模型用<strong>前接式</strong>（先归一化再进子层），梯度更平、更容易加深加大学习率，但若干消融报告称其最终质量略逊于调好的后接式。两派都没赢下全部证据 [2026-10]，本站两种都列出，不作裁决。</li>
+              <li data-step="9"><strong>前馈网络：读完之后的逐位置加工。</strong>注意力只负责「把别的位置的内容搬过来」，搬来之后要有人处理它。这一步对<strong>每个位置独立</strong>做一次两层全连接：先升维到 4d，过一个<span class="term" data-def="给网络加入非线性的逐元素开关。" data-en="activation function">激活函数</span>，再降回 d。它不含任何跨位置运算，所以计算量随 n <strong>线性</strong>增长（O(n·d²)），与注意力的 O(n²·d) 是两笔账。按原论文配置 d=512、d<sub>ff</sub>=2048 推算：注意力四组投影共 4d²≈105 万参数，前馈两层共 2·d·d<sub>ff</sub>≈210 万——<strong>一层里三分之二的关键参数在前馈，不在注意力</strong>。这也是「n 不够大时计算量并不由平方项主导」的原因。把两笔账按单位数摆一摆（每次乘加算一个单位）：注意力那张表的计算量是 2n²d，前馈是 2n·d·d<sub>ff</sub>，两者相除得 n / d<sub>ff</sub>——所以在 n = d<sub>ff</sub> = 2048 处持平，序列比它短时前馈反而更贵（n=512 时注意力表只有前馈的四分之一）。若把注意力那四组投影（4n·d²）也算进注意力这一侧，持平点提前到 n = 2d = 1024。两种口径都说明同一件事：平方项要到几千词元才开始压过前馈。</li>
+              <li data-step="10"><strong>键值缓存：为什么自回归解码可以只算一行。</strong><span class="term" data-def="自回归解码时把算过的键与值留在显存里复用，每步只新增一行查询，历史不再重算。" data-en="KV cache">键值缓存（KV cache）</span>成立的前提正是第 ⑤ 步的因果掩码：生成第 t 个词元时，它只需要「当前 Q 那一行 × 历史所有 K/V」，而历史词元的 K、V 一旦算出就不会再变（它们看不见未来）。于是每步从「重算整张 n×n 表」降到「算一行、追加两列」。代价是这块缓存必须常驻显存，且随上下文<strong>线性</strong>增长——那笔账 M10 第 ⑥ 步会算（每词元 128 KiB，128k 上下文 16 GiB）。它省的是算力，不是内存。</li>
             </ol>
+          
+            <div class="callout callout--warn">
+              <p><strong>「查询 / 键 / 值」这套说法，对下面几件事不成立：</strong></p>
+              <p><strong>一，模型里没有真正的检索。</strong>没有符号匹配，没有命中判定，也没有「j 身上带着 i 要的那个东西」。分数只是 W<sub>Q</sub>、W<sub>K</sub> 投影之后的一次内积，同一对 (i, j) 在不同上下文、不同训练阶段会得到不同分数。</p>
+              <p><strong>二，没有哪个头被指定管哪种关系。</strong>「这个头管指代、那个头管句法主语」几乎都是在模型外面统计出来、再回贴上去的<strong>事后归因</strong>。头之间高度冗余：训练后剪掉许多头，在同一任务的多数评测上几乎不掉分（Michel 等，2019 [2026-10]）——但只留 1–2 个头与一个都不留差别很大，换到别的任务上退化也会显现。</p>
+              <p><strong>三，Q、K 不是「只有匹配、没有内容」。</strong>它们同样是同一份输入投影出来的，含语义信息；只是它们的乘积只进入打分，不直接进入输出。</p>
+              <p>把它当<strong>读代码时的地图</strong>用，别当<strong>模型里的事实</strong>用。</p>
+            </div>
           
             <div class="figure" data-fig="m07-qkv-1">
               <div class="figure__inner">
@@ -2099,7 +2125,7 @@
                   </g>
                   <line class="arrow" x1="218" y1="70" x2="256" y2="70"></line>
           
-                  <text x="260" y="16" class="t-sm faint">③ 分数矩阵（行=Q，列=K）</text>
+                  <text x="260" y="16" class="t-sm faint">③ softmax 后的权重（行和=1）</text>
                   <g data-step="3">
                     <!-- 3x3 网格，下三角为因果掩码允许区。
                          用 .cell 而非 .box：.box 的 fill 是 CSS 声明，优先级高于这里的
@@ -2136,10 +2162,56 @@
                     <text x="404" y="108" class="t-xs muted">局部，3 成回溯到「猫」—— 指代消解的痕迹</text>
                   </g>
                   <text x="10" y="178" class="t-sm muted">整张表随输入变化而重新生成；W_Q / W_K / W_V 才是训练出来的固定参数。</text>
-                  <text x="10" y="196" class="t-xs faint">注意力的计算量与显存都随词元数平方增长（n×n 张表），这是长上下文昂贵的根源。</text>
+                  <text x="10" y="196" class="t-xs faint">分数表随 n² 增长，前馈只随 n 线性；长上下文另有位置外推与 softmax 摊薄两笔代价。</text>
                 </svg>
               </div>
-              <figcaption>怎么看：按行读：每个词元的 Q 与前面所有词元的 K 点积 → 归一化成一行的权重 → 用这行权重去混合所有 V。灰色 ✕ 是被因果掩码屏蔽的位置。左侧步骤条上的编号可点，会高亮图中对应环节。</figcaption>
+              <figcaption>怎么看：按行读：每个词元的 Q 与前面所有词元的 K 点积 → 归一化成一行的权重 → 用这行权重去混合所有 V。灰色 ✕ 是被因果掩码屏蔽的位置。③ 那一格里的 1.0 / .2 .8 / .3 .1 .6 是 softmax <strong>之后</strong>的权重（每行相加=1），不是点积分数：未缩放的点积在 d<sub>k</sub>=64 时典型幅度是 ±8 这个量级，把它们当分数会得出完全错误的量级直觉。左侧步骤条上的编号可点，会高亮图中对应环节（本图只覆盖第 ①–④ 步）。</figcaption>
+            </div>
+          
+            <div class="figure" data-fig="m07-block-flow-2">
+              <div class="figure__inner">
+                <div class="fig__grid" style="grid-template-columns:1fr">
+                  <div class="fig__head">一个 Transformer 层的完整接线</div>
+                  <div class="fig__row">
+                    <span class="fig__tag">主干</span>
+                    <span class="fig__box"><b>嵌入＋位置编码</b></span>
+                    <span class="fig__arrow">→</span>
+                    <span class="fig__box fig__box--a"><b>多头注意力</b></span>
+                    <span class="fig__arrow">→</span>
+                    <span class="fig__box fig__box--g"><b>Add ＆ Norm</b></span>
+                    <span class="fig__arrow">→</span>
+                    <span class="fig__box fig__box--w"><b>前馈网络</b></span>
+                    <span class="fig__arrow">→</span>
+                    <span class="fig__box fig__box--g"><b>Add ＆ Norm</b></span>
+                    <span class="fig__arrow">→</span>
+                    <span class="fig__box fig__box--sun"><b>下一层</b></span>
+                  </div>
+                  <div class="fig__grid" style="grid-template-columns:repeat(2,1fr)">
+                    <div class="fig__row fig__row--sub">
+                      <span class="fig__tag">原论文</span>
+                      <span class="fig__pill fig__pill--mute">x</span>
+                      <span class="fig__arrow">→</span>
+                      <span class="fig__pill fig__pill--a">子层</span>
+                      <span class="fig__arrow">＋x→</span>
+                      <span class="fig__pill fig__pill--g">归一化</span>
+                      <span class="fig__arrow">→</span>
+                      <span class="fig__pill fig__pill--mute">输出</span>
+                    </div>
+                    <div class="fig__row fig__row--sub">
+                      <span class="fig__tag">今日主流</span>
+                      <span class="fig__pill fig__pill--mute">x</span>
+                      <span class="fig__arrow">→</span>
+                      <span class="fig__pill fig__pill--g">归一化</span>
+                      <span class="fig__arrow">→</span>
+                      <span class="fig__pill fig__pill--a">子层</span>
+                      <span class="fig__arrow">＋x→</span>
+                      <span class="fig__pill fig__pill--mute">输出</span>
+                    </div>
+                  </div>
+                  <div class="fig__note">两段 Add ＆ Norm 就是第 ⑦⑧ 步；「前馈网络」是第 ⑨ 步；掩码在第 ⑤ 步。下方两格是同一条链的两种接法。</div>
+                </div>
+              </div>
+              <figcaption>怎么看：从上往下读，这是能在白板上重画出来的主干：注意力负责「把别的位置的内容搬过来」，前馈负责「把搬来的东西加工一下」，Add 是残差（把输入加回去），Norm 是层归一化。左侧两个小面板的区别只有一个：<strong>归一化放在残差相加之前还是之后</strong>——这就是第 ⑧ 步里那桩没有定论的争议。本图不参与左侧步骤条的高亮。</figcaption>
             </div>
           
             <div class="math-block math">
@@ -2151,14 +2223,32 @@
             <div class="math-block math">
               s<span class="sub">ij</span><span class="op">′</span> <span class="op">=</span>
               <span class="cases"><span class="case__row"><span>s<span class="sub">ij</span></span><span class="case__cond">当 j ≤ i</span></span><span class="case__row"><span>−∞</span><span class="case__cond">当 j &gt; i（不许看未来）</span></span></span>
-              <span class="reads">「第 i 个位置的查询想读第 j 个词元：j 在过去就放行（s 就是步骤 ② 算出的分数），j 在未来就设成 −∞。」exp(−∞) = 0，所以 softmax 之后未来位置的权重正好是 0——这就是步骤 ⑤ 的因果掩码。矩阵形式写出来是一个下三角可用的 n×n 表。</span>
+              <span class="reads">「第 i 个位置的查询想读第 j 个词元：j 在过去就放行（s 就是步骤 ② 算出的分数），j 在未来就设成 −∞。」exp(−∞) = 0，所以 softmax 之后未来位置的权重正好是 0——这就是步骤 ⑤ 的因果掩码。矩阵形式写出来是一个下三角可用的 n×n 表。反过来读它也提醒我们：掩码盯的是<strong>位置编号</strong>，不是词元的身份，所以打乱词元会改变每一行能看见谁。</span>
+            </div>
+          
+            <div class="math-block math">
+              FFN(x) <span class="op">=</span> max<span class="bigg">(</span>0<span class="bigg">,</span> xW<span class="sub">1</span> <span class="op">+</span> b<span class="sub">1</sub><span class="bigg">)</span> W<span class="sub">2</span> <span class="op">+</span> b<span class="sub">2</span>
+              <span class="reads">「把这个位置的向量先乘一个升维矩阵、过一道取正的非线性，再乘一个降维矩阵加回来；每个位置各算各的，互相不看。」x 的形状是 [d]，W₁ 是 [d × 4d]，W₂ 是 [4d × d]，所以输出形状与输入一致，能直接走残差相加。</span>
+            </div>
+          
+            <div class="math-block math">
+              PE<span class="bigg">(</span>pos<span class="bigg">,</span> i<span class="bigg">)</span> <span class="op">=</span>
+              <span class="cases"><span class="case__row"><span>sin<span class="bigg">(</span>pos · 10000<sup>−2i/d</sup><span class="bigg">)</span></span><span class="case__cond">i 为偶数维</span></span><span class="case__row"><span>cos<span class="bigg">(</span>pos · 10000<sup>−2i/d</sup><span class="bigg">)</span></span><span class="case__cond">i 为奇数维（与 i−1 同频）</span></span></span>
+              <span class="reads">「给第 pos 个位置、第 i 对维度填一个正弦值，频率随 i 一路变慢。」分母从 1 涨到约 10⁴，所以不同维度的波长从 2π（约 6.3 个位置）一直拉到约 6 万个位置：每个维度是一把刻度不同的尺子，近处靠快尺分辨、远处靠慢尺分辨。这也解释了它为什么在超出训练时见过的距离之后失效：慢尺走到了从没被训练过的新刻度上，快尺却已经绕了许多圈、给出的相位与前面重复，两头的尺度一起失去可用信号。今天的模型多用 RoPE 或直接可学习的「位置向量表」，而不是这张正弦表。</span>
+            </div>
+          
+            <div class="math-block math">
+              LN(x) <span class="op">=</span> γ <span class="op">⊙</span> <span class="frac"><span class="num">x <span class="op">−</span> μ</span><span class="den">√<span style="border-top:1px solid;display:inline-block">σ² <span style="font-size:0.7em">+</span> ε</span></span></span> <span class="op">+</span> β
+              <span class="reads">「把这一个词元自己的 d 个分量减掉它们的均值、除以它们的标准差，再逐维乘上学出来的缩放 γ、加上学出来的平移 β。」μ 与 σ² 只在<strong>同一个位置的各特征分量</strong>上求，不跨词元、也不跨批次——这就是第 ⑧ 步说的「沿特征维归一」。</span>
             </div>
           
             <details class="math-detail">
-              <summary>展开：为什么要除以 √d，以及为什么 O(n²) 无法回避</summary>
+              <summary>展开：为什么要除以 √d，以及为什么在显式两两比较这一族里 O(n²) 难以回避</summary>
               <div class="math-detail__body prose">
-                <p><strong>关于 √d。</strong>假设 Q、K 各分量是均值 0、方差 1 的独立随机变量，那么它们点积（d<sub>k</sub> 项相加）的方差是 d<sub>k</sub>，标准差约 √d<sub>k</sub>。不缩放的话，d<sub>k</sub>=64 时分数会普遍落在 ±8 之外，softmax 会把几乎全部质量堆到最大那一项，梯度趋近 0，训练停滞。除以 √d<sub>k</sub> 把方差拉回 1。</p>
-                <p><strong>关于平方复杂度。</strong>注意力要显式建立「每对位置之间的关系」，n 个位置的两两组合就是 n²。词元从 4k 涨到 128k（32 倍），注意力计算与那张分数表的显存就涨 1024 倍。工业界的缓解方案（滑窗、分块、线性近似、以及把 K/V 缓存下来避免重复算）都是在绕这张表——但绕不开「每个词都要和上下文比一遍」这件事本身。</p>
+                <p><strong>关于 √d。</strong>假设 Q、K 各分量是均值 0、方差 1 的独立随机变量，那么它们点积（d<sub>k</sub> 项相加）的方差是 d<sub>k</sub>，标准差约 √d<sub>k</sub>。不缩放的话，d<sub>k</sub>=64 时分数的标准差就是 √64 = 8：按这个正态假设，约三分之二的一行分数落在 ±8 <strong>之内</strong>（±1σ 概率 68.3%），而不是「普遍落在 ±8 之外」。真正的问题是极差：按 n 个正态样本的期望极差 2·E[max] 估算，一行 4 个分数就拉开约 2.06σ ≈ 16 个单位，一行 512 个能拉到约 6.1σ ≈ 49 个单位。softmax 是取指数再归一，差 16 个单位就意味着两边的权重差 e¹⁶ ≈ 890 万倍，几乎全部质量堆到最大那一项，权重对分数不再敏感，训练停滞。除以 √d<sub>k</sub> 把方差拉回 1。</p>
+                <p><span class="badge badge--simplify">已简化：这三条假设（独立、零均值、单位方差）只在初始化时近似成立；训练后 Q、K 的分量相关、方差也不再是 1，所以「点积方差 = d」是一个量级正确的启发式理由，而不是定理。原论文自己也只把它当作一种可能的解释。</span></p>
+                <p><strong>关于平方复杂度。</strong>注意力要显式建立「每对位置之间的关系」，n 个位置的两两组合就是 n²。词元从 4k 涨到 128k（32 倍），<strong>训练与 prefill 阶段</strong>要摆整张 n×n 分数表，算力与显存就是 32²=1024 倍。但增量解码不必摆整表：每一步只算当前那一行（第 ⑩ 步的键值缓存），这时真正随上下文线性增长的是缓存，不是那张表（M10 第 ⑥ 步）——两笔账别混。还要留意「平方」只是注意力那一部分：同层的前馈是 O(n·d²)，随 n 线性（第 ⑨ 步）。</p>
+                <p>至于平方是否<strong>必然</strong>：<span class="badge badge--debate">存在争议</span> 一派认为只要想要「每个位置都与全上下文建立联系」，两两比较的代价就绕不开，工业界的滑窗、分块、键值缓存都只是在常数与显存上做文章；另一派（线性注意力、状态空间模型、检索式稀疏）主张不做全对比较也能行，代价是要引入近似、额外的召回机制或在长距离精确检索上让步 [2026-10]。本站把两种立场并列，不裁决。</p>
               </div>
             </details>
         </article>
@@ -2169,14 +2259,14 @@
                       <div class="demo__controls"></div>
                     </div>
           <h4>它到底在看哪里</h4>
-            <p>下面这张矩阵就是第 ③ 步的产物。真实大模型的注意力矩阵有几百行几百列，这里用一个 9 词短句、4 个头演示同一件事。</p>
+            <p>下面这张矩阵就是第 ③ 步的产物： softmax <strong>之后</strong>的权重，每行相加等于 1。真实大模型的注意力矩阵有几百行几百列，这里用一个 9 词元的短句、4 个头演示同一件事。</p>
         </article>
         <article class="seg has-content" id="m07--misconception" data-seg="misconception">
           <h3>常见误区</h3>
           <details class="myth">
               <summary>「注意力权重就是模型思考的过程，看它看哪里就知道它在想什么。」</summary>
               <div class="myth__body">
-                <p><strong>为何会有这个误解：</strong>太多文章把热力图当「可解释性」卖，因为「模型看这个字是因为那个字」听起来正好回答了「为什么」。</p>
+                <p><strong>为何会有这个误解：</strong>太多文章把热力图当「可解释性」卖，因为「模型看这个位置是因为那个位置」听起来正好回答了「为什么」。加上「查询 / 键 / 值」这套检索词汇本身就在暗示「它在找理由」。</p>
                 <p class="myth__truth">正确说法：注意力权重只告诉你「这一层这个头的输出被哪些位置的 V 影响了」，它是<strong>计算路径</strong>，不是<strong>理由</strong>。经过几十层混合与残差之后，最终输出与某个高权重位置之间的因果关系早已被反复改写；同一句话换个头、换个层，热力图会完全不同。它可以当线索，不能当解释。</p>
               </div>
             </details>
@@ -2184,36 +2274,37 @@
               <summary>「Transformer 能处理长文本，是因为它有一个能装下整篇文章的记忆模块。」</summary>
               <div class="myth__body">
                 <p><strong>为何会有这个误解：</strong>RNN 时代「隐藏状态 = 记忆」的说法太牢固，人们自然以为 Transformer 也有个更大的同类。</p>
-                <p class="myth__truth">正确说法：Transformer <strong>没有独立的记忆模块</strong>。它的「记忆」就是上下文本身 + 权重矩阵里的参数。所谓窗口长度，指的是这一次前向传播里同时摆着多少个词元；窗口外的内容不是「忘了」，而是<strong>根本没被计算</strong>。这也解释了为什么把同样的话换个顺序放进上下文，答案可能变化。</p>
+                <p class="myth__truth">正确说法：Transformer <strong>没有独立的记忆模块</strong>。它的「记忆」就是上下文本身 + 权重矩阵里的参数。所谓窗口长度，指的是这一次前向传播里同时摆着多少个词元；窗口外的内容不是「忘了」，而是<strong>根本没被计算</strong>。这也解释了为什么把同样的话换个顺序放进上下文，答案可能变化——第 ⑤ 步的掩码是按位置编号生效的，顺序一变，每个位置能看见的集合就变了。</p>
               </div>
             </details>
             <details class="myth">
               <summary>「多头注意力就是多个模型投票，取多数意见。」</summary>
               <div class="myth__body">
-                <p><strong>为何会有这个误解：</strong>「头」让人联想到「多个视角再综合」，投票是日常里最熟悉的综合方式。</p>
-                <p class="myth__truth">正确说法：头不是投票，而是<strong>把一次昂贵的全维度比较拆成几次便宜的窄维度比较</strong>，各学一种关系，最后把所有头的输出拼接起来再做一次线性投影——是一次求和，不是几次表决。没有任何环节在做「多数决」。实践中还有相当比例的注意力头接近休眠，删掉不影响性能。</p>
+                <p><strong>为何会有这个误解：</strong>「头」让人联想到「多个视角再综合」，投票是日常里最熟悉的综合方式；而「每个头负责一种语法关系」这类说法又给「各投一票」提供了看似合理的脚本。</p>
+                <p class="myth__truth">正确说法：头不是投票，而是<strong>把一次昂贵的全维度比较拆成几次便宜的窄维度比较</strong>，各学一种加权方式，最后把所有头的输出拼接起来再做一次线性投影——是一次求和，不是几次表决。没有任何环节在做「多数决」。实践中许多注意力头接近休眠：训练后剪掉它们，在同一任务的多数评测上几乎不掉分（Michel 等，2019 [2026-10]）——但只留 1–2 个头与一个都不留差别很大，换到别的任务或微调场景上，退化也会显现，所以「既然能剪就说明头不重要」是过度外推。</p>
               </div>
             </details>
         </article>
         <article class="seg has-content" id="m07--takeaway" data-seg="takeaway">
           <h3>带走一句</h3>
           <blockquote class="takeaway__line">注意力不是理解，是每次前向都重新算一遍的加权平均。</blockquote>
+            <p>顺序信息也来自数据规模之外的东西：它是第 ⑦ 步那样被<strong>显式设计</strong>进模型的（位置编码、掩码的位置索引），不是从更多词元里自己长出来的。带着这句去 M08。</p>
           
             <div class="quiz">
-              <p class="quiz__q">自测：把输入的 5 个词元顺序打乱，如果模型完全没有位置编码，注意力输出会怎样？</p>
-              <label class="quiz__opt"><input type="radio" name="q-m07" data-right="1"><span>输出跟着一起打乱，内容不变——注意力本身对顺序不敏感</span></label>
-              <label class="quiz__opt"><input type="radio" name="q-m07"><span>输出完全不变，因为注意力会重新排序</span></label>
+              <p class="quiz__q">自测：把输入的 5 个词元顺序打乱，其他什么都不改。注意力的输出会怎样？</p>
+              <label class="quiz__opt"><input type="radio" name="q-m07" data-right="1"><span>不加因果掩码时输出只是行跟着打乱（排列等变）；套上掩码后内容也会变</span></label>
+              <label class="quiz__opt"><input type="radio" name="q-m07"><span>输出完全不变，因为注意力会把词重新排回原来的顺序</span></label>
               <label class="quiz__opt"><input type="radio" name="q-m07"><span>无法计算，因为因果掩码要求顺序</span></label>
               <div class="quiz__fb">
-                <p data-for="no"><strong>再想一步：</strong>因果掩码依赖的是「谁在前」，但掩码本身也是按位置索引施加的。关键在于注意力分数只由 Q 与 K 的点积决定，点积不知道「第 3 个」是什么意思。所以打乱输入只是把输出的行一起打乱——这正是第 ⑦ 步必须显式注入位置信息的原因。</p>
-                <p data-for="ok"><strong>对了。</strong>这正是机制拆解第 ⑦ 步的全部要点：注意力本身是<strong>排列不变</strong>的，顺序必须由位置编码额外提供。RoPE 之所以成为主流，就是因为它把顺序编码进旋转角度，让点积天然读出「相距多远」。带着这个结论去 M08：顺序信息也来自数据规模之外的东西。</p>
+                <p data-for="no"><strong>再想一步：</strong>注意力分数确实只由 Q 与 K 的点积决定，点积不知道「第 3 个」是什么意思——所以<strong>不加掩码</strong>时，打乱输入只是把输出的行一起打乱，这叫排列等变（不是排列不变：每一行的内容跟着走）。但第 ⑤ 步的因果掩码是按<strong>位置编号</strong>（j ≤ i）施加的：原来排在第 1 位的词元被打到第 4 位，它现在能看见的是第 1–4 位，而原来只有第 1 位——可见集合变了，这一行的加权平均自然跟着变。掩码也不会让计算「失败」，它只是限制谁可见。</p>
+                <p data-for="ok"><strong>对了。</strong>这正是机制拆解第 ⑦ 步的全部要点：注意力本身是<strong>排列等变</strong>的，顺序必须由位置编码额外提供，而掩码本身还额外引入了对位置编号的依赖。RoPE 之所以成为主流，就是因为它把顺序编码进旋转角度，让点积天然读出「相距多远」。带着这个结论去 M08：顺序信息也来自数据规模之外的东西。</p>
               </div>
               <p class="quiz__result" aria-live="polite"></p>
             </div>
           
             <ul class="nextlinks">
               <li><a href="#m08">M08 预训练与规模定律：这套骨架放大一万倍会发生什么</a></li>
-              <li><a href="#m10">M10 解码与采样：算出分布之后，怎么挑一个字</a></li>
+              <li><a href="#m10">M10 解码与采样：算出分布之后，怎么挑下一个词元</a></li>
               <li><a href="#m06">M06 序列建模的瓶颈：注意力是为了解决什么问题出现的</a></li>
             </ul>
         </article>
@@ -2241,7 +2332,7 @@
         <article class="seg has-content" id="m08--hook" data-seg="hook">
           <h3>开场钩子</h3>
           <p class="hook">同一批人、同一套代码，只是把算力放大了大约一百倍，模型突然会做多位数加法，会纠正自己上一句写错的话——这些事，在小一号的它身上练多少遍都学不会。多花的钱买到了什么？为什么偏偏是「突然」？</p>
-            <p class="demo__note">读完本模块你需要 M02（损失与困惑度）和 M07（Transformer 骨架）。M07 结尾那句「顺序信息也来自数据规模之外的东西」，这里正面回答。</p>
+            <p class="demo__note">读完本模块你需要 M02（损失与困惑度）和 M07（Transformer 骨架）。M07 结尾那句「顺序信息也来自数据规模之外的东西」，这里<strong>不回答它</strong>：顺序来自架构（M07 的位置编码），不来自规模；本模块只管同一套架构下，多花资源买到多少损失。</p>
         </article>
         <article class="seg has-content" id="m08--intuition" data-seg="intuition">
           <h3>直觉与类比</h3>
@@ -2252,7 +2343,7 @@
             <div class="callout callout--warn">
               <p><strong>这个「梯子」类比对下面三件事不成立，务必记住：</strong></p>
               <ul>
-                <li><strong>梯子只对「平均损失」成立。</strong>损失是几万亿<span class="term" data-def="模型处理文本的最小单位，既不是词也不是字。" data-en="token">词元</span>上的平均分。某一项具体能力（多位数加法、某种法律题）可以整段平在原地甚至倒退，而总损失照常下降。「降一档损失 ≈ 升一档智能」在平均意义下勉强成立，在单项能力上不成立。</li>
+                <li><strong>梯子只对「平均损失」成立。</strong>损失是在留出文本（或平滑后的训练损失）上逐<span class="term" data-def="模型处理文本的最小单位，既不是词也不是字。" data-en="token">词元</span>平均的交叉熵，本站一律用比特（以 2 为底，见 M02）；Kaplan 原文用纳特（1 纳特 ≈ 1.44 比特），所以「损失 = 2.0」这类读数跨论文不能直接比，指数倒是无量纲的。某一项具体能力（多位数加法、某种法律题）可以整段平在原地甚至倒退，而总损失照常下降。「降一档损失 ≈ 升一档智能」在平均意义下勉强成立，在单项能力上不成立。</li>
                 <li><strong>「直线」只存在于双对数坐标纸上。</strong>换成普通坐标，同一个规律是条弯线。谁要是目测着弯线往外推，会高估或低估整整一个数量级——演示里关掉「双对数坐标」开关，你会亲眼看到这条线变形。</li>
                 <li><strong>外推的前提是「造梯子的方法」不变。</strong>只要换分词方式、换骨架（M07 那套注意力）、换训练配方，整条线就可能平移甚至改写，历史直线不再自动适用。规模定律外推的是「同一种做法的延续」，不是「一切未来」。</li>
               </ul>
@@ -2266,19 +2357,19 @@
             <ol class="steps">
               <li data-step="1"><strong><span class="term" data-def="在海量无标注文本上反复做下一词预测，直到损失降到目标。" data-en="pretraining">预训练</span>的目标只有一个：读前文，猜下一个词元。</strong>模型输出的是概率分布，打分用的还是 M02 那个交叉熵损失。除了这件事，预训练不做任何别的。<span class="badge badge--simplify">已简化</span>（略过批数据处理、学习率调度与硬件细节。）</li>
               <li data-step="2"><strong>因为打分标准从头到尾没变，不同规模的模型才能放进同一张图比较。</strong>损失是一个单一数字，规模是另一个数字，剩下要回答的只有一个问题：这两个数字怎么对应。</li>
-              <li data-step="3"><strong>经验答案是<span class="term" data-def="y ∝ x^(−α) 型关系：x 乘十，y 乘一个只依赖 α 的固定系数，与 x 的起点无关。" data-en="power law">幂律</span>：L ∝ N^(−α)。</strong>取对数就变成 log L = 常数 − α·log N——<strong>双对数坐标上的一条直线</strong>。直线的意思是「斜率不变」，斜率不变的意思是我们敢沿着它往右画。</li>
+              <li data-step="3"><strong>经验答案是<span class="term" data-def="y ∝ x^(−α) 型关系：x 乘十，y 乘一个只依赖 α 的固定系数，与 x 的起点无关。" data-en="power law">幂律</span>：L ∝ N^(−α)。</strong>取对数就变成 log L = 常数 − α·log N——<strong>双对数坐标上的一条直线</strong>。直线的意思是「斜率不变」，斜率不变的意思是我们敢沿着它往右画。严格说，只有当地板可忽略、另一项又不成瓶颈时，损失在双对数上才<strong>近似</strong>直线；离地板越近，线越先走平——所以外推越远，「它是直线」这个赌注越贵。</li>
               <li data-step="4"><strong>参数量 N 与数据量 D 各有一条自己的线，不能混为一谈。</strong>参数负责<strong>存</strong>住数据里的规律，数据负责<strong>提供</strong>规律；只放大一项，另一项就成了瓶颈——损失先快降、随后走平，钱花在等待一个填不满的容器上。</li>
-              <li data-step="5"><strong>Chinchilla（Hoffmann 等，2022）把两条线接进同一个算力预算，算出最优配比：给定算力，N 与 D 应近似等比同步放大，约 20 词元配 1 参数。</strong>而当时的主流模型严重「参数过大、数据不足」[2026-10]：1750 亿参数的 GPT-3 只喂了约 3000 亿词元，比值不到 2 [2026-10]。同团队按最优配比重训的 700 亿参数模型，用<strong>一半</strong>算力做到了更低的损失 [2026-10]。</li>
-              <li data-step="6"><strong>这条结论开出两条路：把模型做小、数据喂多，或把数据做大。</strong>训练只花一次钱，推理按词元天天花钱，小模型长期更便宜。后来者普遍越过 20:1 的配比——例如 70 亿参数喂 2 万亿词元（比值约 286）[2026-10]——说明把算力预算优先换成数据，在工程上被反复验证。</li>
+              <li data-step="5"><strong>Chinchilla（Hoffmann 等，2022）把两条线接进同一个算力预算，算出最优配比：给定算力，N 与 D 应近似等比同步放大，约 20 词元配 1 参数。</strong>而当时的主流模型严重「参数过大、数据不足」[2026-10]：1750 亿参数的 GPT-3 只喂了约 3000 亿词元，比值不到 2 [2026-10]。同团队按最优配比重训的 700 亿参数模型，用的是<strong>与 2800 亿参数的 Gopher 相同的预训练算力</strong>——参数少 4 倍、词元多 4 倍——却拿到更低的损失，并因模型小 4 倍而在微调与推理上省下大量算力 [2026-10]。</li>
+              <li data-step="6"><strong>这条结论开出两条路：把模型做小、数据喂多，或把数据做大。</strong>训练只花一次钱，推理按词元天天花钱，小模型长期更便宜。后来者普遍越过 20:1 的配比——公开模型里 70 亿参数配约 2 万亿词元是常见量级（比值 2×10¹² ÷ 7×10⁹ ≈ 286，按公式推算；具体型号本站未逐一回溯原始技术报告）——说明把算力预算优先换成数据，在工程上被反复验证。</li>
               <li data-step="7"><strong>可是损失这条线，解释不了所有现象。</strong>某些基准（多位数加法、给了<span class="term" data-def="让模型先写中间步骤再给答案的提示方式。" data-en="chain of thought">思维链</span>提示的推理）在小模型上接近乱猜，跨过某个规模后<strong>突然跳升</strong>。这就是 <span class="term" data-def="规模跨过某阈值后才出现的能力；是否真实存在尚在争议中。" data-en="emergent ability">涌现能力</span>（emergent ability）<span class="badge badge--debate">存在争议</span>。</li>
-              <li data-step="8"><strong>两派读的是同一批曲线。</strong>一派（Wei 等，2022）认为跳变是真实的能力相变；另一派（Schaeffer 等，「Are Emergent Abilities a Mirage?」，NeurIPS 2023 杰出论文）指出：把「整题全对才算对」换成连续的度量（如编辑距离——答案差几个字），同一批模型的曲线就变平滑 [2026-10]。跳变可能不是模型变了，是<strong>尺子</strong>变了。</li>
+              <li data-step="8"><strong>两派读的是同一批曲线。</strong>一派（Wei 等，2022）认为跳变是真实的能力相变；另一派（Schaeffer 等，《Are Emergent Abilities of Large Language Models a Mirage?》，NeurIPS 2023 杰出论文）指出：把「整题全对才算对」换成连续的度量（如编辑距离——答案差几个字），同一批模型的曲线就变平滑 [2026-10]。跳变可能不是模型变了，是<strong>尺子</strong>变了。</li>
             </ol>
           
             <div class="math-block math">
               L <span class="op">−</span> L<span class="sub">∞</span> <span class="op">∝</span> N<span class="sup"> (−α)</span>
               <span class="reads">把损失减去一个下界，剩下的部分与「参数量的 −α 次方」成正比：N 乘十，这部分损失就乘 10^(−α)，不管你从 10⁸ 起步还是从 10¹⁰ 起步。</span>
             </div>
-            <p>α 取多少？两组公开拟合给出的数字不同，而且<strong>不矛盾</strong>：Kaplan 等（2020）对原始损失拟合，α≈0.076；Hoffmann 等（2022）对「损失减下界」拟合，α≈0.34、β≈0.28 [2026-10]。差在「−L<span class="sub">∞</span>」这一笔上——下界减不减，指数会大变。这提醒我们：引用规模定律数字时，必须连拟合形式一起引用。</p>
+            <p>α 取多少？两组公开拟合给出的数字不同，而且<strong>不矛盾</strong>：Kaplan 等（2020）对原始损失拟合，α≈0.076；Hoffmann 等（2022）对「损失减下界」拟合，α≈0.34、β≈0.28 [2026-10]。差在两处：一是<strong>拟合对象</strong>（对 L 还是对 L−L<span class="sub">∞</span>），下界减不减，指数会大变；二是<strong>训练协议</strong>——Kaplan 对所有规模固定词元数与学习率调度，小模型的中途损失因此被高估，这正是它推出「算力主要该买参数」的原因，而 Chinchilla 换成等比放大后结论才翻成「N 与 D 同步」[2026-10]。这提醒我们：引用规模定律数字时，必须连拟合形式与训练协议一起引用。</p>
           
             <div class="math-block math">
               L(N, D) <span class="op">=</span> L<span class="sub">∞</span> <span class="op">+</span> A<span class="op">·</span><span class="bigg">(</span><span class="frac"><span class="num">N</span><span class="den">N<span class="sub">0</span></span></span><span class="bigg">)</span><span class="sup"> (−α)</span> <span class="op">+</span> B<span class="op">·</span><span class="bigg">(</span><span class="frac"><span class="num">D</span><span class="den">D<span class="sub">0</span></span></span><span class="bigg">)</span><span class="sup"> (−β)</span>
@@ -2287,95 +2378,114 @@
           
             <div class="math-block math">
               C <span class="op">≈</span> 6 <span class="op">·</span> N <span class="op">·</span> D
-              <span class="reads">训练总算力约等于 6 乘以参数量再乘以词元数——6 是每个词元前向加反向的乘加次数（工程估算）。N 与 D 是同预算下可以互相换的筹码，这正是 Chinchilla 那道「给定 C 分配 N 和 D」的题能成立的原因。</span>
+              <span class="reads">训练总算力约等于 6 乘以参数量再乘以词元数——6N 是每个词元前向（约 2N）加反向（约 4N）的<strong>浮点运算数</strong>；若按「一次乘加」计约为 3N 次，因为一次乘加算两次浮点运算（工程估算，忽略嵌入与注意力中随上下文增长的项）。N 与 D 是同预算下可以互相换的筹码，这正是 Chinchilla 那道「给定 C 分配 N 和 D」的题能成立的原因。</span>
               <span class="badge badge--simplify">已简化</span>
             </div>
           
             <div class="figure" data-fig="m08-scaling-law-1">
               <div class="figure__inner">
                 <svg viewBox="0 0 640 250" class="dgm" role="img" aria-labelledby="f8sc-t">
-                  <title id="f8sc-t">双对数坐标上的三条幂律直线：损失对参数量、数据量、算力各成一条直线，右侧虚线区是无实验点的外推区，底部是 L∞ 地板</title>
-                  <desc>横轴为对数尺度（每格乘十），纵轴为对数尺度损失。三条直线从左上向右下延伸，到最后一个实测模型处变为虚线；右侧一片浅色的外推区；底部一条横向虚线为损失下界 L∞。</desc>
-                  <!-- 坐标轴 -->
+                  <title id="f8sc-t">双对数坐标上的三条幂律直线：损失对参数量、数据量、算力各成一条直线，算力那条最缓，右侧虚线区是无实验点的外推区，底部是 L∞ 地板</title>
+                  <desc>横轴为对数尺度（每格乘十），纵轴为对数尺度损失。三条直线从左上向右下延伸，斜率按 Kaplan 的三个指数等比排布：L vs C 最缓（α_C≈0.050）、L vs N 居中（α_N≈0.076）、L vs D 最陡（α_D≈0.095）。到最后一个实测模型处变为虚线，虚线段与各自实线段同斜率；右侧一片浅色的外推区；底部一条横向虚线为损失下界 L∞，最陡那条虚线向它逼近。</desc>
+                  <!-- 坐标轴（②：同一把尺子，不同规模才放进同一张图） -->
                   <g data-step="2">
                     <line class="line" x1="56" y1="206" x2="614" y2="206"></line>
                     <line class="line" x1="56" y1="24" x2="56" y2="206"></line>
-                    <text x="60" y="222" class="t-xs muted">10⁷</text>
-                    <text x="170" y="222" class="t-xs muted">10⁸</text>
-                    <text x="280" y="222" class="t-xs muted">10⁹</text>
-                    <text x="390" y="222" class="t-xs muted">10¹⁰</text>
-                    <text x="500" y="222" class="t-xs muted">10¹¹</text>
+                    <text x="60" y="228" class="t-xs muted">10⁷</text>
+                    <text x="170" y="228" class="t-xs muted">10⁸</text>
+                    <text x="280" y="228" class="t-xs muted">10⁹</text>
+                    <text x="390" y="228" class="t-xs muted">10¹⁰</text>
+                    <text x="500" y="228" class="t-xs muted">10¹¹</text>
                     <text x="330" y="240" class="t-xs faint" text-anchor="middle">规模（对数：每向右一格 ×10）</text>
+                    <text x="250" y="196" class="t-xs faint">实测区</text>
                     <text x="14" y="40" class="t-xs faint" transform="rotate(90 14 40)">损失 L（对数）</text>
                   </g>
                   <!-- 外推区底衬 -->
-                  <g data-step="5">
+                  <g data-step="3">
                     <rect x="420" y="24" width="194" height="182" fill="var(--c-bg-sunken)"></rect>
                     <line class="line" x1="420" y1="24" x2="420" y2="206" stroke-dasharray="4 5"></line>
-                    <text x="517" y="38" class="t-xs faint" text-anchor="middle">外推区：这里一个实验点都没有</text>
+                    <text x="517" y="38" class="t-xs faint" text-anchor="middle">外推区：无实验点</text>
                   </g>
-                  <!-- 三条拟合直线 -->
-                  <g data-step="2">
-                    <line class="line--a" x1="80" y1="52" x2="420" y2="118"></line>
-                    <text x="86" y="46" class="t-sm">L vs N（最缓）</text>
-                    <line class="line" style="stroke:var(--c-ok)" x1="80" y1="60" x2="420" y2="150"></line>
-                    <text x="150" y="72" class="t-sm muted">L vs D（更陡）</text>
-                    <line class="line" style="stroke:var(--c-warn)" x1="80" y1="72" x2="420" y2="182"></line>
-                    <text x="240" y="112" class="t-sm warm">L vs C（两者相乘，介于其间）</text>
-                  </g>
-                  <!-- 虚线延伸 -->
+                  <!-- 三条拟合直线。斜率不是目测的，是算出来的：横轴一格 = 110px（×10），
+                       纵轴本站取一格 = 194px；某条线的下落 = α × (Δx/110) × 194。
+                       实线段 Δx=340 → 3.0909 格 → 下落 = α × 599.6：
+                       α_C=0.050 → 30.0px、α_N=0.076 → 45.6px、α_D=0.095 → 57.0px。
+                       虚线段 Δx=180 → 1.6364 格 → 下落 = α × 317.5：
+                       15.9px / 24.1px / 30.2px（与各自实线段同斜率，外推不能拐弯）。
+                       为什么 L vs C 必须最缓：固定 C=ND 时把 A·N^−α＋B·D^−β 压到最小，
+                       可约掉的那部分按 C^(−αβ/(α+β)) 下降，而 αβ/(α+β) 恒小于 α 与 β 两个
+                       （代 Kaplan 的 0.076、0.095 → 0.042，论文实测报 0.050，同量级同方向）。
+                       改任何一条的坐标都要按这条式子重算，否则图又和自家指数打架。 -->
                   <g data-step="5">
-                    <line class="line--a" x1="420" y1="118" x2="600" y2="149" stroke-dasharray="6 6"></line>
-                    <line class="line" style="stroke:var(--c-ok)" x1="420" y1="150" x2="600" y2="195" stroke-dasharray="6 6"></line>
-                    <text x="452" y="140" class="t-xs muted">沿直线预测「下一个模型」</text>
-                    <text x="452" y="204" class="t-xs bad">数据项这条先撞上地板</text>
+                    <line class="line" style="stroke:var(--c-warn)" x1="80" y1="46" x2="420" y2="76"></line>
+                    <text x="84" y="40" class="t-sm warm">L vs C 最缓</text>
                   </g>
-                  <!-- 地板线 -->
+                  <g data-step="4">
+                    <line class="line--a" x1="80" y1="76" x2="420" y2="121.6"></line>
+                    <text x="84" y="70" class="t-sm">L vs N</text>
+                    <line class="line" style="stroke:var(--c-ok)" x1="80" y1="106" x2="420" y2="163"></line>
+                    <text x="84" y="100" class="t-sm muted">L vs D</text>
+                  </g>
+                  <!-- 虚线延伸：与各自实线段同斜率（③ 的核心：取对数是直线，所以敢沿着它往右画） -->
                   <g data-step="3">
-                    <line class="line" style="stroke:var(--c-err)" x1="56" y1="214" x2="614" y2="214" stroke-dasharray="2 6"></line>
+                    <line class="line" style="stroke:var(--c-warn)" x1="420" y1="76" x2="600" y2="91.9" stroke-dasharray="6 6"></line>
+                    <line class="line--a" x1="420" y1="121.6" x2="600" y2="145.7" stroke-dasharray="6 6"></line>
+                    <line class="line" style="stroke:var(--c-ok)" x1="420" y1="163" x2="600" y2="193.2" stroke-dasharray="6 6"></line>
+                    <text x="452" y="112" class="t-xs muted">沿直线预测下一个模型</text>
                   </g>
-                  <text x="80" y="26" class="t-xs muted">最后一格实测</text>
+                  <!-- ④：N、D 各有一条自己的线，只放大一项会被另一项托住，最后逼近地板 -->
+                  <g data-step="4">
+                    <line class="line" style="stroke:var(--c-err)" x1="56" y1="214" x2="614" y2="214" stroke-dasharray="2 6"></line>
+                    <text x="452" y="200" class="t-xs bad">数据项这条先逼近地板</text>
+                  </g>
                 </svg>
               </div>
-              <figcaption>怎么看：从左往右读：实线段是「有模型实测过」的范围，三条幂律在这里都是直线——这就是敢外推的全部依据；虚线段伸进浅色外推区，赌的是第 ② 步的前提继续成立。底部红虚线是 L∞：非地板项永远只是逼近它。L vs N 为什么最缓？因为只加参数、数据不变时，参数项的下降会被数据项托住（第 ③ 步）。把这张图和演示里的实线/虚线对照看：演示的虚线就是「按 20 词元/参数同步放大」那条。</figcaption>
+              <figcaption>怎么看：从左往右读：实线段是「有模型实测过」的范围，三条幂律在实测区里近似直线——这就是敢外推的全部依据；虚线段伸进浅色外推区，赌的是第 ③ 步的前提继续成立。三条线的陡缓不是随便画的，它按 Kaplan 的三个指数等比排布，最缓的是 <strong>L vs C</strong>（α_C≈0.050），其次 L vs N（≈0.076），最陡是 L vs D（≈0.095）：算力是 N 与 D 的乘积，一格算力只买到约半格参数加半格数据，所以按对数读时它必然比另外两条更平。注意三条线的<strong>横轴不是同一个量</strong>，别把「算力越陡就越贵」这类目测当成结论。L vs N 为什么比 L vs D 缓？因为只加参数、数据不变时，参数项的下降会被数据项托住（第 ④ 步）。底部红虚线是 L∞：非地板项永远只是逼近它，越贴近地板，上面那句「近似直线」就越先失效。演示里的实线/虚线与本图<strong>不是同一套语义</strong>：那里实线＝只加参数、数据不动，虚线＝按 20 词元/参数同步放大；本图的虚线段只表示「进入没有实验点的区域」。</figcaption>
             </div>
           
             <div class="figure" data-fig="m08-emergence-2">
               <div class="figure__inner">
                 <svg viewBox="0 0 640 232" class="dgm" role="img" aria-labelledby="f8em-t">
-                  <title id="f8em-t">同一个行为的两种度量：用「整题全对」计分，准确率随规模突然跳升；用「差了几个字」计分，曲线平滑下降</title>
-                  <desc>左右两个面板画同一批模型同一任务。左面板纵轴为全对率，曲线在低位平走一段后急剧跳到高位；右面板纵轴为编辑距离，曲线近似一条直线平滑下降。两面板横轴都是模型规模（对数）。</desc>
+                  <title id="f8em-t">同一个行为的两种度量：用「整题全对」计分，准确率随规模突然跳升；用「差了几个字」计分，误差从乱猜的高位平滑下降</title>
+                  <desc>左右两个面板画同一批模型同一任务。左面板纵轴为全对率（越高越好），曲线在贴着「乱猜」的低处平走一段后急剧跳到高位；右面板纵轴为编辑距离（越低越好），所以曲线从左上的「乱猜」高位向右下平滑下降，近似一条直线，没有跳变。两面板横轴都是模型规模（对数），右面板的标记点与左面板的跳点在同一相对位置上。</desc>
                   <!-- 左面板：离散指标 -->
-                  <g data-step="6">
+                  <g data-step="7">
                     <line class="line" x1="44" y1="188" x2="300" y2="188"></line>
                     <line class="line" x1="44" y1="28" x2="44" y2="188"></line>
                     <polyline class="line" style="stroke:var(--c-err);stroke-width:2.2"
                       points="52,180 120,178 176,174 208,160 226,110 240,58 258,42 300,36"></polyline>
                     <text x="48" y="20" class="t-sm">整题全对才算对（准确率）</text>
                     <text x="60" y="172" class="t-xs muted">≈ 乱猜</text>
-                    <text x="244" y="98" class="t-xs bad">跨过某规模「突然」会了？</text>
+                    <text x="222" y="98" class="t-xs bad" text-anchor="end">跨过某规模「突然」会了？</text>
                     <text x="172" y="206" class="t-xs faint" text-anchor="middle">模型规模（对数）→</text>
                     <circle cx="226" cy="110" r="3.5" fill="var(--c-err)"></circle>
                     <text x="118" y="222" class="t-xs faint">这一段的差距在乱猜附近，谁也看不出差别</text>
                   </g>
                   <!-- 分隔 -->
                   <line class="line" x1="320" y1="24" x2="320" y2="206" stroke-dasharray="3 6"></line>
-                  <!-- 右面板：连续指标 -->
-                  <g data-step="7">
+                  <!-- 右面板：连续指标。纵轴是「误差」，越小越好，所以曲线必须从左上（小模型、大误差）
+                       走向右下（大模型、小误差）。点位严格共线：从 (352,56) 到 (596,160)，
+                       斜率 104/244 = 0.42623 px/px，没有跳变——这正是本图要教的东西。 -->
+                  <g data-step="8">
                     <line class="line" x1="344" y1="188" x2="604" y2="188"></line>
                     <line class="line" x1="344" y1="28" x2="344" y2="188"></line>
-                    <polyline class="line--a" points="352,168 400,152 452,136 508,120 560,104 596,96"></polyline>
+                    <line class="line" style="stroke:var(--c-fg-faint)" x1="352" y1="52" x2="604" y2="52" stroke-dasharray="3 5"></line>
+                    <text x="356" y="46" class="t-xs muted">≈ 乱猜的编辑距离</text>
+                    <polyline class="line--a" points="352,56 400,76.5 452,98.6 508,122.5 560,144.7 596,160"></polyline>
                     <text x="348" y="20" class="t-sm">差几个字也算数（编辑距离）</text>
-                    <text x="420" y="150" class="t-xs muted">同批模型 · 同行为 · 连续刻度</text>
+                    <text x="356" y="182" class="t-xs muted">同批模型 · 连续刻度</text>
+                    <text x="470" y="70" class="t-xs accent">没有跳变，只有斜率</text>
                     <text x="474" y="206" class="t-xs faint" text-anchor="middle">模型规模（对数）→</text>
-                    <text x="430" y="86" class="t-xs accent">没有跳变，只有斜率</text>
-                    <circle cx="452" cy="136" r="3.5" fill="var(--c-accent)"></circle>
-                    <line class="line" style="stroke:var(--c-accent)" x1="452" y1="136" x2="452" y2="188" stroke-dasharray="3 3"></line>
+                    <!-- 标记点与左栏跳点同相对位置：左栏 (226−52)/(300−52)=0.7016，
+                         右栏 x = 352 + 0.7016×252 = 528.8；纵坐标由同一斜率算出
+                         y = 56 + (528.8−352)×0.42623 = 131.5，所以点正好落在线上（不悬空）。 -->
+                    <circle cx="528.8" cy="131.5" r="3.5" fill="var(--c-accent)"></circle>
+                    <line class="line" style="stroke:var(--c-accent)" x1="528.8" y1="131.5" x2="528.8" y2="188" stroke-dasharray="3 3"></line>
                     <text x="348" y="222" class="t-xs faint">左图那个「跳点」对应的规模，在这里只是直线上普通的一格</text>
                   </g>
                 </svg>
               </div>
-              <figcaption>怎么看：两栏并排读：左、右是<strong>同一批模型的同一个行为</strong>，只换了尺子。左栏的跳变出现在「全对/全错」这种不连续计分处；右栏换成连续度量后近似直线。两派都承认这两张图都画得对——分歧在于该拿哪张图说话（下表）。右栏的平滑曲线仍贴着「乱猜」的高位时，左栏的模型连一题都做不对：对使用者来说，这既是平滑的，也是「突然」的。</figcaption>
+              <figcaption>怎么看：两栏并排读：左、右是<strong>同一批模型的同一个行为</strong>，只换了尺子。先看清两栏纵轴的含义相反：左栏是全对率，<strong>越高越好</strong>；右栏是编辑距离（差了几个字），<strong>越低越好</strong>——所以右栏的线从左上的「乱猜」高位一路<strong>平滑下降</strong>到右下。左栏的跳变出现在「全对/全错」这种不连续计分处；右栏换成连续度量后是一条近似直线，没有跳变。两派都承认这两张图都画得对——分歧在于该拿哪张图说话（下表）。右栏的曲线还贴着「乱猜」高位的那一段，正对应左栏连一题都做不对的规模：对使用者来说，这既是平滑的，也是「突然」的。两栏横轴按同一相对位置对齐：左栏的跳点与右栏标记点落在同一档规模上。</figcaption>
             </div>
           
             <h4>争议：跳变是相变，还是尺子的产物？ <span class="badge badge--debate">存在争议</span></h4>
@@ -2410,8 +2520,8 @@
               <summary>展开：为什么会有 L∞ 这个「地板」，以及为什么指数不能混用</summary>
               <div class="math-detail__body prose">
                 <p><strong>地板的来源。</strong>交叉熵的下界是文本本身的真实条件熵（M02）：哪怕模型完美掌握了「下一个词元」的全部规律，人类写了什么仍受随机与多义支配，这部分意外压不掉。拟合里写作 L∞，工程上它决定了「把 N 与 D 同步乘十」能买到的收益上限。</p>
-                <p><strong>指数的可比性。</strong>Kaplan 2020 报 α_N≈0.076，Hoffmann 2022 报 α≈0.34 [2026-10]，看起来差四倍，其实量的不是同一个东西：前者对原始损失 L 拟合，后者对 L−L∞ 拟合。α 还依赖拟合用的规模区间与架构族，所以「拿别人的指数直接外推自己的模型」是这类曲线最常见的误用。演示里让你自己拖 α，就是为了建立「指数是拟合出来的参数，不是常数」的肌肉记忆。</p>
-                <p><strong>配比的敏感性。</strong>Chinchilla 的最优比值对损失曲面形状敏感，对 L∞ 的取值不敏感——这是它那个结论稳的原因；反过来，如果你先猜错了地板，推出的 N:D 就会偏。这个细节在论文正文里常被一句带过，这里补上。</p>
+                <p><strong>指数的可比性。</strong>Kaplan 2020 报 α_N≈0.076，Hoffmann 2022 报 α≈0.34 [2026-10]，看起来差四倍，其实量的不是同一个东西：前者对原始损失 L 拟合，后者对 L−L∞ 拟合；两者用的语料也不同（WebText2 对 MassiveText），Kaplan 还对所有规模固定词元数与学习率调度。α 另依赖拟合用的规模区间与架构族，所以「拿别人的指数直接外推自己的模型」是这类曲线最常见的误用。演示里让你自己拖 α，就是为了建立「指数是拟合出来的参数，不是常数」的肌肉记忆。</p>
+                <p><strong>配比的敏感性。</strong>Chinchilla 的最优比值对损失曲面形状敏感，对 L∞ 的取值不敏感：最优解里 N_opt ∝ C^(β/(α+β))、D_opt ∝ C^(α/(α+β))，这两个指数只含 α、β，地板项 E 被约束消掉了——这才是它那个结论稳的原因。但别读反：地板猜错会连带扭曲拟合出的 α、β 与 A、B，配比于是跟着偏；是「配比公式里不含地板项」，不是「地板不重要」。</p>
               </div>
             </details>
         </article>
@@ -2422,7 +2532,7 @@
                       <div class="demo__controls"></div>
                     </div>
           <h4>把直线拖到穿过这些点</h4>
-            <p>下面这个拟合器给你 8 个「历史运行」——它们是<strong>编造的示意样例</strong>，不是真实论文数据。你的任务：拖 α、β、A 把拟合线调到残差最小，然后沿直线外推，预测「下一个模型该造多大、损失会掉到多少」。请务必把「双对数坐标」开关关掉一次——同一条幂律立刻变弯，那是第 ② 步全部的意义；再打开「按 Chinchilla 配比联动」，看虚线为什么能比实线走得更低。</p>
+            <p>下面这个拟合器给你 8 个「历史运行」——它们是<strong>编造的示意样例</strong>，不是真实论文数据。你的任务：拖 α、β、A 把拟合线调到残差最小，然后沿直线外推，预测「下一个模型该造多大、损失会掉到多少」。请务必把「双对数坐标」开关关掉一次——同一条幂律立刻变弯，那是第 ③ 步全部的意义；再打开「按 Chinchilla 配比联动」，看虚线为什么能比实线走得更低。</p>
         </article>
         <article class="seg has-content" id="m08--misconception" data-seg="misconception">
           <h3>常见误区</h3>
@@ -2430,7 +2540,7 @@
               <summary>「参数越多就越聪明——把参数堆大，模型自然更强。」</summary>
               <div class="myth__body">
                 <p><strong>为何会有这个误解：</strong>参数量是最醒目的数字，发布会都拿它当标题；而「同预算下参数与数据要平衡」这件事没有数字可喊。</p>
-                <p class="myth__truth">正确说法：在<strong>给定算力预算</strong>下，参数与数据要近似同步放大（Chinchilla，2022）[2026-10]。只堆参数，数据先耗尽，参数项的收益骤减——机制段第 ③ 步的「容器与水源」就是这个饱和。GPT-3 按当时算例已是巨无霸，按最优配比却严重「参数过大、数据不足」，同预算下本可以训出损失更低的 700 亿参数模型。</p>
+                <p class="myth__truth">正确说法：在<strong>给定算力预算</strong>下，参数与数据要近似同步放大（Chinchilla，2022）[2026-10]。只堆参数，数据先耗尽，参数项的收益骤减——机制段第 ④ 步的「容器与水源」就是这个饱和。GPT-3 按当时算例已是巨无霸，按最优配比却严重「参数过大、数据不足」，同预算下本可以训出损失更低的 700 亿参数模型：那篇论文给出的对照就是 2800 亿的 Gopher 与 70 亿的 Chinchilla 花同一笔预训练算力。</p>
               </div>
             </details>
             <details class="myth">
@@ -2460,13 +2570,13 @@
           <blockquote class="takeaway__line">规模定律只保证平均损失沿直线下降，不保证任何单项能力。</blockquote>
           
             <div class="quiz">
-              <p class="quiz__q">自测：给定一笔固定算力，团队在「1750 亿参数 × 0.3 万亿词元」和「700 亿参数 × 1.4 万亿词元」之间选。按 Chinchilla 的结论该怎么选？</p>
-              <label class="quiz__opt"><input type="radio" name="q-m08" data-right="1"><span>后者：参数与数据近似同步放大，同一预算能把损失压得更低</span></label>
+              <p class="quiz__q">自测：一笔预训练算力，团队在两个方案之间选：「2800 亿参数 × 0.3 万亿词元」与「700 亿参数 × 1.4 万亿词元」。按本站的 C≈6ND 验算，两者 ND 分别是 8.4×10²² 与 9.8×10²²——后者多 17%，论文按含嵌入与注意力的完整口径算作同一算力预算。按 Chinchilla 的结论该怎么选？</p>
+              <label class="quiz__opt"><input type="radio" name="q-m08" data-right="1"><span>后者：它正好落在约 20 词元配 1 参数上，同一预算能把损失压得更低</span></label>
               <label class="quiz__opt"><input type="radio" name="q-m08"><span>前者：参数是能力的天花板，先尽量堆大再说</span></label>
               <label class="quiz__opt"><input type="radio" name="q-m08"><span>一样：C≈6ND 已定，同一预算的损失必然相同</span></label>
               <div class="quiz__fb">
-                <p data-for="no"><strong>再想一步：</strong>C≈6ND 只说预算是两者的<strong>乘积</strong>，没说怎么<strong>分配</strong>。乘积相同、比例悬殊时，先耗尽的那一项会先进入饱和段——另一项再怎么大也托着损失降不动。Chinchilla 的回答正是「分配本身有最优解」，而 2000 亿级别的模型喂不到两万亿词元，就是当年普遍踩的坑 [2026-10]。</p>
-                <p data-for="ok"><strong>对了。</strong>这就是验收标准的前半句：数据与参数应同步放大。顺手再带一句：这个比例并非天条——把推理成本算进去后，后来的模型普遍喂到配比的数十倍。带着「会接话的词元机器已经成型」这件事进 M09：损失最低 ≠ 有用，它只会续写，不会帮忙。</p>
+                <p data-for="no"><strong>再想一步：</strong>C≈6ND 只说预算是两者的<strong>乘积</strong>，没说怎么<strong>分配</strong>。乘积几乎相同、比例悬殊时，先耗尽的那一项会先进入饱和段——另一项再怎么大也托着损失降不动。把两个方案各自除一下就看得出差距有多大：2800 亿配 0.3 万亿是 0.3 万亿 ÷ 2800 亿 ≈ <strong>1.07</strong> 词元/参数，700 亿配 1.4 万亿是 1.4 万亿 ÷ 700 亿 = <strong>20</strong> 词元/参数，后者正是那篇论文算出的最优点，前者离它差着 20 ÷ 1.07 ≈ <strong>18.7</strong> 倍 [2026-10]。Chinchilla 的回答是「分配本身有最优解」，而题目里那个「堆参数、词元跟不上」的读法，正是当年普遍踩的坑。</p>
+                <p data-for="ok"><strong>对了。</strong>这就是验收标准的前半句：数据与参数应同步放大——本题 1.4 万亿 ÷ 700 亿恰好等于 20 就是这个意思。顺手再带一句：这个比例并非天条——把推理成本算进去后，后来的模型普遍喂到配比的数十倍。带着「会接话的词元机器已经成型」这件事进 M09：损失最低 ≠ 有用，它只会续写，不会帮忙。</p>
               </div>
               <p class="quiz__result" aria-live="polite"></p>
             </div>
@@ -2512,7 +2622,7 @@
             <div class="callout callout--warn">
               <p><strong>这个类比对下面三件事不成立，越早知道越省时间：</strong></p>
               <ul>
-                <li><strong>老师傅是学生教出来的。</strong>奖励模型不是天然存在的评分标准，它同样是用梯度训出来的<span class="term" data-def="网络里乘在输入上的系数；这里指打分所依赖的可训练权重。" data-en="weight">权重</span>近似。既然是近似就有漏洞，而优化会把模型精准地推向漏洞——这就是「刷分」（reward hacking）：分数上涨，回答变差。</li>
+                <li><strong>老师傅是学生教出来的。</strong>奖励模型不是天然存在的评分标准，它同样是用梯度训出来的<span class="term" data-def="模型内部可训练的数值；这里指打分所依赖的那一组参数。" data-en="parameter">参数</span>近似。既然是近似就有漏洞，而优化会把模型精准地推向漏洞——这就是「刷分」（reward hacking）：分数上涨，回答变差。</li>
                 <li><strong>评语被压成了一个数字。</strong>老师傅只输出一个标量分数，丢掉了「哪里好、好多少、为什么别这么写」的全部结构信息。学生只能靠反复试错反推评语的意思，而监督学习能直接读到一份改好的作业。</li>
                 <li><strong>批改和上课用的是同一套计算。</strong>老师傅与学生的差别只在输出层：一个吐下一个词元的分布，一个吐一个分数。所以学生能钻的空子，恰恰是它和老师傅共享内部表示的那一部分，而不是人类会犯的那类错。</li>
               </ul>
@@ -2521,15 +2631,15 @@
         <article class="seg has-content" id="m09--mechanism" data-seg="mechanism">
           <h3>机制拆解</h3>
           <h4>先把三件事分开：续写、回答、答得好</h4>
-            <p>这三件事对应三个不同的目标函数，也对应后训练要依次补上的三个缺口。整条链上要同时摆着好几个模型副本，这是本节最容易迷路的地方，所以先给结论：<strong>RLHF 的闭环里有三个模型——策略模型在训练，参考模型和奖励模型冻结。</strong></p>
+            <p>这三件事对应<strong>三种不同的数据</strong>；目标函数则是「续写与回答共用 M02 那个交叉熵（只换数据与掩码），打分换成偏好似然，最后换成『分数 − β·KL』」——全站数下来换过三次，但其中只有后两次是<strong>新出现</strong>的独立目标（下表就按这个口径写「两个独立的训练目标」）。整条链上还要同时摆着好几个模型副本，这是本节最容易迷路的地方，所以先把两层口径钉住：<strong>「角色」有三个——策略模型、参考模型、奖励模型，其中只有策略在产出回答、只有奖励在打分；「显存」里有四份——再加上 PPO 的价值网络，它也在线更新，但只服务于降低梯度方差，不产出回答。</strong></p>
           
             <ol class="steps">
               <li data-step="1"><strong>预训练模型没有「回答」这个行为。</strong>它的训练信号只有一种：在海量无标注<span class="term" data-def="没有人工标签的原始文本；预训练只做下一词元预测。" data-en="unlabeled text">文本</span>上预测下一个词元。语料里没人标过「这才是好回答」，所以一句提问在它眼里只是另一种待续写的文本。</li>
               <li data-step="2"><strong>第一阶段 SFT：把续写掰成回答。</strong><span class="term" data-def="监督微调：在人工写的示范数据上继续做交叉熵训练。" data-en="supervised fine-tuning">监督微调</span>（SFT）用人工写的<span class="term" data-def="人工撰写的「问题 + 理想回答」配对数据，SFT 的训练材料。" data-en="demonstration pairs">示范问答对</span>继续做<span class="term" data-def="按真实分布取平均、用模型分布计算的惊讶度；即总平均码长 = 熵 + KL。分类任务的损失函数。" data-en="cross-entropy">交叉熵</span>训练。损失与梯度都是 M02、M05 那套，只是换了数据、把学习率调小一到两个数量级。InstructGPT 用了约 1.3 万条示范（2022）[2026-10]。</li>
               <li data-step="3"><strong>SFT 立住了规矩，但规矩的上限就是示范。</strong>示范只有万条量级时，模型会把示范的措辞与结构本身当成目标；示范没覆盖的场景（该追问澄清、该拒绝、该承认不知道）它只能猜。于是需要一个能给<strong>任意</strong>回答打分的裁判。</li>
-              <li data-step="4"><strong>第二阶段：人类只排序，机器学打分。</strong>对同一个问题让 SFT 模型生成多个回答，标注员<strong>不写评语、不打绝对分数，只排出 A 比 B 好</strong>。把每次比较整理成<span class="term" data-def="偏好三元组：同一问题下「提示 + 更优回答 + 更差回答」。" data-en="preference triplet">偏好三元组</span> <code>(x, y_win, y_lose)</code>，用它们训练上文那位老师傅，即奖励模型，下文记作 RM。同一篇报告收集了约 3.3 万次比较（2022）[2026-10]。</li>
+              <li data-step="4"><strong>第二阶段：人类只排序，机器学打分。</strong>对同一个问题让 SFT 模型生成多个回答，标注员<strong>不写评语、不打绝对分数，只排出 A 比 B 好</strong>。把每次比较整理成<span class="term" data-def="偏好三元组：同一问题下「提示 + 更优回答 + 更差回答」。" data-en="preference triplet">偏好三元组</span> <code>(x, y_win, y_lose)</code>，用它们训练上文那位老师傅，即奖励模型，下文记作 RM。同一篇报告的奖励模型数据集是约 <strong>3.3 万条提示</strong>（2022）[2026-10]；注意单位——每条提示让标注员给 4 到 9 个回答排序，一次排序就产出 6 到 36 对「A 比 B 好」，所以提示只有 3.3 万条，<strong>成对比较却有数十万到上百万对</strong>。这正是「只排序」比「写评语」便宜的真正原因。</li>
               <li data-step="5"><strong>第三阶段：最大化分数，但用一根缰绳拴住。</strong>用<span class="term" data-def="近端策略优化：限制每步更新幅度的强化学习算法，RLHF 的常用选择。" data-en="PPO">近端策略优化（PPO）</span>这类<span class="term" data-def="靠交互得到的标量奖励来学习行为策略的机器学习范式。" data-en="reinforcement learning">强化学习</span>算法反复采样新回答、找 RM 要分数、更新策略。同时减去一项 <span class="term" data-def="KL 散度：衡量两个概率分布差多远；此处约束新策略别离参考模型太远。" data-en="KL divergence">KL 散度</span>惩罚，把新策略拴在 SFT 模型附近。目标函数见下方第一个公式，本站写作 <code>J(θ)</code>。</li>
-              <li data-step="6"><strong>三个模型，各自的死活不一样。</strong><span class="term" data-def="正在被更新的那一个：负责生成回答的大模型本身。" data-en="policy model">策略模型</span> π<sub>θ</sub> 在被训练；<span class="term" data-def="冻结的 SFT 副本，只用来算 KL 惩罚，自身不被更新。" data-en="reference model">参考模型</span> π<sub>ref</sub> 冻结；奖励模型冻结，实践中每隔几轮用新收集的比较重训一次。再加一个从策略模型初始化出来的<span class="term" data-def="强化学习中预测长期回报的辅助网络，用来降低梯度方差。" data-en="critic">价值网络</span>，一轮训练要同时养着 <strong>4 份大模型副本</strong>——显存开销与训练不稳定都来自这里。</li>
+              <li data-step="6"><strong>三个角色、四份副本，各自的死活不一样。</strong><span class="term" data-def="正在被更新的那一个：负责生成回答的大模型本身。" data-en="policy model">策略模型</span> π<sub>θ</sub> 在被训练；<span class="term" data-def="冻结的 SFT 副本，只用来算 KL 惩罚，自身不被更新。" data-en="reference model">参考模型</span> π<sub>ref</sub> 冻结；奖励模型冻结，实践中每隔几轮用新收集的比较重训一次。再加一个<span class="term" data-def="强化学习中预测长期回报的辅助网络，用来降低梯度方差。" data-en="critic">价值网络</span>：InstructGPT 明确写它是<strong>从奖励模型初始化</strong>的（并且只训 6B 的 RM，因为 175B 的 RM 训练不稳、不适合拿来当价值网络）；不少开源实现则改成从策略 / SFT 模型初始化——<strong>这一步各家不同</strong>，它本身也在线更新，只是不产出回答。一轮训练要同时养着 <strong>4 份大模型副本</strong>——显存开销与训练不稳定都来自这里 [2026-10]。</li>
               <li data-step="7"><strong>为什么这套很麻烦。</strong>① 每步都要现场生成大量回答才有样本，等于在训练里嵌了一段推理；② 一整段话只换一个标量分数，奖励稀疏、梯度噪声大；③ 优化压力越大，模型越会去找 RM 近似面之外的漏洞，表现为回答变长、变自信、开头套路化；④ 四个模型的超参互相牵连，复现成本高。</li>
               <li data-step="8"><strong><span class="term" data-def="直接偏好优化：把 RLHF 的后两段改写成一个直接在偏好对上优化的分类式损失。" data-en="DPO">直接偏好优化</span>（DPO）：把「训 RM + 强化学习」压成一个损失。</strong>关键洞见是：第 ⑤ 步那个带 KL 惩罚的目标<strong>有闭式最优解</strong>。把它解出来，奖励就能改写成「策略与参考模型的对数概率之差」；而偏好数据本来就只关心两个回答的奖励<strong>差</strong>。代进去，独立的 RM 与「现场采样」这两样东西同时消失。</li>
             </ol>
@@ -2541,10 +2651,10 @@
               <span class="reads">读作：只在人工写的答案那一段上，逐位取出「标准答案词元」的对数概率，求平均再变号。x 是提问，y<sub>t</sub> 是答案的第 t 个词元，|y| 是答案长度。这和 M02 的交叉熵是同一个式子，只是换了一批会讲话的数据。</span>
             </div>
           
-            <p>奖励模型不预测下一个词元，它预测<strong>人类会怎么选</strong>：先在两个回答上各算一个分数，再用 sigmoid 把分差变成概率。</p>
+            <p>奖励模型不预测下一个词元，它预测<strong>人类会怎么选</strong>：先在两个回答上各算一个分数，再用 sigmoid 把分差变成概率——这就是 <span class="term" data-def="把「A 比 B 好的概率」建模为两者分数之差的 sigmoid 的选择模型；成对比较数据的标准似然形式。" data-en="Bradley–Terry model">Bradley–Terry 式</span>的成对逻辑似然。</p>
             <div class="math-block math">
-              L<sub>RM</sub> <span class="op">=</span> − log σ <span class="bigg">(</span> r<sub>θ</sub>(x, y<sub>win</sub>) <span class="op">−</span> r<sub>θ</sub>(x, y<sub>lose</sub>) <span class="bigg">)</span>
-              <span class="reads">读作：把人类判定更好的那个回答的分数，减去较差那个的分数；这个差越大，「我们猜对了排序」的概率越接近 1，损失越接近 0。r<sub>θ</sub> 是奖励模型的输出，σ 是 sigmoid，把任意实数压进 0 到 1。</span>
+              L<sub>RM</sub> <span class="op">=</span> − log σ <span class="bigg">(</span> r<sub>φ</sub>(x, y<sub>win</sub>) <span class="op">−</span> r<sub>φ</sub>(x, y<sub>lose</sub>) <span class="bigg">)</span>
+              <span class="reads">读作：把人类判定更好的那个回答的分数，减去较差那个的分数；这个差越大，「我们猜对了排序」的概率越接近 1，损失越接近 0。r<sub>φ</sub> 是奖励模型的输出，它的参数写作 φ，<strong>与策略的参数 θ 是两套东西</strong>——后面推 DPO 要同时拿着这两套，混用会迷路。σ 是 sigmoid，把任意实数压进 0 到 1。</span>
             </div>
           
             <p>第三阶段优化的不再是任何数据集，而是这个目标：</p>
@@ -2556,12 +2666,12 @@
             <p>DPO 的全部起点，是注意到这个目标<strong>有解析的最优策略</strong>，于是奖励可以被反解出来：</p>
             <div class="math-block math">
               r(x, y) <span class="op">=</span> β <span class="op">·</span> log <span class="frac"><span class="num">π<sub>θ</sub>(y | x)</span><span class="den">π<sub>ref</sub>(y | x)</span></span> <span class="op">+</span> const
-              <span class="reads">读作：一段回答的奖励，等于「新策略比参考模型更愿写出它」的对数倍数，乘上缰绳系数 β，再加一个与回答无关的常数。这一步就是「RM 被吸收进策略」的出处。</span>
+              <span class="reads">读作：一段回答的奖励，等于「新策略比参考模型更愿写出它」的对数倍数，乘上缰绳系数 β，再加一个与回答无关的常数。严格说这条等式只在 KL 约束目标的<strong>最优策略 π<sup>∗</sup></strong> 处成立（那个常数其实是 β·log Z(x)，随问题变、与回答无关）；DPO 接着把 π<sup>∗</sup> 换成被训练的 π<sub>θ</sub>——这一步是它全部的赌注，也是「RM 被吸收进策略」的确切含义。<span class="badge badge--simplify">已简化：用 π_θ 代最优策略</span></span>
             </div>
             <p>把上式代进 <code>L<sub>RM</sub></code>，常数项在分差里相消，配分函数也不用算了，剩下一个纯分类损失：</p>
             <div class="math-block math">
               L<sub>DPO</sub> <span class="op">=</span> − log σ <span class="bigg">(</span> β <span class="bigg">[</span> log <span class="frac"><span class="num">π<sub>θ</sub>(y<sub>win</sub>|x)</span><span class="den">π<sub>ref</sub>(y<sub>win</sub>|x)</span></span> <span class="op">−</span> log <span class="frac"><span class="num">π<sub>θ</sub>(y<sub>lose</sub>|x)</span><span class="den">π<sub>ref</sub>(y<sub>lose</sub>|x)</span></span> <span class="bigg">]</span> <span class="bigg">)</span>
-              <span class="reads">读作：算「更优回答比参考模型多自信多少」，减去「较差回答多自信多少」，再把这个差推大。RM 不再作为一个独立模型存在——它就是策略自己；但参考模型还在，它就在每个分数的分母上。</span>
+              <span class="reads">读作：算「更优回答比参考模型多自信多少」，减去「较差回答多自信多少」，再把这个差推大。不再有一个<strong>单独训练、单独打分</strong>的奖励模型：奖励被重写成策略与参考模型的对数概率比，这个「隐式奖励」只活在损失函数里；但参考模型还在，它就在每个分数的分母上。</span>
             </div>
             <p>这里只给目标函数形式 <span class="badge badge--simplify">已简化：略去 DPO 推导中的配分函数与 Bradley–Terry 偏好假设的细节</span>。原论文报告的 β 多取 0.1–0.5（2023）[2026-10]。DPO 的代价同样清楚：不再现场生成回答，只能从<strong>已有</strong>的偏好对里学，因此学不出示范数据里没有的行为，也更吃数据分布的偏差。至于 DPO 与 RLHF 谁更强，目前是有争议的：有工作报告同数据下 DPO 接近 RLHF，也有工作报告在困难任务上在线强化学习仍然更高（2023–2024）<span class="badge badge--debate">存在争议</span>。</p>
           
@@ -2581,7 +2691,7 @@
                     <rect class="box box--sun" x="10" y="134" width="120" height="40" rx="6"></rect>
                     <text x="70" y="152" class="t-xs" text-anchor="middle">一整页网页</text>
                     <text x="70" y="166" class="t-xs faint" text-anchor="middle">无标注文本</text>
-                    <rect class="box" x="10" y="184" width="120" height="44" rx="6"></rect>
+                    <rect class="box box--a" x="10" y="184" width="120" height="44" rx="6"></rect>
                     <text x="70" y="202" class="t-sm" text-anchor="middle">下一词元预测</text>
                     <text x="70" y="218" class="t-xs muted" text-anchor="middle">交叉熵</text>
                     <line class="line" x1="70" y1="174" x2="70" y2="184" marker-end="url(#m09-arw)"></line>
@@ -2629,7 +2739,7 @@
           
                   <g data-step="6">
                     <rect class="box" x="10" y="26" width="620" height="82" rx="8"></rect>
-                    <text x="24" y="46" class="t-sm">④ 这一步同时驻留 4 份模型副本（本站最该记住的一格）：</text>
+                    <text x="24" y="46" class="t-sm">策略优化这一步同时驻留 4 份模型副本（本站最该记住的一格）：</text>
                     <rect class="box box--a" x="24" y="58" width="130" height="36" rx="5"></rect>
                     <text x="89" y="74" class="t-xs" text-anchor="middle">策略模型</text>
                     <text x="89" y="88" class="t-xs accent" text-anchor="middle">正在被训练</text>
@@ -2641,19 +2751,19 @@
                     <text x="377" y="88" class="t-xs muted" text-anchor="middle">冻结 · 负责打分</text>
                     <rect class="box box--b" x="456" y="58" width="130" height="36" rx="5"></rect>
                     <text x="521" y="74" class="t-xs" text-anchor="middle">价值网络</text>
-                    <text x="521" y="88" class="t-xs muted" text-anchor="middle">辅助 · 从策略初始化</text>
+                    <text x="521" y="88" class="t-xs muted" text-anchor="middle">辅助 · 也在更新</text>
                     <line class="line" x1="564" y1="126" x2="534" y2="112" marker-end="url(#m09-arw)"></line>
                   </g>
           
                   <text x="10" y="272" class="t-sm muted">一条闭环：SFT 模型生成回答 → 人类排序 → 训练奖励模型 → 强化学习更新策略 → 再采样再排序。</text>
-                  <text x="10" y="290" class="t-xs faint">越靠右，数据的「人工含量」越低，但一次训练要养活的模型副本越多。</text>
+                  <text x="10" y="290" class="t-xs faint">人工量先升后降；副本数到 ④ 才跳到 4 份</text>
                 </svg>
               </div>
-              <figcaption>怎么看：按列读：每列上下两格分别是「这个阶段吃什么数据」和「它在优化什么」，灰底是数据形态、彩色是训出来的模型；顶部横条回答「PPO 那一步同时开着哪几个模型」。灰箭头只表示阶段顺序。悬停左侧步骤 1、2、4、5、6 会高亮图中对应环节。</figcaption>
+              <figcaption>怎么看：按列读：每列上下两格分别是「这个阶段吃什么数据」和「它在优化什么」，灰底是数据形态、彩色是训出来的模型；顶部横条回答「策略优化那一步同时开着哪几个模型」——注意四份副本里<strong>有两份在动</strong>：策略模型和价值网络，另两份（参考、奖励）冻结，所以「三个角色」说的是<strong>谁在产出回答、谁在打分</strong>，而「4 份」说的是<strong>显存里摆着几个大模型</strong>，两条口径别混。图内 ①–④ 是<strong>阶段号</strong>，与左侧 ①–⑧ 的<strong>步骤号</strong>不同源，别按圈号去找步骤。底部那句「人工量先升后降」的完整读法：① 不要人工标注 → ② 每条都要人写完整答案（最贵）→ ③④ 人只排序（回落），<strong>并不是单调递减</strong>；副本数则是前三栏各只养一个模型，到 ④ 一下子变成四份。灰箭头只表示阶段顺序。悬停左侧步骤 1、2、4、5、6 会高亮图中对应环节。</figcaption>
             </div>
           
             <div class="callout callout--key">
-              <p><strong>必须记住的对照表。</strong>「三个模型」是本站对 RLHF 最要紧的一次澄清——答不出这三个，就还没读懂这一步。</p>
+              <p><strong>必须记住的对照表。</strong>「三个角色、四份显存」是本站对 RLHF 最要紧的一次澄清——既要说得出这三个角色，也要说得出第四份副本（价值网络）为什么也得开着、它和前三者有什么不同。</p>
               <table class="tbl tbl--scroll">
                 <thead>
                   <tr><th>模型</th><th>在 RLHF 里干什么</th><th>训练状态</th><th>DPO 里变成什么</th></tr>
@@ -2662,6 +2772,7 @@
                   <tr><td>策略模型 π<sub>θ</sub></td><td>生成回答，被优化的对象</td><td>在线更新</td><td>仍是唯一被训练的那一个</td></tr>
                   <tr><td>参考模型 π<sub>ref</sub></td><td>冻结的 SFT 副本，KL 惩罚的另一端</td><td>冻结</td><td>保留，充当公式里的分母</td></tr>
                   <tr><td>奖励模型 r</td><td>把「问题 + 回答」压成一个标量分数</td><td>冻结，偶尔重训</td><td><strong>被省掉</strong>，吸收成对数概率比</td></tr>
+                  <tr><td>价值网络</td><td>估计长期回报、给策略更新降方差；不产出回答</td><td>在线更新；InstructGPT 从 RM 初始化，各家起点不同</td><td><strong>整条消失</strong>：没有 RL 回路，就没有它的位置</td></tr>
                 </tbody>
               </table>
             </div>
@@ -2695,7 +2806,7 @@
                       <div class="demo__controls"></div>
                     </div>
           <h4>缰绳该放多长</h4>
-            <p>下面这条拉锯就是机制段第 ⑤ 步的目标函数：横轴是策略偏离参考模型的程度，纵轴是分数。拖 β 看最优工作点往哪移，拖「可被钻空子程度」看刷分与变好什么时候分道扬镳。</p>
+            <p>下面这条拉锯就是机制段第 ⑤ 步的目标函数：横轴 κ 是策略偏离参考模型的程度（KL 距离，0–2，无量纲教学刻度），纵轴是分数。你能改两个量：缰绳系数 β ∈ [0, 2]（越大越保守）与「可被钻空子程度」ε ∈ [0, 1]（奖励模型与真实人类偏好之间的缺口，0 = 打分完全可信）。拖 β 看最优工作点往哪移，拖 ε 看刷分与变好什么时候分道扬镳。</p>
         </article>
         <article class="seg has-content" id="m09--misconception" data-seg="misconception">
           <h3>常见误区</h3>
@@ -2724,13 +2835,13 @@
               <summary>「奖励模型的分数越高，模型就越对齐。」</summary>
               <div class="myth__body">
                 <p><strong>为何会有这个误解：</strong>奖励分数是整条流程里唯一可见的量，日志、曲线、消融表都拿它当指标，「优化它就是在优化目标」是最顺手的推断。</p>
-                <p class="myth__truth">正确说法：奖励模型的分数是<strong>人类偏好的代理指标</strong>，一旦成为优化目标，它同时也成了攻击面。分数曲线背后往往藏着一条先升后降的真实质量曲线，两者差值就是被钻空子的量——上面那个演示画的就是这条差值。所以实践中必须用与奖励模型训练数据无关的评测集，并让人盲评对比，才能判断这一步是否真的更好。</p>
+                <p class="myth__truth">正确说法：奖励模型的分数是<strong>人类偏好的代理指标</strong>，一旦成为优化目标，它同时也成了攻击面。分数曲线背后往往藏着一条先升后降的真实质量曲线，两者差值就是被钻空子的量——上面那个演示画的就是这条差值（注意演示把它画在「策略偏离参考模型多远」这根轴上，不是训练步数轴上）。这条现象的可标度版本见 Gao、Schulman 与 Hilton 的《Scaling Laws for Reward Model Overoptimization》（2023）[2026-10]：刷分的量随优化强度按幂律增长，更大的奖励模型更抗刷。所以实践中必须用与奖励模型训练数据无关的评测集，并让人盲评对比，才能判断这一步是否真的更好。</p>
               </div>
             </details>
         </article>
         <article class="seg has-content" id="m09--takeaway" data-seg="takeaway">
           <h3>带走一句</h3>
-          <blockquote class="takeaway__line">RLHF 改的是说话习惯，不是知识；三个模型里只有一个在变。</blockquote>
+          <blockquote class="takeaway__line">RLHF 改的是说话习惯，不是知识；三个角色里只有策略一直在变。</blockquote>
           
             <div class="quiz">
               <p class="quiz__q">自测：DPO 声称「更简单」，它在结构上到底省掉了什么？</p>
@@ -2739,7 +2850,7 @@
               <label class="quiz__opt"><input type="radio" name="q-m09"><span>省掉了偏好数据，直接拿示范问答对继续训</span></label>
               <div class="quiz__fb">
                 <p data-for="no"><strong>再想一步：</strong>把机制段最后那个 DPO 损失拿来看：分母里出现了参考模型，说明它还在；下标 win / lose 说明它仍然吃偏好对。真正消失的是那个单独训练、单独打分的奖励模型，以及「让模型先生成回答、再拿去打分」这一整轮循环。省掉的是阶段与副本，不是数据。</p>
-                <p data-for="ok"><strong>对了。</strong>奖励被改写成策略与参考模型的对数概率比，奖励模型因此被吸收进策略本身；代价是不再在线探索，行为被离线偏好数据的分布钉住。这条权衡正是进入 M13 的入口：一个不生成新行为的模型，也就不会在偏好数据覆盖不到的地方暴露问题。</p>
+                <p data-for="ok"><strong>对了。</strong>奖励被改写成策略与参考模型的对数概率比，那个<strong>单独训练、单独打分</strong>的奖励模型因此从流程里消失；代价是不再在线探索，行为被离线偏好数据的分布钉住。这条权衡正是进入 M13 的入口：一个不生成新行为的模型，也就<strong>更难被这套手段照出</strong>偏好数据覆盖不到的问题——风险没有消失，只是不显形。这正是评测盲区，而不是免疫。</p>
               </div>
               <p class="quiz__result" aria-live="polite"></p>
             </div>
@@ -2772,46 +2883,46 @@
         </div>
         <article class="seg has-content" id="m10--hook" data-seg="hook">
           <h3>开场钩子</h3>
-          <p class="hook">同一个问题问两遍，它给了两个不同的答案；把温度调到 0，它每次一字不差。那么哪一个才是「它真正的想法」？答案是：都不存在。它每写一个字，都是在整本词典上掷一次骰子——而骰子的形状，是你能用两个数字改写的。</p>
+          <p class="hook">同一个问题问两遍，它给了两个不同的答案；把温度调到 0、同一套后端同一份权重，它每次一字不差。哪一个才是「它真正的想法」？都不存在——它每写一个词元都是在整本词典上掷骰子，而骰子的形状，是你能用两个数字改写的。</p>
         </article>
         <article class="seg has-content" id="m10--intuition" data-seg="intuition">
           <h3>直觉与类比</h3>
-          <p>模型每生成一个字之前，手里都有一份<strong>候选菜单</strong>：词典里几万个词，每个后面跟着一个概率。它不会照第一行点菜，而是<strong>按概率掷骰子</strong>——概率 60% 的菜有 60% 的机会被选中。</p>
+          <p>模型每生成一个词元之前（词元就是模型处理文本的最小单位，一次只输出一个，不是「一个字」），手里都有一份<strong>候选菜单</strong>：词表里几万个候选，每个后面跟着一个概率。它不会照第一行点菜，而是<strong>按概率掷骰子</strong>——概率 60% 的菜有 60% 的机会被选中。把这套「算分布—挑一个—接着算」的在线过程叫<strong>推理（inference）</strong>，它和训练是两件事：推理不动任何参数。</p>
             <p>「温度」这个旋钮做的事很朴素：<strong>把菜单上的差距放大或缩小</strong>。温度调低，头牌和第二名的差距被拉到天上，模型几乎只点头牌；温度调高，差距被抹平，冷门菜也有机会上桌。</p>
             <p>「top-p」则是另一件事：<strong>先把菜单上那些几乎没人点的行撕掉</strong>，再在剩下的里面掷骰子。撕到哪，取决于你要求「累计覆盖多少概率」。</p>
           
             <div class="callout callout--warn">
               <p><strong>这个类比对下面几件事不成立：</strong></p>
               <ul>
-                <li><strong>菜单不是预先列好的。</strong>每写一个字，整份菜单都要用一次完整前向传播重算。所以「点菜」这个动作，一个字要重复一次，一个字比一个字贵。</li>
-                <li><strong>掷骰子的随机性不带来正确性。</strong>直觉上「多几种可能 = 更有创意」，但温度升高时上升的不仅是好答案的概率，<strong>错误答案的概率上升得更快</strong>——因为词典里错的词永远比对的多。</li>
+                <li><strong>菜单不是预先列好的。</strong>每写一个词元，整份菜单都要用一次完整前向传播重算。所以「点菜」这个动作，一个词元要重复一次，一个词元比一个词元贵。</li>
+                <li><strong>掷骰子的随机性不带来正确性。</strong>直觉上「多几种可能 = 更有创意」，但温度升高时上升的不仅是好答案的概率，<strong>错误答案的概率上升得更快</strong>——因为词典里语义不当的组合通常远多于恰当的组合。</li>
               </ul>
             </div>
         </article>
         <article class="seg has-content" id="m10--mechanism" data-seg="mechanism">
           <h3>机制拆解</h3>
           <ol class="steps">
-              <li data-step="1"><strong>模型输出的不是答案，是一整排分数。</strong>最后一层给出词表大小（约 3 万到 25 万）个实数，叫<span class="term" data-def="softmax 之前的实数分数，本身不是概率，只有相对高低有意义。" data-en="logit">未归一化得分</span>（logit）。单独看一个 logit 毫无意义，只有它们之间的大小关系有意义。</li>
-              <li data-step="2"><strong>温度在 softmax 之前缩放分数。</strong>它除的是<em>分数</em>，不是概率——这是它和「事后把概率重新开方」的本质区别：除以小数等于把整个分数轴拉伸，而指数函数对拉伸极其敏感，于是差距被急剧放大。</li>
-              <li data-step="3"><strong>温度只改陡峭度，绝不改排序。</strong>因为所有分数被同一个正数除，大小关系不变。所以分数最高的那个词，在任何温度下都是最高概率的那个词；温度只能改变「它领先多少」。这是理解后面所有现象的钥匙。</li>
-              <li data-step="4"><strong>top-p 先截断、再重归一化。</strong>把候选按概率降序累计到 ≥ p 为止，只保留这一段（称为<span class="term" data-def="按概率降序累计达到 p 的最小候选集合；集合外的候选概率被置零后重新归一化。" data-en="nucleus">核</span>），其余清零、剩下的重新除以总和。它比「只保留前 k 个」更常用，因为<strong>核的大小会随模型自信程度自动伸缩</strong>。</li>
-              <li data-step="5"><strong>幻觉不是 bug，是训练目标的直接后果。</strong>模型被训练成「让下一词最像人类写过的文本」，而人类文本里有海量语气笃定但内容错误的句子。训练目标里从来没有「不确定时应当沉默」这一项，于是模型学到：<strong>流畅地继续，永远比停下来更划算</strong>。</li>
-              <li data-step="6"><strong>KV Cache 省算力，不省内存。</strong>生成第 t 个字要用到前 1…t 个词的 K/V；全重算是 O(t²)，把算过的 K/V 留在显存里复用就降到每步 O(t)。但缓存本身必须常驻，且随上下文线性增长。</li>
-              <li data-step="7"><strong>窗口标称长度 ≠ 有效使用长度。</strong>两个独立原因：位置编码见过的距离有限，超出就是外推；softmax 每行权重之和恒为 1，候选越多每个词分到的平均权重越小，中段信息容易被首尾挤掉。所以正确的说法不是「它记不住」，而是<strong>它能看见，但未必会去看</strong>。</li>
+              <li data-step="1"><strong>模型输出的不是答案，是一整排分数。</strong>最后一层给出词表大小（常见开源模型约 3 万到 25 万，本站按量级引用）[2026-10] 个实数，叫<span class="term" data-def="softmax 之前的实数分数，本身不是概率，只有相对高低有意义。" data-en="logit">未归一化得分</span>（logit）。单独看一个 logit 毫无意义，只有它们之间的大小关系有意义。</li>
+              <li data-step="2"><strong>温度在 softmax 之前缩放分数。</strong>它除的是<em>分数</em>，不是概率：除以小数等于把整个分数轴拉伸，而指数函数对拉伸极其敏感，于是差距被急剧放大；T&gt;1 则是压缩，同一条机制。顺带纠一个常见口误：有人把它说成「这和『把概率取 1/T 次幂再归一化』有本质区别」——<strong>两者其实逐点相等</strong>：取对数就把 p 换回 z，于是 softmax(z/T) = p^(1/T) / Σ p^(1/T)，是同一条曲线，只是先除 logits 实现上更省事、数值上更稳。<strong>真正会出错的是第三种做法：只把概率各自取幂、跳过归一化</strong>，那样加起来就不再是 1。</li>
+              <li data-step="3"><strong>温度只改陡峭度，绝不改排序。</strong>因为所有分数被同一个正数除，大小关系不变。所以分数最高的那个候选，在任何温度下都是最高概率的那个候选；温度只能改变「它领先多少」。这是理解后面所有现象的钥匙。</li>
+              <li data-step="4"><strong>核采样（top-p）先截断、再重归一化。</strong>把候选按概率降序累计到 ≥ p 为止，只保留这一段（称为<span class="term" data-def="按概率降序累计达到 p 的最小候选集合；集合外的候选概率被置零后重新归一化。" data-en="nucleus">核</span>），其余清零、剩下的重新除以总和。它比「只保留前 k 个」更常用，因为<strong>核的大小会随模型自信程度自动伸缩</strong>。</li>
+              <li data-step="5"><strong>幻觉不是 bug，是训练目标的直接后果。</strong>本站把「<span class="term" data-def="流畅、语气笃定，但与事实或给定上下文不符的输出。它不是说谎：模型没有「知道真假却故意隐瞒」这一层，它只是在续写。" data-en="hallucination">幻觉</span>（hallucination）」定义为这种输出。模型被训练成「让下一词元最像人类写过的文本」，而人类文本里有海量语气笃定但内容错误的句子。<strong>预训练</strong>目标里没有「不确定时应当沉默」这一项，于是模型学到：流畅地继续，永远比停下来更划算。</li>
+              <li data-step="6"><strong>键值缓存（KV cache）省算力，不省显存。</strong>生成第 t 个词元要用到前 1…t 个词元的 K/V；全重算是 O(t²)，把算过的 K/V 留在显存里复用就降到每步 O(t)。但缓存本身必须常驻，且随上下文线性增长。</li>
+              <li data-step="7"><strong>窗口标称长度 ≠ 有效使用长度。</strong>两个独立原因：位置编码见过的距离有限，超出就是外推；softmax 每行权重之和恒为 1，候选越多每个词元分到的平均权重越小，中段信息容易被首尾挤掉。所以正确的说法不是「它记不住」，而是<strong>它能看见，但未必会去看</strong>。</li>
             </ol>
           
             <div class="math-block math">
               p<sub>i</sub> <span class="op">=</span> <span class="frac"><span class="num">exp(z<sub>i</sub> / T)</span><span class="den">Σ<sub>j</sub> exp(z<sub>j</sub> / T)</span></span>
-              <span class="reads">读作：把每个分数先除以温度 T，再取指数，再除以所有指数之和——T 越小，分数之间的差距被放得越开。</span>
+              <span class="reads">读作：把每个分数先除以温度 T，再取指数，再除以所有指数之和——T 越小，分数之间的差距被放得越开。因为分母对全体是同一个数，谁减了最大值、谁加了同一个常数都不改变结果，所以程序实现里那步「先减最大值防溢出」算出来的概率和这个式子完全一样（推导见下方折叠框）。</span>
             </div>
           
-            <p>第 ⑤ 步要补一句：后训练（M09）确实会部分矫正「瞎编」的倾向，但它矫正的是<strong>行为分布</strong>（学会说「我不确定」），不是<strong>知识边界</strong>。<span class="badge badge--simplify">已简化</span> 采样参数会放大这个裂缝：温度升高时，「听起来合理但其实编的」那些词概率上升得比正确答案更快，因为词典里错的组合远多于对的。</p>
+            <p>第 ⑤ 步要补一句：后训练（M09）确实会部分矫正「瞎编」的倾向，但它矫正的是<strong>行为分布</strong>（学会说「我不确定」），不是<strong>知识边界</strong>。<span class="badge badge--simplify">已简化</span> 采样参数会放大这个裂缝：温度升高时，「听起来合理但其实编的」那些候选概率上升得比正确答案更快，因为词典里错的组合远多于对的。</p>
           
             <div class="math-block math">
-              KV Cache 显存 <span class="op">≈</span> 2 <span class="op">×</span> 层数 <span class="op">×</span> KV 头数 <span class="op">×</span> 每头维度 <span class="op">×</span> 序列长 <span class="op">×</span> 字节数
+              键值缓存显存 <span class="op">≈</span> 2 <span class="op">×</span> 层数 <span class="op">×</span> KV 头数 <span class="op">×</span> 每头维度 <span class="op">×</span> 序列长 <span class="op">×</span> 字节数
               <span class="reads">读作：每个历史词元要在每一层留下「键」和「值」两份向量；乘上词元数与层数就是总占用——它随上下文线性增长，且无法用算力换掉。</span>
             </div>
-            <p><span class="badge badge--simplify">已简化</span> 口算一例：32 层、8 个 KV 头、每头 128 维、FP16（2 字节）的模型，每个词元占 2×32×8×128×2 = 131072 字节 = 恰好 128 KiB；128k 上下文就是 131072 × 131072 = 2³⁴ 字节 = <strong>16 GiB</strong>（按十进制算约 17.2 GB——这个单位差本身就是一种常见误读）。在某些规模下，单条请求的缓存比模型权重本身还大。这里假设了 8 个 KV 头的分组查询结构（GQA）；若每层每个头都存完整 KV，还要再翻几倍 [2026-10]。</p>
+            <p><span class="badge badge--simplify">已简化：单请求、无 PagedAttention / KV 量化 / 前缀共享，也未计激活与中间张存的显存</span> 口算一例：32 层、8 个 KV 头、每头 128 维、FP16（2 字节）的模型，每个词元占 2×32×8×128×2 = 131072 字节 = 恰好 128 KiB；128k 上下文就是 131072 × 131072 = 2³⁴ 字节 = <strong>16 GiB</strong>（按十进制算约 17.2 GB——这个单位差本身就是一种常见误读）。在某些规模下，单条请求的缓存比模型权重本身还大。这里假设了 8 个 KV 头的分组查询结构（GQA）；若每层每个头都存完整 KV，还要再翻几倍 [2026-10]。</p>
           
             <div class="figure" data-fig="m10-nucleus-1">
               <div class="figure__inner">
@@ -2828,10 +2939,10 @@
                     <div class="fig__code fig__code--sun">58%</div><div class="fig__code fig__code--sun">79%</div>
                     <div class="fig__code fig__code--a">90% ← 到此为止</div><div class="fig__code fig__code--sun">96%</div>
                     <div class="fig__code fig__code--sun">98%</div><div class="fig__code fig__code--sun">100%</div>
-                    <div class="fig__lbl">top-p = 0.9 保留</div>
-                    <div class="fig__pill fig__pill--g">留</div><div class="fig__pill fig__pill--g">留</div>
-                    <div class="fig__pill fig__pill--g">留（补齐 90%）</div><div class="fig__pill fig__pill--mute">剪</div>
-                    <div class="fig__pill fig__pill--mute">剪</div><div class="fig__pill fig__pill--mute">剪</div>
+                    <div class="fig__lbl" data-step="4">top-p = 0.9 保留</div>
+                    <div class="fig__pill fig__pill--g" data-step="4">留</div><div class="fig__pill fig__pill--g" data-step="4">留</div>
+                    <div class="fig__pill fig__pill--g" data-step="4">留（补齐 90%）</div><div class="fig__pill fig__pill--mute" data-step="4">剪</div>
+                    <div class="fig__pill fig__pill--mute" data-step="4">剪</div><div class="fig__pill fig__pill--mute" data-step="4">剪</div>
                     <div class="fig__lbl">top-k = 3 保留</div>
                     <div class="fig__pill fig__pill--a">留</div><div class="fig__pill fig__pill--a">留</div>
                     <div class="fig__pill fig__pill--a">留</div><div class="fig__pill fig__pill--mute">剪</div>
@@ -2841,7 +2952,7 @@
                     <span><i class="sw-g"></i>核采样：保留到累计 90%，数量随分布形状变化</span>
                     <span><i class="sw-a"></i>top-k：永远保留 3 个，不管模型多不确定</span>
                   </div>
-                  <div class="fig__note">换成「平坦」分布（每项约 12%）时，top-p=0.9 会保留 8 项，而 top-k=3 仍只留 3 项——这就是前者更自适应的含义。</div>
+                  <div class="fig__note">本表概率是<strong>示意数据</strong>：一个中等把握的分布，用来把「补齐到 90%」这一步画清楚，不是演示里那组 logits 算出来的。按演示「尖锐」场景 T=1 实算，前两项就是 82.6% 与 13.6%、累计 96.2%，top-p=0.9 只需留 2 项——模型越确定，核越小。换成演示「平坦」场景 T=1（八项从 15.8% 到 10.1%，差不多高），前 7 项累计 89.94%、还差一点不到 90%，top-p=0.9 反而要保留<strong>全部 8 项</strong>，而 top-k=3 仍只留 3 项——这才是「前者更自适应」的含义。</div>
                 </div>
               </div>
               <figcaption>怎么看：从上往下读五行。第一行是候选与概率；第三行的「累计」决定核在哪一列截断；第四、五行对比两种截断法各自留下哪些候选。关键差别是<strong>数量会不会随分布形状变</strong>。</figcaption>
@@ -2851,7 +2962,8 @@
               <summary>展开：为什么 T→0 在数值上等于贪心解码</summary>
               <div class="math-detail__body prose">
                 <p>设最高分 z₁ 与次高分 z₂ 之差为 Δ &gt; 0。两者概率之比是 <code>exp((z₁−z₂)/T) = exp(Δ/T)</code>。T→0 时 Δ/T→∞，比值→∞，于是最高项吃掉全部概率质量——这就是贪心解码。反过来 T→∞ 时比值→1，分布趋于均匀，模型退化成随机词表抽奖机。</p>
-                <p>实践里因此有两个推论：① T=0 不保证「正确」，只保证「每次一样」，贪心会稳定走进高概率但错误的套路；② 温度不能救回一个本身分数不高的正确答案——想让某个词更容易被选中，只能改输入或改模型。</p>
+                <p>实践里因此有两个推论：① T=0 不保证「正确」，只保证「每次一样」——而且连这后半句也是有条件的：它要求后端确实走贪心、top-p/top-k 之类的截断不再引入第二个随机源、同一份权重、同样的批处理组成，并且没有浮点非确定性。现实中两个分数几乎相等的候选，会因为 batch 内归约顺序不同而偶发换序（batch-invariance 问题），GPU 原子加法与 MoE 路由也能带来同类抖动。所以「一字不差」是<strong>工程经验，不是定理</strong>；要真拿到可复现的输出，还得固定实现、固定硬件与批大小。在这套前提之内，贪心会稳定走进高概率但错误的套路；② 温度不能救回一个本身分数不高的正确答案——想让某个候选词元更容易被选中，只能改输入或改模型。</p>
+                <p>顺带一个被代码用到、正文却常漏的性质：<strong>给所有分数同时加同一个常数，softmax 的结果一字不变</strong>——分子分母同时乘上 exp(c)，约掉了。所以程序里先减去最大值再取指数，只是防止 exp 溢出，算出来的概率完全一样（本页演示就是这么实现的：先除 T、再减 max、再取指数、最后归一）。同理，全体乘一个正数不改排序，全体除以一个正温度也不改排序——第 ③ 步说的是同一条性质的三次应用。<span class="badge badge--simplify">已简化：推导只写两项之比，完整证明要对每一项取同一比值再夹逼</span></p>
               </div>
             </details>
         </article>
@@ -2876,12 +2988,12 @@
             <details class="myth">
               <summary>「temperature=0 就是正确答案，因为模型选的是它最确信的那个。」</summary>
               <div class="myth__body">
-                <p><strong>为何会有这个误解：</strong>「最确信」听起来天然等于「最正确」，而且关掉采样后输出确实稳定，稳定容易被误读成可靠。</p>
-                <p class="myth__truth">正确说法：贪心选的是<strong>单步</strong>最高概率，不是全局最优。语言里很多长句的正确走向需要先在局部选一个次优词（比如先写「虽然」），贪心会因为「虽然」单步概率低于「但是」而永远走不进那条路——这被称为贪心解码的短视。同时它还会放大重复：一旦某个短语出现，它的条件概率上升，贪心就更倾向再选它，于是陷入循环。稳定 ≠ 正确。</p>
+                <p><strong>为何会有这个误解：</strong>「最确信」听起来天然等于「最正确」，而且关掉采样后输出通常确实稳定，稳定容易被误读成可靠。</p>
+                <p class="myth__truth">正确说法：贪心选的是<strong>单步</strong>最高概率，不是全局最优。语言里很多长句的正确走向需要先在局部选一个次优词（比如先写「虽然」），贪心会因为「虽然」单步概率低于「但是」而永远走不进那条路——这被称为贪心解码的短视。同时它还会放大重复：一旦某个短语出现，它的条件概率上升，贪心就更倾向再选它，于是陷入循环。而且前面那条前提别忘：这里的「稳定」也要同实现、同权重、同批处理才成立。稳定 ≠ 正确。</p>
               </div>
             </details>
             <details class="myth">
-              <summary>「上下文窗口写着 128k，那我把 12 万字丢进去，它当然全都读到了。」</summary>
+              <summary>「上下文窗口写着 128k，那我把 12 万字丢进去（约合十几万词元），它当然全都读到了。」</summary>
               <div class="myth__body">
                 <p><strong>为何会有这个误解：</strong>厂商标称的是<strong>位置上限</strong>（技术上能塞进去多少词元），而用户把它理解成<strong>能力</strong>（塞进去之后能用好多少）。这两个数字可以差好几倍。</p>
                 <p class="myth__truth">正确说法：见机制第 ⑦ 步——能看见不等于会去看。位置外推与注意力稀释会让中段信息的实际可用度显著下降；公开评测里「把答案放在长文档中间」这一变体的正确率，明显低于「放在开头或结尾」[2026-10]。工程上的对策是把关键信息往首尾放、或者干脆用检索（M12）先筛一遍再喂进去。</p>
@@ -2905,7 +3017,7 @@
             </div>
           
             <ul class="nextlinks">
-              <li><a href="#m12">M12 智能体与检索增强：用外部证据改变下一个词的概率</a></li>
+              <li><a href="#m12">M12 智能体与检索增强：用外部证据改变下一个词元的概率</a></li>
               <li><a href="#m02">M02 概率与交叉熵：熵、困惑度与这里的读数是什么关系</a></li>
               <li><a href="#m07">M07 注意力：softmax 在注意力里做的是同一件事</a></li>
             </ul>
@@ -2920,7 +3032,7 @@
         <header class="module__head">
           <p class="module__no">M11 · 推理与应用</p>
           <h2 id="m11-title">多模态</h2>
-          <p class="module__tag">把图像翻译成模型能读的 token</p>
+          <p class="module__tag">把图像翻译成模型能读的词元</p>
           <div class="module__badges"><span class="badge badge--lvl">难度 3·进阶</span><span class="badge badge--time">~25 分钟</span></div>
         </header>
         <div class="sectionnav" role="navigation" aria-label="M11 段落">
@@ -2933,51 +3045,51 @@
         </div>
         <article class="seg has-content" id="m11--hook" data-seg="hook">
           <h3>开场钩子</h3>
-          <p class="hook">把一张照片发给大模型，它没有眼睛。照片在进入模型之前，已经被切成几十个小方块、每个方块压成一串数字——和文字进去时变成的是<strong>同一种东西</strong>。所以它「看图」的方式，其实是读一篇由方块写成的外语文章。</p>
+          <p class="hook">把一张照片发给大模型，它没有眼睛。照片在进入模型之前，已经被切成上百个小块、每一块压成一串数字——和文字进去时变成的是<strong>同一种东西</strong>。所以它「看图」的方式，其实是读一篇由小块写成的外语文章。</p>
         </article>
         <article class="seg has-content" id="m11--intuition" data-seg="intuition">
           <h3>直觉与类比</h3>
           <p>语言模型只认一种输入：<strong>定长向量的序列</strong>。文字能进来，是因为「先切成词元、再查表换成向量」这一步做得很自然。</p>
-            <p>图像要进来，就得先伪造出一套「词元」。做法简单粗暴：把 224×224 的照片切成 16×16 的小块，一共 196 块，<strong>每一块当成一个「单词」</strong>，压成一个向量。于是一张图就变成了一句 196 个词的句子——顺序是「从左到右、从上到下」扫过去。</p>
+            <p>图像要进来，就得先伪造出一套「词元」。做法简单粗暴：把 224×224 的照片切成 16×16 的<span class="term" data-def="ViT 把图像切成的固定小块，每块被展平成一个向量、当一个词元用。切块本身不丢像素，它只是重排。" data-en="patch">图像块</span>，一共 196 块，<strong>每一块当成一个「单词」</strong>，压成一个向量。于是一张图就变成了一句 196 个词的句子——顺序是「从左到右、从上到下」扫过去。</p>
             <p>有了这句话，M07 那套 Transformer 一个字都不用改就能直接处理。多模态的关键突破不在架构，而在<strong>「图像也能被写成一句话」这个翻译</strong>。</p>
           
             <div class="callout callout--warn">
               <p><strong>这个「翻译成外语」的类比对下面几件事不成立：</strong></p>
               <ul>
-                <li><strong>那门外语没有词典，也没有语法。</strong>文本的词元来自一套固定的分词表（约 3 万到 25 万个条目，每个都有身份）；图像的「方块词元」只是像素的切片，<strong>没有任何一个方块对应一个可命名的对象</strong>。「猫」这个词元在词典里是确定的，「左上角那块 16×16 像素」不是。</li>
-                <li><strong>翻译是有损的，而且损失不可指定。</strong>一张图被压成 196 个向量时，被丢掉的是高频细节（小字、纹理、远处的小物体）。你无法事先知道哪些细节活了下来——这正是它读不清图片里小字的机制原因，不是「不认真看」。</li>
+                <li><strong>那门外语没有词典，也没有语法。</strong>文本的词元来自一套固定的分词表（约 3 万到 25 万个条目，每个都有身份）；图像这边是把它切成一块块像素、让<strong>图像块</strong>去充当词元——「左上角那块 16×16 像素」在词典里查不到身份，<strong>没有任何一个图像块对应一个可命名的对象</strong>，而「猫」这个词元在词典里是确定的。</li>
+                <li><strong>翻译是有损的，但损失不在切块那一步。</strong>把 16×16×3 展平成 768 个数是一一对应的重排，一个像素都没丢。真正丢信息的是三处：原图被<strong>重采样</strong>到固定 224×224（插值与抗混叠把细节混进相邻像素）、768 维到工作维度的<strong>降维投影</strong>、离散路线的<span class="term" data-def="把连续向量硬归到一本有限「码本」里的某个条目，用条目编号代替原向量。必然丢信息，换来的是离散 ID。" data-en="vector quantization (VQ)">向量量化</span>。你无法事先知道哪些细节活了下来——这正是它读不清图片里小字的机制原因，不是「不认真看」。</li>
               </ul>
             </div>
         </article>
         <article class="seg has-content" id="m11--mechanism" data-seg="mechanism">
           <h3>机制拆解</h3>
           <ol class="steps">
-              <li data-step="1"><strong>切块：把图像变成序列。</strong>224×224 的图按 16×16 切成 196 块，每块展平成 768 维向量（16×16×3 通道），再经一个线性投影降到模型的工作维度，加上位置信息。这一步之后，图像与一句 196 词的话在数学上<strong>完全同形</strong>。</li>
-              <li data-step="2"><strong>喂给标准 Transformer。</strong>ViT 的架构就是 M07 那套：自注意力 + 前馈 + 残差 + 归一化，没有任何「视觉专用算子」。卷积的局部性在这里被注意力取代——每个方块可以直接看所有其他方块。</li>
-              <li data-step="3"><strong>分岔一：连续嵌入路线。</strong>图像编码器输出一串向量，用一个「翻译层」（线性投影或交叉注意力）把它们映射到语言模型的向量空间，然后当作前缀拼进文本。保真度高，但图像向量与文本词元<strong>不在同一个离散空间</strong>，无法共用同一套下一词预测损失。</li>
-              <li data-step="4"><strong>分岔二：离散 tokenizer 路线。</strong>先用向量量化（VQ）把每个方块归到一本「视觉词典」里的某个条目（比如 8192 个码字之一），于是图像真的变成了 196 个整数 ID。好处是<strong>图像和文本共用同一套自回归机制、同一个损失、同一个采样器</strong>；代价是量化必然丢信息，且码本大小是个新的魔法数字（见下方简化声明）。</li>
-              <li data-step="5"><strong>CLIP 的对比学习：不标注也能对齐。</strong>两个编码器（图像、文本）各自把输入压成一个向量，训练目标是：配对的图文（同一网页上的图片与其标题）向量靠近，不配对的推开。监督信号来自互联网上<strong>天然存在的图文配对</strong>，4 亿对量级 [2026-10]，没有一个人工标签。</li>
-              <li data-step="6"><strong>为什么这带来「零样本分类」。</strong>没为「猫/狗」训练过任何分类头。做法是把类别名填进模板句子——「一张猫的照片」「一张狗的照片」——编码成向量，再看图像向量离哪句最近。<strong>分类被降级成了检索</strong>，类别可以随时增减，不需要重新训练。</li>
-              <li data-step="7"><strong>失效模式一：数不清。</strong>视觉词元是<strong>定长</strong>的：无论图里有 3 只猫还是 30 只猫，都切成同样多的方块。数量没有作为一个计数被编码进任何一个方块，它只弥散在整体模式里。所以细粒度计数天生不可靠，而物体越大、占的方块越多，反而更容易被「数」对。</li>
-              <li data-step="8"><strong>失效模式二：看不清小字。</strong>切块 + 下采样会丢掉高频细节，一行 8 像素的小字可能在投影后只剩噪声级差异。这不是「分辨率不够」的简单问题，而是<strong>信息在进模型之前就已经不在了</strong>。</li>
-              <li data-step="9"><strong>失效模式三：空间关系与左右。</strong>位置编码提供的是「第几块」，不是「A 在 B 左边」这种关系；池化与全局注意力进一步把坐标信息摊薄。于是「左边第三个」这类问题常常答得自信而错。</li>
+              <li data-step="1"><strong>切块：把图像变成序列。</strong>原图先被<strong>重采样</strong>到固定的 224×224（这一步就开始丢细节），再按 16×16 切成 196 块，每块展平成 768 维向量（16×16×3 通道）——展平是一一对应的重排，<strong>不丢任何一个像素值</strong>。随后经一个线性投影降到模型的工作维度（这里才第一次真正削掉信息），加上位置信息。这一步之后，图像与一句 196 词的话在数学上<strong>完全同形</strong>。</li>
+              <li data-step="2"><strong>喂给标准 Transformer。</strong>ViT 的架构就是 M07 那套：自注意力 + 前馈 + 残差 + 归一化，没有任何「视觉专用算子」。卷积的局部性在这里被注意力取代——每个图像块可以直接看所有其他图像块。</li>
+              <li data-step="3"><strong>分岔一：连续嵌入路线。</strong>图像编码器输出一串向量，用一个「翻译层」（线性投影或交叉注意力）把它们映射到语言模型的向量空间，然后当作前缀拼进文本。保真度高，但视觉侧是一串连续向量、<strong>没有离散 ID</strong>：图像段自身拿不到「预测下一个词元」的监督，损失只能落在跟随其后的文本上，也没法像离散路线那样自回归生成图像。<strong>这并不妨碍它用下一词预测来训练</strong>——现实里的 LLaVA / BLIP-2 / Flamingo 走的正是这条路，损失仍是 M02 那个交叉熵，只是监督位落在文本而非图像。</li>
+              <li data-step="4"><strong>分岔二：离散 tokenizer 路线。</strong>先用向量量化把每个图像块归到一本「视觉词典」里的某个条目（比如 8192 个码字之一），于是图像真的变成了 196 个整数 ID（示意按 196 计，实现里还要加起止符）。好处是<strong>图像和文本共用同一套自回归机制、同一个损失、同一个采样器</strong>；代价是量化必然丢信息，且码本大小是个新的魔法数字（见下方简化声明）。</li>
+              <li data-step="5"><strong><span class="term" data-def="用对比学习把图像与文本嵌入同一空间、可按余弦相似度互检的双编码器模型。" data-en="CLIP">图文对比模型</span>（CLIP）的对比学习：不标注也能对齐。</strong>两个编码器（图像、文本）各自把输入压成一个向量，训练目标是：配对的图文（同一网页上的图片与其标题）向量靠近，不配对的推开。监督信号来自互联网上<strong>天然存在的图文配对</strong>，4 亿对量级 [2026-10]，没有逐条人工标注。</li>
+              <li data-step="6"><strong>为什么这带来<span class="term" data-def="不为该任务准备任何标注样本、也不加装分类头，只靠「把类别写成句子 + 图文相似度」完成的分类。零样本指的是零个标注，不是零个该概念的实例。" data-en="zero-shot classification">零样本分类</span>。</strong>没为「猫/狗」训练过任何分类头。做法是把类别名填进模板句子——「一张猫的照片」「一张狗的照片」——编码成向量，再看图像向量与哪句方向最一致（余弦最大）。<strong>分类被降级成了检索</strong>，换一批候选句子不必重新训练。注意「零样本」说的是<strong>这个任务一个标注都没有</strong>，不是「这个概念它从没见过」——它在 4 亿图文对里早就见过「猫」这个字和猫的照片一起出现。也正因为它学的是共现而不是定义，<strong>提示语怎么写很要紧</strong>：同一类别换个说法分数会明显变化，候选集增减免费，措辞却不免费。</li>
+              <li data-step="7"><strong>失效模式一：数不清。</strong>图像块的个数是<strong>定长</strong>的：无论图里有 3 只猫还是 30 只猫，都切成同样多的 196 块。数量没有作为一个计数被编码进任何一个图像块，它只弥散在整体模式里。所以在固定切块这套表示下，细粒度计数<strong>结构性</strong>不可靠，而物体越大、占的图像块越多，反而更容易被「数」对。</li>
+              <li data-step="8"><strong>失效模式二：看不清小字。</strong>图在进入切块<strong>之前</strong>就要先重采样到固定尺寸（示意里是 224×224）。一行 8 像素的小字在重采样与插值之后就已经混进相邻像素；随后 768→工作维度的投影会再削一次。<strong>切块本身不丢像素（它只是重排），丢的是重采样与降维</strong>——所以这不是「分辨率不够、认真看就行」，而是那份信息在进模型之前就已经不在了。</li>
+              <li data-step="9"><strong>失效模式三：空间关系与左右。</strong>位置编码提供的是「第几块」，不是「A 在 B 左边」这种关系；注意力本身也不内置空间关系（坐标只来自位置编码），池化则进一步把位置信息摊薄。于是「左边第三个」这类问题常常答得自信而错。</li>
               <li data-step="10"><strong>「看图说话但看不到细节」的根源。</strong>翻译层把视觉向量对齐到语言空间时，优化目标是「让语言模型能接着往下说」，而不是「保留所有像素事实」。所以它保留的是<strong>可被语言复述的那部分</strong>——能说出「一只橘猫在沙发上」，却说不出沙发扶手上有一道裂纹。</li>
             </ol>
           
             <div class="math-block math">
               L<sub>对比</sub> <span class="op">=</span> −<span class="bigg">(</span> log <span class="frac"><span class="num">exp(<span style="border-top:1px solid;display:inline-block">s</span><sub>i</sub>·t<sub>i</sub> / τ)</span><span class="den">Σ<sub>j</sub> exp(<span style="border-top:1px solid;display:inline-block">s</span><sub>i</sub>·t<sub>j</sub> / τ)</span></span> <span class="op">+</span> log <span class="frac"><span class="num">exp(<span style="border-top:1px solid;display:inline-block">t</span><sub>i</sub>·s<sub>i</sub> / τ)</span><span class="den">Σ<sub>j</sub> exp(<span style="border-top:1px solid;display:inline-block">t</span><sub>i</sub>·s<sub>j</sub> / τ)</span></span> <span class="bigg">)</span>
-              <span class="reads">读作：对每一张图，在它配对的句子与同批其他句子之间做一次「选对哪个句子」的交叉熵；再反过来，对每个句子做一次「选对哪张图」的交叉熵；两项相加。这就是 InfoNCE——它仍然是 M02 的交叉熵，只是「类别」换成了「同批的其他样本」。</span>
+              <span class="reads">读作：对每一张图，在它配对的句子与同批其他句子之间做一次「选对哪个句子」的交叉熵；再反过来，对每个句子做一次「选对哪张图」的交叉熵；两项相加。这就是 <span class="term" data-def="对比学习的标准损失：把「在同批样本里认出配对项」当成一个 N 分类问题，用交叉熵打分。信息论上它就是 M02 的交叉熵，只是类别换成了同批的其他样本。" data-en="InfoNCE">InfoNCE</span>——它仍然是 M02 的交叉熵，只是「类别」换成了「同批的其他样本」。s 上面的横线表示把向量缩成长度 1（L2 归一化），归一化后的点积就是<strong>余弦相似度</strong>——只看方向、不看长短；演示右侧那条 softmax 吃的正是它。</span>
             </div>
-            <p>其中 <span class="math">τ</span> 是温度，和 M10 里的采样温度是<strong>同一个数学角色</strong>：它决定「推得多狠」。τ 小 → 只把最像的负例当回事；τ 大 → 逼着模型把所有负例都推开。它不是随便取的：CLIP 把它做成一个可学习参数，初值 0.07 [2026-10]。</p>
+            <p>其中 <span class="math">τ</span> 是温度，和 M10 里的采样温度是<strong>同一个数学角色</strong>：它决定「推得多狠」。τ 小 → 只把最像的负例当回事；τ 大 → 逼着模型把所有负例都推开。它不是随便取的：CLIP 把它做成一个可学习参数，初值 0.07 [2026-10]。也正因为先做了 L2 归一化、点积被压回 [−1, 1]，除以 τ 才不会因向量长度失控——这就是上面那条横线存在的理由。</p>
           
             <div class="figure" data-fig="m11-patch-1">
               <div class="figure__inner">
                 <div class="fig">
                   <div class="fig__head">一张图如何变成一句「话」（对应第 ①②③④ 步）</div>
                   <div class="fig__flow">
-                    <div class="fig__box"><b>224×224 像素</b><span class="fig__sub">15 万像素，3 通道</span></div>
+                    <div class="fig__box"><b>224×224 像素</b><span class="fig__sub">5 万个像素，3 通道＝15 万个数</span></div>
                     <span class="fig__arrow">→</span>
-                    <div class="fig__box fig__box--a"><b>切成 16×16 块</b><span class="fig__sub">196 个方块</span></div>
+                    <div class="fig__box fig__box--a"><b>切成 16×16 块</b><span class="fig__sub">196 个图像块</span></div>
                     <span class="fig__arrow">→</span>
                     <div class="fig__box fig__box--w"><b>每块线性投影</b><span class="fig__sub">→ 1 个向量</span></div>
                     <span class="fig__arrow">→</span>
@@ -2990,23 +3102,23 @@
                     <div class="fig__cell fig__cell--h0">9</div><div class="fig__cell fig__cell--h2">10</div><div class="fig__cell fig__cell--h1">11</div><div class="fig__cell fig__cell--h0">12</div><div class="fig__cell fig__cell--h1">13</div><div class="fig__cell fig__cell--h0">14</div><div class="fig__cell fig__cell--h2">15</div><div class="fig__cell fig__cell--h1">16</div>
                     <div class="fig__cell fig__cell--h1">…</div><div class="fig__cell fig__cell--h0"></div><div class="fig__cell fig__cell--h2"></div><div class="fig__cell fig__cell--h1"></div><div class="fig__cell fig__cell--h0"></div><div class="fig__cell fig__cell--h3"></div><div class="fig__cell fig__cell--h1"></div><div class="fig__cell fig__cell--h0">196</div>
                   </div>
-                  <div class="fig__note">方块编号就是「词的顺序」；方块内部的颜色深浅代表它被压成的向量。</div>
+                  <div class="fig__note">图像块编号就是「词的顺序」；颜色深浅是<strong>示意</strong>，代表它被压成的那个向量，不是块内的像素分布。</div>
                   <div class="fig__legend">
                     <span><i class="sw-a"></i>离散路线：每块再查一本「视觉词典」→ 变成 196 个整数 ID</span>
-                    <span><i class="sw-g"></i>连续路线：向量直接投影进语言空间当后缀</span>
+                    <span><i class="sw-g"></i>连续路线：向量投影进语言空间，当作前缀拼在文本之前</span>
                   </div>
                 </div>
               </div>
-              <figcaption>怎么看：从左到右读流程条，五个方框是一条流水线；下方的 8×8 网格是「切块」的缩略示意（真实是 14×14=196）。底部两个图例是两条分岔路线，对应机制第 ③④ 步。</figcaption>
+              <figcaption>怎么看：从左到右读流程条，五个方框是一条流水线；下方 8 列 × 3 行的格子是 14×14=196 个图像块的缩略示意——前两行画满第 1–16 块，第三行的「…」与「196」表示中间省略。底部两个图例是两条分岔路线，对应机制第 ③④ 步。</figcaption>
             </div>
           
             <p><span class="badge badge--simplify">已简化</span> 关于码本大小：8192 这个数字取自公开 VQ 类工作的常见量级，但「多大才够」没有普适答案——它同时决定重建质量与词表长度，且与后续语言模型的词表大小耦合。本站不假装存在一个正确值。</p>
           
             <details class="math-detail">
-              <summary>展开：为什么「定长视觉词元」必然让计数不可靠</summary>
+              <summary>展开：为什么「图像块个数固定」必然让计数不可靠</summary>
               <div class="math-detail__body prose">
-                <p>设图被切成 K 个方块（K 固定，如 196）。若物体数量 N 从 3 变到 30，方块数<strong>不变</strong>，变的只是每个方块内部的像素模式。模型要「数出来」，只能依赖两种途径之一：① 某个方块的局部模式恰好编码了「附近有几个同类」——但方块是固定网格，物体跨块时会被切开；② 全局注意力把多个方块的信息汇总成一个隐式计数——这需要模型自己发明一种「累加」，而累加在 Transformer 里是出了名的薄弱环节（多位数加法要靠思维链逐位算，见 M12）。</p>
-                <p>所以正确的预期不是「它数错了」，而是「<strong>数数这件事在它的表示里根本没有一个专门的位置</strong>」。物体越大、占据方块越多，反而越容易被正确判断——因为那时「方块数」本身成了数量的代理指标。</p>
+                <p>设图被切成 K 个图像块（K 固定，如 196）。若物体数量 N 从 3 变到 30，图像块数<strong>不变</strong>，变的只是每个块内部的像素模式。模型要「数出来」，只能依赖两种途径之一：① 某个块的局部模式恰好编码了「附近有几个同类」——但图像块是固定网格，物体跨块时会被切开；② 全局注意力把多个块的信息汇总成一个隐式计数——这需要模型自己发明一种「累加」，而累加在 Transformer 里是出了名的薄弱环节（多位数加法要靠思维链逐位算，本站把它列为「跨过规模才跳升」的那类基准，见 M08 的涌现能力一段）。</p>
+                <p>所以正确的预期不是「它数错了」，而是「<strong>数数这件事在它的表示里根本没有一个专门的位置</strong>」。物体越大、占据的图像块越多，反而越容易被正确判断——因为那时「块数」本身成了数量的代理指标。</p>
               </div>
             </details>
         </article>
@@ -3025,13 +3137,13 @@
               <summary>「多模态模型是真的'看见'了图像，就像人眼那样。」</summary>
               <div class="myth__body">
                 <p><strong>为何会有这个误解：</strong>它能用自然语言描述照片，而且描述得相当到位；「能描述」在直觉上就等于「看见了」。</p>
-                <p class="myth__truth">正确说法：它处理的是像素经过<strong>有损压缩</strong>之后的一串向量。哪些细节活下来由编码器的训练目标决定，而不是由「什么比较重要」决定。所以会出现一个很怪的组合：它能说出「这是一张 1950 年代的街景照片」，却读不出同一张图里那块招牌上的字。前者是可被语言复述的整体风格，后者是已被切块下采样抹掉的高频细节。</p>
+                <p class="myth__truth">正确说法：它处理的是像素经过<strong>有损压缩</strong>之后的一串向量。哪些细节活下来由编码器的训练目标决定，而不是由「什么比较重要」决定。所以会出现一个很怪的组合：它能说出「这是一张 1950 年代的街景照片」，却读不出同一张图里那块招牌上的字。前者是可被语言复述的整体风格，后者是在重采样与降维投影里已经被抹掉的高频细节。</p>
               </div>
             </details>
             <details class="myth">
               <summary>「图文对齐靠的是人工标注——有人告诉模型哪张图配哪句话。」</summary>
               <div class="myth__body">
-                <p><strong>为何会有这个误解：</strong> supervised 学习在图像分类里的形象太牢固（ImageNet 确实是人工标注的），而且「4 亿对」这个数字听起来不可能人工完成，于是人们要么以为标注是自动的、要么以为标了很多人。</p>
+                <p><strong>为何会有这个误解：</strong>监督学习（supervised learning）在图像分类里的形象太牢固（ImageNet 确实是人工标注的），而且「4 亿对」这个数字听起来不可能人工完成，于是人们要么以为标注是自动的、要么以为标了很多人。</p>
                 <p class="myth__truth">正确说法：监督信号是<strong>互联网上天然存在的配对</strong>——图片文件与它旁边的 alt 文本、标题、说明。没人做过匹配，匹配是网页结构免费提供的。代价是这批「标签」噪声极大（大量 alt 文本与图片关系松散），所以对比学习学到的是统计共现的粗对齐，而不是精确的语义对应。</p>
               </div>
             </details>
@@ -3039,7 +3151,7 @@
               <summary>「模型数不清图里有几只猫，是因为训练数据里计数样本太少，多标一些就好了。」</summary>
               <div class="myth__body">
                 <p><strong>为何会有这个误解：</strong>「数据不够」是解释 AI 失败最省力的答案，而且对很多任务确实成立。</p>
-                <p class="myth__truth">正确说法：这是<strong>表示层</strong>的问题，不是数据量问题。见机制第 ⑦ 步与展开框：视觉词元定长，数量没有被编码在任何位置上。加标注能改善的只是「它愿不愿意给一个数」，改善不了「那个数从哪来」。真正有效的方向是改变表示（更细的切块、显式的目标检测框、或让它逐个数并输出中间过程）。</p>
+                <p class="myth__truth">正确说法：这更多是<strong>表示层</strong>的问题，不是数据量问题。见机制第 ⑦ 步与展开框：图像块个数定长，数量没有被编码在任何位置上。加标注能改善的只是「它愿不愿意给一个数」，改善不了「那个数从哪来」。真正有效的方向是改变表示（更细的切块、显式的目标检测框、或让它逐个数并输出中间过程）。<span class="badge badge--debate">存在争议</span> 本站把「换表示」排在「加数据」之前，依据是定长切块这个架构事实；但计数专用监督、更细切块与检测器级联都能显著改善计数，而这些既可读作「换表示」也可读作「给了更合适的监督」——两派边界尚无定论。</p>
               </div>
             </details>
         </article>
@@ -3049,11 +3161,11 @@
           
             <div class="quiz">
               <p class="quiz__q">自测：模型能识别出照片里有一只橘猫，却数不清是 2 只还是 3 只。最贴近机制的解释是？</p>
-              <label class="quiz__opt"><input type="radio" name="q-m11" data-right="1"><span>视觉词元数量固定，「几只」没有被编码在任何位置上</span></label>
+              <label class="quiz__opt"><input type="radio" name="q-m11" data-right="1"><span>图像块个数固定，「几只」没有被编码在任何位置上</span></label>
               <label class="quiz__opt"><input type="radio" name="q-m11"><span>训练数据里多猫照片太少，它没见过</span></label>
               <label class="quiz__opt"><input type="radio" name="q-m11"><span>它的注意力被猫毛的纹理干扰了，所以看漏了一只</span></label>
               <div class="quiz__fb">
-                <p data-for="no"><strong>回到机制第 ⑦ 步：</strong>「数据不够」和「被干扰」都假设了数量本来是被表示出来的、只是没学好或没看清。但真实情况更彻底——无论图里有几只猫，切块数量都是同一个 196。「识别出猫」用的是模式匹配（这个方块看起来像猫），「数出几只」需要的是计数，而计数在这套定长表示里<strong>没有一个可存放的位置</strong>。所以改进方向不是加数据，而是换表示。</p>
+                <p data-for="no"><strong>回到机制第 ⑦ 步：</strong>「数据不够」和「被干扰」都假设了数量本来是被表示出来的、只是没学好或没看清。但真实情况更彻底——无论图里有几只猫，切块数量都是同一个 196。「识别出猫」用的是模式匹配（这个图像块看起来像猫），「数出几只」需要的是计数，而计数在这套定长表示里<strong>没有一个可存放的位置</strong>。所以改进方向不是加数据，而是换表示。</p>
                 <p data-for="ok"><strong>对了。</strong>这正是「表示决定能力边界」的例子：识别是模式匹配，计数是累加，而后者在定长词元里没有落脚点。带着这个视角去看 M12——当模型需要真正可靠的累加、检索、执行时，工程上的答案是<strong>把这些动作交给外部工具</strong>，而不是继续逼表示层。</p>
               </div>
               <p class="quiz__result" aria-live="polite"></p>
@@ -3061,7 +3173,7 @@
           
             <ul class="nextlinks">
               <li><a href="#m12">M12 智能体与工具：表示做不到的事，如何交给外部执行</a></li>
-              <li><a href="#m07">M07 注意力：为什么图像切成方块后能直接复用同一套架构</a></li>
+              <li><a href="#m07">M07 注意力：为什么图像切成图像块后能直接复用同一套架构</a></li>
               <li><a href="#m02">M02 交叉熵：InfoNCE 其实就是换了「类别」的交叉熵</a></li>
             </ul>
         </article>
@@ -3110,23 +3222,23 @@
           <h4>先看清水位线：模型这一侧到底能做什么</h4>
             <ol class="steps">
               <li data-step="1"><strong>模型本身只有一个动作。</strong>给它一段文本，它输出下一个<span class="term" data-def="模型处理文本的最小单位，既不是词也不是字。" data-en="token">词元</span>的概率分布（M10）。就这一个。它不能执行、不能联网、不能读文件——「不能」不是被限制了，而是<strong>这套数学里压根没有「执行」这个算子</strong>。</li>
-              <li data-step="2"><strong>所谓工具调用，是模型输出了一段结构化文本。</strong>程序把这段文本（通常是 JSON）解析出来、真的去执行、再把结果<strong>作为文本</strong>追加到上下文末尾。整个过程中模型做的仍然只有写字，只是它写的东西<strong>恰好可被机器读</strong>。这就是「会说」变成「会做」的全部机制。</li>
-              <li data-step="3"><strong>把这件事重复若干轮，就是 ReAct 循环。</strong>Thought（要不要查、查什么）→ Action（写出的请求单）→ Observation（执行结果被塞回来的文本）→ 再 Thought……直到模型不再写请求单、而是直接写最终答案（Yao 等人，2022 [2026-10]）。关键点：<strong>每一步的 Observation 都变成新的输入文本</strong>，所以循环深度不是自由的，它被窗口长度约束——第 ⑥ 步会看到这个约束如何反噬。</li>
+              <li data-step="2"><strong>所谓工具调用，是模型输出了一段结构化文本。</strong>程序把这段文本（通常是 JSON）解析出来、真的去执行、再把结果<strong>作为文本</strong>追加到上下文末尾（严格说：按对话模板插入一段带角色标记的词元，物理上通常仍在末尾，但带着「这是工具回来的」这层边界）。整个过程中模型做的仍然只有写字，只是它写的东西<strong>恰好可被机器读</strong>。这就是「会说」变成「会做」的全部机制。</li>
+              <li data-step="3"><strong>把这件事重复若干轮，就是 ReAct 循环。</strong>Thought（要不要查、查什么）→ Action（写出的请求单）→ Observation（执行结果被塞回来的文本）→ 再 Thought……直到模型不再写请求单、而是直接写最终答案（Yao 等人，2022 [2026-10]）。关键点：<strong>每一步的 Observation 都变成新的输入文本</strong>，所以循环深度不是自由的，它被窗口长度约束——第 ⑥ 步会看到这个约束如何反噬。另一类做法是<strong>先把任务写成子任务清单、再逐条执行</strong>（planning，显式规划 <span class="badge badge--simplify">已简化</span>：这里略去了树搜索与回溯）；两者不在「谁更聪明」上不同，而在<strong>错误往哪儿传播</strong>上不同——清单式把误差集中在计划阶段（计划错了，后面每一步都跟着错），ReAct 式把它摊到每一步（每步重新想，也就每步重新掷一次骰子）。<strong>两种结构都跑不出 p<sup>N</sup> 这条连乘。</strong></li>
               <li data-step="4"><strong>「记忆」分三层，而且存在三个不同的地方。</strong>短期 = 当前上下文窗口（窗口一滑就没了）；长期 = 外部存储加检索（向量库、数据库、文件），本质就是 M11 那套嵌入检索，取回来的仍然是文本；程序性 = 写进提示词（改输入）或者微调进权重（改参数）。三层里<strong>只有最后一层真正改变了模型</strong>。</li>
-              <li data-step="5"><strong>RAG 能压幻觉，靠的不是「让它学会」。</strong>它不改任何<span class="term" data-def="模型内部可训练的数值。" data-en="parameter">参数</span>，而是把「该说什么」的证据<strong>直接放进上下文</strong>。证据里的词与答案里的词在训练数据里共现过，于是这些证据词元会抬高相关候选的分数、压低其余候选——下一词分布被证据重新加权。这正是本站那条主线：M10 第 ③ 步说过<strong>温度改不了排序，但改输入可以</strong>。RAG 就是「改输入」的工程化版本：不换菜单，换菜。</li>
+              <li data-step="5"><strong>RAG 能压幻觉，靠的不是「让它学会」。</strong>它不改任何<span class="term" data-def="模型内部可训练的数值。" data-en="parameter">参数</span>，而是把「该说什么」的证据<strong>直接放进上下文</strong>。证据里的词与答案里的词在训练数据里共现过，于是这些证据词元会抬高相关候选的分数、压低其余候选——下一词分布被证据重新加权 <span class="badge badge--simplify">已简化</span>（这是对「上下文内复制 / 诱导回路」这一机制假说的教学化表述，它在多大范围解释上下文学习仍有争议）。这正是本站那条主线：M10 第 ③ 步说过<strong>温度改不了排序，但改输入可以</strong>。RAG 就是「改输入」的工程化版本：不换菜单，换菜。</li>
               <li data-step="6"><strong>RAG 有三类失效，而且都不在模型这一侧。</strong>检索漏：该找到的没找到，因为相似度不等于相关性，问法和文档写法不一致就取不回来；检索脏：找到了相似但错误或过期的段落，模型会<strong>照着它错</strong>，因为它没有独立的事实通道；上下文挤：证据塞得太多太长，把「问题本身」挤到中段，而 M10 第 ⑦ 步已经说过——能看见不等于会去看。三类失效的共同点：<em>模型的推理一步没错，错在喂进去的文本</em>。</li>
               <li data-step="7"><strong>长任务为什么必然「跑偏」：成功是连乘的。</strong>设每一步都正确的概率是 p，N 步全对的概率就是 p<sup>N</sup>。更要命的是错误不自我清除：<strong>第 2 步的错误 Observation 会留在上下文里</strong>，成为第 3、4、5 步的输入，于是后面每一步的 p 都在更差的输入上算——这叫误差累积与自我强化。步数是成本，不是能力。</li>
             </ol>
           
             <div class="callout callout--note">
-              <p><strong>这条连乘，你在本站已经见过一次。</strong>M06 第 ⑤ 步讲的是梯度：误差回传 99 段，每段乘一次同一个矩阵，于是 <code>0.9⁹⁹ ≈ 2.9×10⁻⁵</code>，开头那个词几乎收不到改正意见。这里讲的是成功率：任务走 20 步，每步乘一次 p，于是 10 步之后只剩六成。<strong>是同一件事的两次出现——凡是按步数连乘的量，都会指数地消失</strong>。区别只在方向：M06 里被乘没的是学习信号，这里被乘没的是任务成功率。</p>
+              <p><strong>这条连乘，你在本站已经见过一次。</strong>M06 第 ⑤ 步讲的是梯度：误差回传 99 段，每段乘一次同一个矩阵，于是 <code>0.9⁹⁹ ≈ 2.9×10⁻⁵</code>，开头那个词几乎收不到改正意见。这里讲的是成功率：p=0.95 走 10 步只剩六成，走到 20 步只剩 36%（0.95<sup>20</sup>≈0.359）。<strong>是同一件事的两次出现——凡是按步数连乘的量，都会指数地消失</strong>。区别只在方向：M06 里被乘没的是学习信号，这里被乘没的是任务成功率。</p>
             </div>
           
             <div class="math-block math">
               P<span class="sub">全对</span> <span class="op">=</span> p<span class="sup">N</span>
               <span class="reads">读作：每一步都对的概率 p，连乘 N 次。p=0.95 走 10 步约六成，p=0.90 走 10 步只剩三分之一。</span>
             </div>
-            <p>这是一个<strong>一阶近似</strong> <span class="badge badge--simplify">已简化</span>：它假设各步错误率相同、彼此独立，且错了也不会被后面的步骤发现。真实系统里，「让模型回看自己写过的东西」确实能纠正一部分错误，所以实测衰减比 p<sup>N</sup> 慢一些；但「早期错误会污染后续输入」这条反向修正同样存在，两头并不能抵消成「多步一定更可靠」。下面演示里把这两点做成了可以对比的样子。</p>
+            <p>这是一个<strong>一阶近似</strong> <span class="badge badge--simplify">已简化</span>：它假设各步错误率相同、彼此独立，且错了也不会被后面的步骤发现。真实系统里有两个方向相反的修正。「让模型回看自己写过的东西」确实能纠正一部分错误，实测衰减因此比 p<sup>N</sup> 慢一些；但「早期错误会污染后续输入」这条反向修正同样存在，它让后面每一步的 p 更小。<strong>这两头方向相反的修正并不必然抵消成「多步一定更可靠」。</strong>下面演示把前一个方向做成了可以对比的样子：打开开关后每一步以恒定概率把本步的失手纠正回来，等效单步正确率从 p 抬到 p<span class="sub">eff</span> = (1 + p) / 2 —— 底数变大，<em>连乘仍是连乘，衰减变慢但没有变成不衰减</em>；后一个方向（污染）不在那条曲线上，见机制第 ⑦ 步。</p>
           
             <div class="figure" data-fig="m12-agent-loop-1">
               <div class="figure__inner">
@@ -3135,15 +3247,15 @@
                   <div class="fig__flow">
                     <div class="fig__box fig__box--a"><b>模型</b><span class="fig__sub">只会输出词元分布</span></div>
                     <span class="fig__arrow">→ 写</span>
-                    <div class="fig__box"><b>一段结构化文本</b><span class="fig__sub">{"tool":"weather_api"}</span></div>
+                    <div class="fig__box" data-step="2"><b>一段结构化文本</b><span class="fig__sub">{"tool":"weather"}</span></div>
                     <span class="fig__arrow">→ 解析</span>
-                    <div class="fig__box fig__box--w"><b>外部程序</b><span class="fig__sub">真正去执行</span></div>
+                    <div class="fig__box fig__box--w" data-step="2"><b>外部程序</b><span class="fig__sub">真正去执行</span></div>
                     <span class="fig__arrow">→ 得到</span>
-                    <div class="fig__box fig__box--g"><b>结果文本</b><span class="fig__sub">{"aqi":156,…}</span></div>
+                    <div class="fig__box fig__box--g" data-step="3"><b>结果文本</b><span class="fig__sub">{"aqi":156,…}</span></div>
                     <span class="fig__arrow">→ 追加</span>
-                    <div class="fig__box fig__box--a"><b>同一个模型</b><span class="fig__sub">拿新文本再算一次</span></div>
+                    <div class="fig__box fig__box--a" data-step="3"><b>同一个模型</b><span class="fig__sub">拿新文本再算一次</span></div>
                   </div>
-                  <div class="fig__row fig__row--sub">
+                  <div class="fig__row fig__row--sub" data-step="3">
                     <span class="fig__tag">循环一轮</span>
                     <span class="fig__chain"><code>Thought</code><i>→</i><code>Action</code><i>→</i><code>Observation</code><i>→</i><code>Thought</code><i>→</i><code>…</code><i>→</i><code>Final Answer</code></span>
                   </div>
@@ -3195,7 +3307,7 @@
                   <line class="grid-l" x1="429" y1="100" x2="429" y2="128" stroke-dasharray="2 3"></line>
                   <line class="grid-l" x1="231" y1="100" x2="231" y2="128" stroke-dasharray="2 3"></line>
                   <text x="70" y="162" class="t-xs faint">短虚线处 = 曲线跌破一半：p=0.90 在第 7 步，p=0.95 在第 14 步。</text>
-                  <text x="12" y="206" class="t-xs faint">已简化：假设各步错误率相同且相互独立。真实系统里后面的步骤有机会发现并纠正前面的错，所以实测衰减比这条线慢，但不是不衰减。</text>
+                  <text x="12" y="206" class="t-xs faint">已简化：假设各步错误率相同且相互独立。真实系统里后面的步骤有机会发现并纠正前面的错，所以实测衰减比这条线慢——但仍是同一条指数的底数变大，不是变成不衰减。</text>
                 </svg>
               </div>
               <figcaption>怎么看：先看纵轴 50% 那条虚线，再看每条曲线<strong>在哪一步穿过它</strong>。p 只差 0.05，穿线位置从第 14 步挪到第 7 步——这条曲线就是「为什么步数是成本」的全部论证。演示里可以亲手把 p 拖来拖去看它换线。</figcaption>
@@ -3204,7 +3316,7 @@
             <div class="figure" data-fig="m12-rag-hit-miss-2">
               <div class="figure__inner">
                 <div class="fig">
-                  <div class="fig__head">同一个问题、同一个模型，只换检索质量（对应第 ④⑤ 步）</div>
+                  <div class="fig__head">同一个问题、同一个模型，只换检索质量（对应第 ⑤⑥ 步：⑤ 分布加权、⑥ 三类失效）</div>
                   <div class="fig__grid" style="grid-template-columns:96px repeat(3,1fr)">
                     <div class="fig__lbl"></div><div class="fig__tok fig__tok--out">命中</div><div class="fig__tok">漏检</div><div class="fig__tok fig__tok--k">脏命中</div>
                     <div class="fig__lbl">检索到的段落</div>
@@ -3252,7 +3364,7 @@
             <details class="math-detail">
               <summary>展开：为什么「把窗口做到无限大」不能取代检索</summary>
               <div class="math-detail__body prose">
-                <p>三重理由，每条都指回前面的模块。<strong>其一，成本。</strong>M10 的键值缓存那条式子里，显存随序列长度<strong>线性</strong>增长，而注意力那张分数表随它<strong>平方</strong>增长；把 200 万字全文塞进去，先撑不住的是硬件，不是模型。<strong>其二，注意力稀释。</strong>softmax 每行权重之和恒等于 1，候选越多，每个词元平均分到的权重越小，中段内容容易被首尾挤掉——这正是 M10 第 ⑦ 步说「能看见不等于会去看」的原因，也是公开长文档评测里「答案放中间」正确率明显更低的那一项 [2026-10]。<strong>其三，排序仍然要有人做。</strong>全塞进去只是把「选哪些」这一步从检索器搬给了注意力，而注意力是排列不变的、没有事实优先级的（M07 第 ⑦ 步）。检索器的价值从来不是「省地方」，而是<strong>在进入模型之前先决定证据的排序与取舍</strong>。</p>
+                <p>三重理由，每条都指回前面的模块。<strong>其一，成本。</strong>M10 的键值缓存那条式子里，显存随序列长度<strong>线性</strong>增长，而注意力那张分数表随它<strong>平方</strong>增长（实体化时；分块实现能把显存压到线性，计算量仍是平方）；把 200 万字全文塞进去，先撑不住的是硬件，不是模型。<strong>其二，中段内容读不进去。</strong>公开长文档评测里「答案放在中间」时正确率明显更低 [2026-10]。这一现象有两条并列的归因 <span class="badge badge--debate">存在争议</span>：一派归给 softmax 稀释——每行权重之和恒等于 1，候选越多，每个词元平均分到的权重越小，中段容易被首尾挤掉（本站 M10 第 ⑦ 步「能看见不等于会去看」走的是这条）；另一派归给位置编码的外推与注意力汇点（M10 第 ⑦ 步也并列过）。两派尚未分清，而且这个效应在专门做过长上下文训练的模型上会显著减弱，本站不裁决。<strong>其三，排序仍然要有人做。</strong>全塞进去只是把「选哪些」这一步从检索器搬给了注意力，而注意力对顺序是等变的、没有事实优先级（M07 第 ⑦ 步）。检索器的价值从来不是「省地方」，而是<strong>在进入模型之前先决定证据的排序与取舍</strong>。</p>
               </div>
             </details>
         </article>
@@ -3270,7 +3382,7 @@
               <summary>「智能体会自己上网查资料。」</summary>
               <div class="myth__body">
                 <p><strong>为何会有这个误解：</strong>界面上确实是它「决定」了要查什么，查询语句也由它写成，看起来整件事都是它做的；而背后的执行代码从不露面。</p>
-                <p class="myth__truth">正确说法：查是<strong>外部程序</strong>在查，模型只是输出了一段格式正确的请求文本。最干净的证据是断网：拔掉网线，它照样会写出一张格式挑不出毛病的查询单，并且接着把并不存在的结果当真。这也说明「它想查」不等于「它知道自己在查什么」——请求单的内容和真实世界之间没有任何保证关系。</p>
+                <p class="myth__truth">正确说法：查是<strong>外部程序</strong>在查，模型只是输出了一段格式正确的请求文本。最干净的证据是断网：拔掉网线，它照样会写出一张格式挑不出毛病的查询单，而且即使外部程序回填的是报错文本或空观测（本模块演示里「漏检」那一档取回的就是「（返回空）」），它也常常接着写出一个像答案的东西。这也说明「它想查」不等于「它知道自己在查什么」——请求单的内容和真实世界之间没有任何保证关系。</p>
               </div>
             </details>
             <details class="myth">
@@ -3305,7 +3417,7 @@
               <label class="quiz__opt"><input type="radio" name="q-m12"><span>每周用最新价格表微调一次模型，把价格记进参数里</span></label>
               <label class="quiz__opt"><input type="radio" name="q-m12"><span>把采样温度调到 0，让它每次稳定复现记住的价格</span></label>
               <div class="quiz__fb">
-                <p data-for="no"><strong>回到机制第 ④⑤ 步：</strong>「每周重训」把易变事实写进了<strong>最难回滚</strong>的那一层——参数，而且从训练完成到上线之间，价格已经变了；更麻烦的是你无法逐条审计它到底记成了什么。B 项错在这里。C 项犯了 M10 第 ③ 步那个老错：温度<strong>改不了排序</strong>，更不可能把一个从没进过上下文的数字变进分布里；T=0 只保证每次一样，不保证一样地新。正确答案的判断标准只有一句：这条知识多久变一次、要不要被指回原文。</p>
+                <p data-for="no"><strong>回到机制第 ④⑤ 步：</strong>「每周重训」把易变事实写进了<strong>最难回滚</strong>的那一层——参数，而且从训练完成到上线之间，价格已经变了；更麻烦的是你无法逐条审计它到底记成了什么。第二项错在这里。第三项犯了 M10 第 ③ 步那个老错：温度<strong>改不了排序</strong>，更不可能把一个从没进过上下文的数字变进分布里；T=0 只保证每次一样，不保证一样地新。正确答案的判断标准只有一句：这条知识多久变一次、要不要被指回原文。</p>
                 <p data-for="ok"><strong>对了。</strong>你用的正是那条边界：<strong>易变、需可核查的知识留在外部存储与检索，稳定、分布性的「怎么说」才写进权重</strong>（机制第 ④⑤ 步）。顺手做个推论练习：如果要求改成「让模型永远用公司那套内部术语说话」，答案就该翻向微调——术语是分布性的，逐条检索拼不出来。带着这个边界去 M13：一旦检索回来的文档里夹了别人的指令，上面这套分工立刻变成攻击面。</p>
               </div>
               <p class="quiz__result" aria-live="polite"></p>
@@ -3366,8 +3478,8 @@
           
             <ol class="steps">
               <li data-step="1"><strong>评测的根本困难是构念错配。</strong>我们真正想问的是「它理解吗、可靠吗、会伤人吗」；可客观可重复的测量只有一个：<code>在某分布 D 上的成功率 p</code>。这不是工程做得不够好，而是<strong>唯一可用的对象就是这一个小数</strong>——后面的每一步都在付这笔账。</li>
-              <li data-step="2"><strong>饱和：分数逼近上限时，消失的是区分度。</strong>题目难度分布是固定的，模型能力一路上升，于是难题先被做完、剩下全是简单题。当正确率趋近 1，方差 <code>p(1−p)</code> 趋近 0：两个模型 95% 与 96% 的差距<strong>在统计上无法与噪声区分</strong>，而公众会把它读成「进步了」。判据是可操作的，不是玄学：① 答对率方差（或它化成的标准误）是否还大于你想分辨的差距；② 题目通过率分布是否已经堆在两端、中间空掉。两条都在下面的演示里。</li>
-              <li data-step="3"><strong>数据污染：「见过」与「会做」在下一词预测目标下无法区分。</strong>公开基准的题目大量存在于训练语料里（网页、题库镜像、论文附录、解题帖），而预训练的目标就是「给定前文，预测下一个<span class="term" data-def="模型处理文本的最小单位，既不是「词」也不是「字」。" data-en="token">词元</span>」。背下题面与学会解法，在这个目标里<strong>是同一个胜利</strong>——这正是 <a href="#m01">M01</a> 那条主线的回收：「压缩得更好」与「预测得更准」在数学上是同一台机器（M01 第 ④ 步），而 M01 第 ⑧ 步也早就警告过：<strong>省比特必须省在没见过的数据上才算能力</strong>。污染就是拿见过的数据冒充能力。多项污染审计测得的题库重合比例差别很大，从个位数百分比到三成量级都有报告（2021–2024）[2026-10]。</li>
+              <li data-step="2"><strong>饱和：分数逼近上限时，消失的是区分度。</strong>题目难度分布是固定的，模型能力一路上升，于是<strong>最易的那批题先被全部做对（p→1）</strong>、先归零；能力还没碰到的那批难题则一直全错（p→0），同样没有信息。中间那条「有人会、有人不会」的带一边往右移一边收窄，直到整卷没有方差——灰是从<strong>两端</strong>吃进来的。当正确率趋近 1，方差 <code>p(1−p)</code> 趋近 0：两个模型 95% 与 96% 的差距<strong>在统计上无法与噪声区分</strong>，而公众会把它读成「进步了」。判据是可操作的，不是玄学：① 答对率方差（或它化成的标准误）是否还大于你想分辨的差距；② 题目通过率分布是否已经堆在两端、中间空掉。两条都在下面的演示里。</li>
+              <li data-step="3"><strong>数据污染：「见过」与「会做」在下一词预测目标下无法区分。</strong>公开基准的题目大量存在于训练语料里（网页、题库镜像、论文附录、解题帖），而预训练的目标就是「给定前文，预测下一个<span class="term" data-def="模型处理文本的最小单位，既不是「词」也不是「字」。" data-en="token">词元</span>」。背下题面与学会解法，在这个目标里<strong>是同一个胜利</strong>——这正是 <a href="#m01">M01</a> 那条主线的回收：「压缩得更好」与「预测得更准」在数学上是同一台机器（M01 第 ④ 步），而 M01 第 ⑧ 步也早就警告过：<strong>省比特必须省在没见过的数据上才算能力</strong>。污染就是拿见过的数据冒充能力。方向上的结论是可辩护的——公开基准的题目确实大量散落在网页语料里；但<strong>重合比例的具体量级本站未能核实，存疑</strong>：不同审计的口径（查哪批题、用什么匹配算法、算不算近似改写）差别极大，本站没有找到足以支撑某一量级的具名来源，所以这里只报方向、不报数字，要引用请回到原始审计。</li>
               <li data-step="4"><strong>越狱有效，因为后训练改的是行为分布，不是知识边界。</strong><a href="#m09">M09</a> 的结论在这里兑现：<span class="term" data-def="使模型行为符合人类意图与价值的过程；本站不译作「校准」。" data-en="alignment">对齐</span>是一次<strong>塑形</strong>，它提高「遇到这类输入就拒绝」的倾向，但没有删除模型知道的内容。<span class="term" data-def="用特殊输入绕过安全限制；本站不用「破甲」这个译名。" data-en="jailbreak">越狱</span>因此不是「攻破防线」，而是<strong>构造一个行为上不该拒绝的场景</strong>——写成小说片段、翻译成外语、角色扮演一个有权限的人、要求「只输出解释原理的虚构对话」。在这些上下文里，「拒绝」这个模式的条件概率被压低，而它知道的内容一直都在原地。</li>
               <li data-step="5"><strong><span class="term" data-def="把指令藏进被处理的数据里（网页、邮件、文件名），从而劫持模型的行为。" data-en="prompt injection">提示注入</span>：模型没有机制区分「用户的话」和「资料里的话」。</strong>把指令藏进它要处理的网页、邮件正文、文件名里，它会照做。原因不是粗心，而是架构事实：进入上下文之后，用户指令与外部资料<strong>是同一种东西</strong>——一串词元的<span class="term" data-def="把离散对象（词元、图像块）映射成连续向量的结果；向量的远近表示语义相似度。" data-en="embedding">嵌入</span>，没有来源标签、没有权限位。这与 <a href="#m11">M11</a> 是<strong>同一个架构事实的两次后果</strong>：那边是「图像也被压成同一类向量，所以它没有专门的『眼睛』」，这边是「资料里的指令也被当成同一类向量，所以它没有专门的『资料』」。两边都是「表示层没有为这个区分留出位置」。</li>
               <li data-step="6"><strong>可扩展监督要解决的问题：监督者比被监督者弱。</strong><span class="term" data-def="如何用较弱的监督者（人或小模型）判断较强模型的输出是否正确。" data-en="scalable oversight">可扩展监督</span>（scalable oversight）问的不是「怎么标更多数据」，而是「当模型的回答超出人的验证能力时，人凭什么说它对」。三条主要路线：① <strong>弱模型监督强模型</strong>（用便宜的小模型做裁判，人只监督裁判）；② <strong>让模型自我解释</strong>，人只验证解释里<strong>可核验的那部分</strong>（中间步骤、引用、可复算的算式）；③ <strong>把判断交给可自动验证的任务</strong>——形式化证明有检查器、代码有测试，正确性不再依赖人的时间。三条都各有硬肋：弱裁判自己也会错、解释可以编造但编造不出来核验、可自动验证的任务只覆盖一小部分能力。第二派正是抓住这第三点（见下面那张争议表）。</li>
@@ -3376,9 +3488,10 @@
             </ol>
           
             <div class="math-block math">
-              SE<span class="bigg">(</span><span class="frac"><span class="num">X</span><span class="den">N</span></span><span class="bigg">)</span> <span class="op">=</span> <span style="border-top:1px solid;display:inline-block;padding:0 .2em">p(1−p) / N</span>
-              <span class="reads">读作：N 道题、平均正确率 p 的基准，总分（比例）的标准误差就是这个数。把它乘以 100 就是「分」的噪声半径：p=0.95、N=500 时约 ±0.97 分（本站按公式推算）[2026-10]——两个模型的分差如果只有 1 分，你无法判断谁更强。这就是饱和的算术面目。</span>
+              SE<span class="bigg">(</span><span class="frac"><span class="num">X</span><span class="den">N</span></span><span class="bigg">)</span> <span class="op">=</span> <span style="border-top:1px solid;display:inline-block;padding:0 .2em">mean p<sub>i</sub>(1−p<sub>i</sub>) / N</span>
+              <span class="reads">读作：N 道题、第 i 题正确率 p<span class="sub">i</span> 的基准，总分（比例）的标准误差是把<strong>每题自己的方差</strong> p(1−p) 先取平均、再除以题数、再开根。若每道题难度相同（所有 p<span class="sub">i</span> 都等于 p），它就退化成课本上那个 √(p(1−p)/N)。把它乘以 100 就是「分」的噪声半径：p=0.95、N=500 时约 ±0.97 分（本站按公式推算）[2026-10]——两个模型的分差如果只有 1 分，你无法判断谁更强。这就是饱和的算术面目。</span>
             </div>
+            <p><span class="badge badge--simplify">已简化</span> 这里假设各题作答相互独立（题目之间不相关），所以方差可以直接相加——这也是演示里那个「泊松二项近似」的口径。<strong>为什么不能直接把平均正确率代进 √(p(1−p)/N)：</strong>p(1−p) 是开口向下的凹函数，按 Jensen 不等式 <code>mean p<sub>i</sub>(1−p<sub>i</sub>) ≤ p̄(1−p̄)</code>，所以拿<strong>全卷平均正确率</strong> p̄ 代进同质公式会<strong>高估</strong>噪声半径（演示里 θ=1、N=200：逐题算是 ±2.56 分，按 p̄=35% 代同质公式得 ±3.37 分）。高估方向是保守的——它只会让你更不肯承认「分差是真的」，所以正文那句「1 分差判不出」照常成立；但谁要按正文去反推真实基准的误差棒，就必须按每题的 p<span class="sub">i</span> 来算，否则会得到和演示不一致的数。</p>
           
             <div class="math-block math">
               区分度 <span class="op">=</span> 4 <span class="op">·</span> p <span class="op">·</span> (1 − p)
@@ -3386,9 +3499,10 @@
             </div>
           
             <div class="math-block math">
-              <span class="frac"><span class="num">虚高的分数</span><span class="den">满分</span></span> <span class="op">≤</span> f <span class="op">·</span> (1 − p<sub>真实</sub>)
-              <span class="reads">读作：如果占比 f 的题目被训练集污染、被判为必对，那么总分最多抬高 f×(1−真实正确率)。污染只会在「本来做不对」的题上生效，所以它抬高的是<strong>读数</strong>，一点也没有改变 <a href="#m01">M01</a> 意义上「在没见过的数据上省下的比特」。真实正确率越低，同样的污染率造成的虚高越大。</span>
+              <span class="frac"><span class="num">虚高的分数</span><span class="den">满分</span></span> <span class="op">=</span> f <span class="op">·</span> (1 − p<sub>C</sub>) <span class="op">≤</span> f
+              <span class="reads">读作：占比 f 的题目被训练集污染、被判为必对，总分就恰好抬高「被污染那批题原本做不对的比例」。p<span class="sub">C</span> 是<strong>被污染那批题自己</strong>的原始平均正确率，不是全卷的。污染只会在「本来做不对」的题上生效，最多把 f 这一整段抬到满分，所以恒有 <code>虚高 ≤ f</code>。真实正确率越低、同样的污染率造成的虚高越大——但这句话里的「真实正确率」是 p<span class="sub">C</span> 那一批的。</span>
             </div>
+            <p>常被写成 <code>虚高 ≤ f · (1 − p<sub>真实</sub>)</code>（右边换成<strong>全卷</strong>平均正确率），它要多一个前提才成立：<strong>p<sub>C</sub> ≥ p<sub>真实</sub></strong>，即被污染的题不比全卷平均更难。污染集中在易题时这个条件通常成立（演示就按「难度最低那批题已被见过」建模：θ=1、占比 30%，被污染那批题的原始平均正确率 p<span class="sub">C</span>≈0.692，高于全卷的 0.350，于是虚高 = 0.405×(1−0.692) ≈ 12.5 分，确实小于 0.405×(1−0.350) ≈ 26.3 分）；可一旦泄漏集中在<strong>难题</strong>，p<span class="sub">C</span> 低于全卷平均，这个上界就被越过，而无条件的 <code>≤ f</code> 仍然守住。拿它做审计时，宁可只用无条件的那一条。 <span class="badge badge--simplify">已简化</span></p>
           
             <h4>图解一：两根轴，不是一个滑块</h4>
             <div class="figure" data-fig="m13-capability-alignment-1">
@@ -3477,7 +3591,7 @@
                     <text x="24" y="200" class="t-xs muted">· 那边：图像也被压成同一类向量 → 所以没有专门的「眼睛」，数不清是几个（M11 第 ⑦ 步）</text>
                     <text x="24" y="214" class="t-xs muted">· 这边：资料里的指令也是同一类向量 → 所以没有专门的「资料」，会被当成话照办</text>
                   </g>
-                  <text x="10" y="240" class="t-xs faint">工程缓解（M12 会展开）：把资料放进被标记的隔离区、限制工具权限、让敏感动作需要人确认——都是外围结构，模型内部并没有长出「分辨来源」的能力。</text>
+                  <text x="10" y="240" class="t-xs faint">工程缓解（清单本站不展开）：把资料放进被标记的隔离区、限制工具权限、让敏感动作需要人确认——都是外围结构，模型内部并没有长出「分辨来源」的能力。</text>
                 </svg>
               </div>
               <figcaption>怎么看：从左到右读三段。第一段两个方框是<strong>两个来源</strong>，箭头把它们汇进第二段那一个上下文框——注意隐藏指令进了框之后，字号、颜色、位置与用户指令没有任何结构差别；第三段是「照常预测下一个词元」，于是行为被资料改写。底部灰框是本站最重要的一句：这件事与 M11 的「数不清」是同一个架构事实的两次后果。悬停机制段第 ⑤ 步会高亮图中的相关环节。</figcaption>
@@ -3534,7 +3648,7 @@
             <details class="math-detail">
               <summary>展开：通过率分布为什么是饱和更好的判据，以及「构念错配」在实操中长什么样</summary>
               <div class="math-detail__body prose">
-                <p><strong>为什么看分布而不只看总分。</strong>总分是一个数，它可以被两种方式抬高：真的会做，或者记住了。题目通过率分布是 N 个数：把每题的答对率（跨多个模型或多次采样）排成直方图，一个<strong>还没饱和</strong>的基准会把质量堆在中间（一部分人会、一部分人不会），而<strong>已经饱和</strong>的基准会把质量堆在 1.0 附近——中间空了。演示里的方差柱与热力条就是这个分布的可视化版本：灰的地方没有信息，不管总分多漂亮。</p>
+                <p><strong>为什么看分布而不只看总分。</strong>总分是一个数，它可以被两种方式抬高：真的会做，或者记住了。题目通过率分布是 N 个数：把每题的答对率（跨多个模型或多次采样）排成直方图，一个<strong>还没饱和</strong>的基准会把质量堆在中间（一部分人会、一部分人不会），而<strong>已经饱和</strong>的基准会把质量推向两端——易题那一头堆到 1.0 附近，难题那一头一直贴着 0，中间被掏空。演示里的方差柱与热力条就是这个分布的可视化版本：灰的地方没有信息，不管总分多漂亮。</p>
                 <p><strong>构念错配的样子。</strong>想测「推理能力」，实际测的是「在四选一格式里给出被训练分布偏好的选项」。四选一的随机基线是 25%，而一个只会套模板、并不推理的模型也能长期拿到远高于此的分数。「真的会推理」与「模板蒙对了」之间的差别，没有任何单项分数能单独把它解读出来。这也是为什么「加一个开放生成变体」「换一个更难的难度段」这类做法在方法论上是有意义的：它换的不是题量，是<strong>把不同的构念分离开的坐标系</strong>。</p>
                 <p><strong>为什么不能靠「把题出得更难」一次性解决。</strong>把尾巴加长确实恢复区分度，但同一件事会立刻被下游优化：更难的题一旦公开，很快也进了语料；而且更难的题往往引入更强的<strong>专业判分歧义</strong>（什么算对），把「构念错配」换成「标注错配」。这就是第 ③ 步与直觉段那条 Goodhart 边界合起来的意思：评测是博弈，不是一次性的度量。</p>
               </div>
@@ -3591,7 +3705,7 @@
               <label class="quiz__opt"><input type="radio" name="q-m13"><span>无法判断，因为基准测试本身是主观打分，没有客观标准</span></label>
               <div class="quiz__fb">
                 <p data-for="no"><strong>回到第 ② 步与第 ⑦ 步。</strong>选第二个的读者把两根轴当了一根：基准测的是能力轴，与对齐（安全边际）正交，见图解一右下那一格——高能力低对齐照样能拿满分。选第三个的读者走得太远：基准并不「主观」，总分是一个可复现的比例，有明确的噪声半径；问题不是它主观，而是它的<strong>信息量</strong>在逼近上限时归零（区分度 4p(1−p)），并且「答对」可以来自记忆而不是能力（第 ③ 步）。正确动作是问两件可查的事：标准误多大、题目通过率分布中间还空不空。</p>
-                <p data-for="ok"><strong>对了。</strong>你抓住了两个操作性判据：噪声半径（SE = √(p(1−p)/N)，在 p=0.95、N=500 时约 ±0.97 分，本站按公式推算 [2026-10]，与那 0.9 分的涨跌同量级）与方差是否还剩。顺带记住第 ③ 步的回收：在下一词预测的目标下「见过」与「会做」无法区分，所以满分附近的高分尤其不可信。带着这两把尺子去看任何一份榜单或红队报告——第 ⑧ 步那张表的第 ④ 栏（样本量与频率）是同一种怀疑。</p>
+                <p data-for="ok"><strong>对了。</strong>你抓住了两个操作性判据：噪声半径（SE = √(mean p<sub>i</sub>(1−p<sub>i</sub>)/N)，每题同为 0.95 时就是 √(0.95×0.05/500)，约 ±0.97 分，本站按公式推算 [2026-10]，与那 0.9 分的涨跌同量级）与方差是否还剩。顺带记住第 ③ 步的回收：在下一词预测的目标下「见过」与「会做」无法区分，所以满分附近的高分尤其不可信。带着这两把尺子去看任何一份榜单或红队报告——第 ⑧ 步那张表的第 ④ 栏（样本量与频率）是同一种怀疑。</p>
               </div>
               <p class="quiz__result" aria-live="polite"></p>
             </div>

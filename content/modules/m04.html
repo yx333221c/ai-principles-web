@@ -109,9 +109,9 @@
     ∇L <span class="op">=</span> <span class="bigg">(</span><span class="frac"><span class="num">∂L</span><span class="den">∂θ<span class="sub">1</span></span></span>, <span class="op">…</span>, <span class="frac"><span class="num">∂L</span><span class="den">∂θ<span class="sub">D</span></span></span><span class="bigg">)</span>
     <span class="op">,</span>
     <span class="vec">θ</span> <span class="op">←</span> <span class="vec">θ</span> <span class="op">−</span> lr <span class="op">·</span> ∇L(<span class="vec">θ</span>)
-    <span class="reads">「把每根轴的瞬时斜率排成一支箭头，它指损失涨得最快的方向；更新就是逆着箭头，每根轴各挪『学习率 × 该轴斜率』那么远。」</span>
+    <span class="reads">「把每根轴的瞬时斜率排成一支箭头，它指损失涨得最快的方向；更新就是逆着箭头，每根轴各挪『学习率 × 该轴斜率』那么远。『最快』只在两个前提下成立：步子无穷小、且各轴按同一把欧氏尺子量——换一把尺子（例如公式 ⑤ 的按坐标归一），最陡方向本身就变了。」</span>
   </div>
-  <p>维度必须写清：θ 与 ∇L 都是 D 维向量，D 和参数量相同（GPT-3 是 1750 亿 ≈ 全球每人分到一个英文单词（2020）[2026-10]）。lr 是一个标量，全局共享。「梯度指路」这件事的全部内容，就是这个负号。</p>
+  <p>维度必须写清：θ 与 ∇L 都是 D 维向量，D 和参数量相同（GPT-3 是 1750 亿 ≈ 2020 年全球每人分到约 22 个英文单词：175×10⁹ ÷ 78×10⁹ ≈ 22.4，人口取联合国 2020 年估计值 [2026-10]）。lr 是一个标量，全局共享。「梯度指路」这件事的全部内容，就是这个负号。</p>
 
   <h4>公式 ③ — 小批量：用抽样冒充整体，期望相同、方差非零</h4>
   <div class="math-block math">
@@ -183,7 +183,7 @@
         <span class="reads">「每一步都把到谷底的比例乘以同一个数 (1 − lr·a)，所以整条轨迹是一个等比数列。」</span>
       </div>
       <p>要距离不断缩小，需要 |1 − lr·a| &lt; 1，也就是 0 &lt; lr·a &lt; 2。三种情形：lr·a = 1 一步到位；1 &lt; lr·a &lt; 2 每次过冲但幅度递减；lr·a &gt; 2 幅度递增，即发散。这就是「太大就发散」的全部机制，它不依赖任何玄学，只依赖一个乘法系数是否超过 −1。</p>
-      <p><strong>为什么曲率小就学不动。</strong>同一把 lr 在 L = ½aθ² 上每步只把距离乘 (1 − lr·a)。a = 0.06、lr = 0.08 时是 0.9952，走完 99% 的剩余距离要约 1150 步 [2026-10]。不是梯度方向错了，是这一步实在太短。</p>
+      <p><strong>为什么曲率小就学不动。</strong>同一把 lr 在 L = ½aθ² 上每步只把距离乘 (1 − lr·a)。a = 0.06、lr = 0.08 时是 0.9952，走完 99% 的剩余距离要约 957 步（按 ln 0.01 ÷ ln 0.9952 推算，本页可复算；反过来 1150 步对应的是 99.6%）。不是梯度方向错了，是这一步实在太短。</p>
       <p><strong>偏差修正。</strong>Adam 的 m、u 从零起步，前几步被 β 压得偏低，所以实际用的是 m̂ = m / (1 − β₁<span class="sup">t</span>)、û = u / (1 − β₂<span class="sup">t</span>)，t 是步数。t 大了以后分母趋近 1，这两条几乎不影响结果。</p>
       <p><strong>为什么鞍点几乎不可能是局部极小。</strong>临界点处每根轴的曲率符号近似独立；要成为局部极小需要 D 根轴全部为正。若正负各半，概率是 2<sup>−D</sup>：D = 10 时约千分之一，D = 10⁸ 时是彻底的零（Dauphin 等，2014）[2026-10]。这个论证假设了曲率符号独立同分布，现实损失面并不完全满足，所以它是量级上的直觉而非定理 <span class="badge badge--debate">存在争议</span>。</p>
       <p><span class="badge badge--simplify">已简化</span> 上面所有推导都在「局部二次近似」下进行：任何光滑函数在一点点范围内都像碗。真实损失面还有噪声、约束与随训练变化的形状。</p>
