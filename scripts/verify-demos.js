@@ -62,12 +62,29 @@ let problems = 0;
 
 for (const cs of CASES) {
   const domF = path.join(TMP, cs.name + '.dom.html'), conF = path.join(TMP, cs.name + '.con.txt');
-  sh(`"${CHROME}" --headless=new --disable-gpu --no-sandbox --window-size=${cs.w},${cs.h} ` +
+  /* 每个用例独立的 user-data-dir：三次 Chrome 调用共用默认 profile 时，
+     快速连续启动会抢 profile 锁。这是真实风险类别，所以隔离保留。
+     ⚠️ 但它**不是**本次「没拿到 DOM」的原因：那次 stderr 全是
+     "Unable to create cache"/"Gpu Cache Creation failed"，而 C 盘当时只剩
+     0.36 GB —— 磁盘满才是根因（同一次运行还让本脚本写文件时 ENOSPC）。
+     教训：0 字节 DOM + stderr 有 ERROR 时先查磁盘，别急着归因给锁。
+     下面的 hint 输出就是为此而加——把 stderr 摘出来，省得下次再猜。 */
+  const udd = path.join(TMP, 'profile-' + cs.name);
+  sh(`"${CHROME}" --headless=new --disable-gpu --no-sandbox ` +
+     `--user-data-dir="${udd}" --disable-extensions --disable-background-networking ` +
+     `--window-size=${cs.w},${cs.h} ` +
      `--virtual-time-budget=15000 --enable-logging=stderr --level=0 ` +
      `--dump-dom "${BASE}?mountall=1&probe=1${cs.q}" > "${domF}" 2> "${conF}"`);
   const dom = fs.existsSync(domF) ? fs.readFileSync(domF, 'utf8') : '';
   const con = fs.existsSync(conF) ? fs.readFileSync(conF, 'utf8') : '';
-  if (!dom) { console.log(`[${cs.name}] 没拿到 DOM`); problems++; continue; }
+  if (!dom) {
+    /* 光说「没拿到 DOM」等于让人重新猜一遍。把 stderr 的关键行摘出来，
+       多数情况是 profile 锁或缓存创建失败（见上面 --user-data-dir 的注释）。 */
+    const hint = (fs.existsSync(conF) ? fs.readFileSync(conF, 'utf8') : '')
+      .split(/\r?\n/).filter(l => /ERROR|Unable|Failed/i.test(l)).slice(0, 2).join(' / ');
+    console.log(`[${cs.name}] 没拿到 DOM —— Chrome 可能没起来。stderr: ${hint.slice(0, 220) || '(空)'}`);
+    problems++; continue;
+  }
 
   const pm = dom.match(/<title>PROBE::([^<]*)<\/title>/);
   if (!pm) { console.log(`[${cs.name}] 没有 PROBE 结果`); problems++; continue; }
@@ -104,6 +121,9 @@ for (const cs of CASES) {
   errs.slice(0, 4).forEach(l => console.log('  console: ' + l.replace(/^.*?CONSOLE.*?\]\s*/, '').trim().slice(0, 150)));
 }
 console.log('\n' + (problems ? problems + ' 项需要处理' : '三种视口/主题下全部通过（含图解对比度扫描）'));
-fs.rmSync(TMP, { recursive: true, force: true });
+/* 清临时目录失败不该把结论盖掉：Windows 上 Chrome 偶尔还攥着 profile 句柄，
+   rmSync 抛 EPERM 会崩在这里，人看到的只剩堆栈、看不到上面刚打印的判定。 */
+try { fs.rmSync(TMP, { recursive: true, force: true }); }
+catch (e) { console.log('（临时目录未清理：' + e.code + '，可手动删 ' + TMP + '）'); }
 process.exit(problems ? 1 : 0);
 })();
