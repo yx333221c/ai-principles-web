@@ -34,10 +34,13 @@
 .linkbtn:hover { color:var(--c-accent) }
 
 /* ---------- 徽章（§7.2 .badge） ---------- */
+/* 不能 white-space:nowrap：H7 要求简化声明里写明「简化了什么」，
+   这句话可以很长（实测 m10 53 字、m07 107 字），nowrap 的 pill 在 390px
+   下直接撑破版面（移动端 HSCROLL+38）。窄容器里让它换行，短标签仍是一行。 */
 .badge { display:inline-flex; align-items:center; gap:4px;
   padding:2px 9px; border-radius:var(--r-pill); font-size:var(--t--2); font-weight:600;
   border:1px solid var(--c-line-strong); background:var(--c-bg-elev); color:var(--c-fg-muted);
-  white-space:nowrap }
+  max-width:100%; white-space:normal; line-height:1.45; vertical-align:middle }
 .badge--lvl::before        { content:"◈ " }
 .badge--time::before       { content:"◷ " }
 .badge--math               { color:var(--c-accent); border-color:color-mix(in srgb,var(--c-accent) 40%,var(--c-line)) }
