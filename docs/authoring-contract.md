@@ -9,7 +9,11 @@
 
 1. **`index.html` 是生成物，不要手改。** 改 `templates/shell.html`（全站外壳）或 `content/modules/*.html`（模块内容），然后 `node build.js`。
 2. **六段一个都不能少。** 构建器对缺失段落直接报错退出（写作规范 H1）。
-3. **改完必须跑** `node build.js && node scripts/selfcheck.js`，两者都绿才算完成。
+3. **改完必须过闸门。** 单人改完跑 `node scripts/gates.js`（四道全跑，自带服务，不必手动起 python）。
+   ⚠️ **多人并行时不要跑 `node build.js`／`gates.js` 的闸门 3**：全站产物是单个 `index.html`，
+   并发构建会把它撕裂（本项目出过事故）。并行作者只跑静态两道，重建由集成者统一做：
+   `node scripts/gates.js --only=1,2`（闸门 1 会报「index.html 已过期」，这是预期，不是你的 bug）。
+   注意闸门 4 若指向未重建的产物，验的是旧版面——它曾因此报告"全过"而漏掉真实缺陷。
 
 ## 1. 内容文件写法
 
@@ -203,20 +207,32 @@ SVG 里的下标用 `<tspan baseline-shift="sub">`（**不是** `<tsml>`，那�
 
 ## 3. 元数据
 
-`assets/data/modules.json` 里已给全 13 个模块的 `demo.id`、`prereq`、`acceptance`、`difficulty`、`estMinutes`。**不要改 `id`/`num`/`prereq`**（会破坏 DAG 与已分享锚点）。若内容实际比预估长，可改 `estMinutes`。
+`assets/data/modules.json` 里已给全 13 个模块的 `demo.id`、`prereq`、`acceptance`、`difficulty`、`estMinutes`。
+
+- **不要改 `id`/`num`**（会破坏 URL 与已分享锚点）。
+- `prereq` 原则上不动，但**当正文的前置提示与它矛盾时可以补全**：v0.3 复核发现 m08 的
+  `demo__note` 写着「需要 M02 和 M07」而 `prereq` 只有 `m07`，UI 只展示直接前置，
+  于是按 DAG 合法顺序补成 `["m02","m07"]`。改之前先确认目标编号更小、无环（selfcheck 有反向依赖检查）。
+- `figures` 是**受校验字段**：正文 `data-fig` 集合必须与它完全相等（selfcheck 双向核对）。
+  新增或删除图解时同步这里，否则闸门直接报错。
+- `estMinutes` 改动会牵动全站阅读时长：`DESIGN.md`/首页的「约 X–Y 小时」由它求和派生，
+  selfcheck 会核对，别只改一处。
+- `demo.params` 已删除：无消费方、键名在演示源码里已写明，抄一份只会腐化（实测 7+ 模块与正文脱节）。
 
 ## 4. 自检清单（作者自查）
 
-- [ ] `node build.js` 无输出问题
-- [ ] `node scripts/selfcheck.js` 显示 `RESULT: all checks passed`
+- [ ] `node scripts/gates.js`（单人）或 `--only=1,2`（并行时）全绿
+- [ ] **闸门 4 必须跑过**：它专抓静态检查看不见的那类——演示画布里两段文字叠印（本轮抓到一处由加长说明文字引入的 76×11px 重叠）、badge 撑破移动端（HSCROLL+38）、文字压色块对比度不足（历史抓到 1.96:1）。改过图解坐标、hint 文案或内联样式，不跑闸门 4 等于没验
 - [ ] `node --check assets/js/demos/<id>.js` 通过
-- [ ] 六段齐全，hook ≤120 字且零术语
-- [ ] 类比有失效边界；简化处有 `badge--simplify`
-- [ ] 事实数字带 `[YYYY-MM]`
+- [ ] 六段齐全，`<p class="hook">` 本体 ≤120 字且零术语（段里的 `demo__note` 前置横幅不计入）
+- [ ] 类比有失效边界；简化处有 `badge--simplify`（badge 可换行，但别把整段说明塞进去）
+- [ ] 事实数字带 `[YYYY-MM]`；纯算式改标「按公式推算」，不占时间戳
 - [ ] 图解无硬编码颜色，含 `<title>`/`<desc>`/`role="img"`
-- [ ] 演示 hint 三要素齐全，含重置，参数有区间
+- [ ] 步骤编号 `data-step` 恰好 1..N，图内节点按**可见编号**对齐；「第 ⑤ 步」引用不越界
+- [ ] 演示 hint 三要素齐全，含重置，参数有区间；hint 里承诺的数**必须能按代码算出来**
 - [ ] 误区 ≥3 条且写了「为何会有此误解」
 - [ ] 带走一句 ≤40 字，且能被 `modules.json` 的 `acceptance` 检验
+- [ ] 改了 `modules.json` 用 Node 写文件，**不要用 PowerShell `Set-Content`**：它会写 UTF-8 BOM，`JSON.parse` 直接失败，而 selfcheck 只报"解析失败"不说原因（实测有人因此白跑十分钟）
 
 ## 5. 本地预览
 
