@@ -189,6 +189,30 @@
     AIP.register(key, function () {
       let host = null, svg = null, ctr = null, paused = false, frameReq = null;
       const state = Object.assign({}, spec.state || {});
+      /* §6.3「状态入 URL」：?demo=<key>&<stateKey>=<值> 可分享某个具体参数组合，
+         也供 iframe 嵌入与自动化验证使用。此前这条承诺从未实现，后果是
+         闸门 4 只能验初始状态——队友加长 m01 的说明文字后，切到「语言式」
+         才会触发的标签叠印静态检查看不见、探针也因为跑不到那个状态而看不见。
+         类型按 spec.state 里的初值推断（number/string/boolean），不认识的键忽略。
+         必须在 controls() 之前套用：控件建自己那格时读的就是 api.state。 */
+      (function applyUrlState() {
+        let q;
+        try { q = new URLSearchParams(location.search); } catch { return; }
+        const which = q.get('demo');
+        if (which && which !== key) return;      // 指定了别的演示就不动本演示
+        for (const k of Object.keys(state)) {
+          if (!q.has(k)) continue;
+          const raw = q.get(k), base = state[k];
+          if (typeof base === 'number') {
+            const n = Number(raw);
+            if (isFinite(n)) state[k] = n;
+          } else if (typeof base === 'boolean') {
+            state[k] = !(raw === '0' || raw === 'false' || raw === '');
+          } else {
+            state[k] = String(raw);
+          }
+        }
+      })();
       const listeners = [];
       const api = {
         key, state, spec,
