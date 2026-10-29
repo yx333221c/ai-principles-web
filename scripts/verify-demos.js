@@ -163,8 +163,9 @@ for (const cs of CASES) {
   const errs = con.split(/\r?\n/).filter(l => /Uncaught|TypeError|ReferenceError|挂载失败|\[demo /.test(l));
   if (errs.length) problems += errs.length;
 
-  /* sweep 命中：单独收集，不并进 problems（--sweep 是排队修用的，不该让默认闸门变红）。
-     tested 数来自 PAGE 的 SWEEP= 令牌——它 >0 就证明扫描真跑过（不是空读控件），
+  /* sweep 命中并入 problems（阻断）：2026-10 已在 Linux runner 三视口各 161 组合
+     实测零命中，"本地能过不代表异机能过"这个顾虑已被数据消除，所以它可以当闸门用。
+     tested 数来自 PAGE 的 SWEEP= 令牌——它 >0 才证明扫描真跑过（不是空读控件），
      命中明细从 stderr 的 [SWEEP-BAD] 行取（title 会截断，stderr 才是全量）。 */
   if (SWEEP) {
     const swTok = (page.split(',').find(t => t.startsWith('SWEEP=')) || '').replace(/&amp;/g, '&');
@@ -173,7 +174,9 @@ for (const cs of CASES) {
     const bad = con.split(/\r?\n/).filter(l => l.includes('[SWEEP-BAD]'))
       .map(l => l.replace(/^.*?\[SWEEP-BAD\] /, '').replace(/",\s*source:.*$/, '').trim());
     bad.forEach(b => { const k = b.split('@')[0]; if (!sweep.seen[k]) { sweep.seen[k] = true; sweepHits.push(cs.name.slice(0, 6) + ' ' + b); } });
-    if (!tested) { console.log(`  [${cs.name}] ⚠ sweep 跑了但 tested=0 —— 控件没被识别，是真没扫到`); }
+    /* tested=0 是"扫了但什么都没扫到"的空跑，必须算失败：否则一个坏掉的扫描器会
+       永远报告"无命中"，看着比真干净还绿。 */
+    if (!tested) { console.log(`  [${cs.name}] ⚠ sweep 跑了但 tested=0 —— 控件没被识别，是真没扫到`); problems++; }
   }
 
   console.log(`\n=== ${cs.name}  (${cs.w}px) ===`);
@@ -184,8 +187,10 @@ for (const cs of CASES) {
 if (SWEEP) {
   console.log('\n──── 非默认状态扫描 (--sweep) ────');
   console.log('  扫描组合数(单视口峰值): ' + (sweep.tested || 0));
-  if (sweepHits.length) console.log('  命中 ' + Object.keys(sweep.seen).length + ' 类（叠印/压色块，滑杆拨到边界即可复现）:\n  ' + sweepHits.join('\n  '));
-  else console.log('  无命中');
+  if (sweepHits.length) {
+    console.log('  命中 ' + sweepHits.length + ' 类（叠印/压色块/越界，滑杆拨到该值即可复现）:\n  ' + sweepHits.join('\n  '));
+    problems += sweepHits.length;   // 提为阻断项
+  } else console.log('  无命中');
 }
 console.log('\n' + (problems ? problems + ' 项需要处理' : '三种视口/主题下全部通过（含图解对比度扫描）' + (SWEEP ? ' + 非默认状态扫描' : '')));
 /* 清临时目录失败不该把结论盖掉：Windows 上 Chrome 偶尔还攥着 profile 句柄，

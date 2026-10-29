@@ -39,20 +39,17 @@ jobs:
           chrome-version: stable
           install-dependencies: true
 
-      - name: Run all four gates
+      - name: Run all four gates (incl. non-default-state sweep)
         env:
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
         # gates.js 自带静态服务（serve.js --live-build），跑完自关；四道闸门不
         # fail-fast，一次跑全再汇总。任一道红则非零退出，本步即失败。
-        run: node scripts/gates.js
-
-      # 非默认状态扫描：先【不阻断】，目的是拿到 Linux 字体下的数据。
-      # 为什么要单独量：叠印判据比较的是文字的实测排版宽度，而排版宽度取决于字体
-      # 度量。本地（Windows）161 组合零命中，不能直接推定 runner（Debian 字体）也零
-      # 命中——这正是「本地能过不代表异机能过」的那个类别，必须实测。
-      # 数据到手、确认异机同样干净后，再把 --sweep 提为阻断项。
-      - name: Sweep non-default states (informational, not blocking yet)
-        env:
-          CHROME: ${{ steps.chrome.outputs.chrome-path }}
-        continue-on-error: true
-        run: node scripts/gates.js --only=4 --sweep
+        # --sweep 现为阻断项：闸门 4 除了三视口初始态，还扫每个演示各控件的
+        # min/中/max 边界值（页内循环，不额外起 Chrome，实测 +7s）。
+        # 为什么敢在异机阻断：叠印判据比较文字实测排版宽度，宽度取决于字体度量，
+        # 本地 Windows 161 组合零命中【不能】推定 Debian runner 也零命中。故先以
+        # continue-on-error 的独立步骤收集了一轮 Linux 数据——三视口各 161 组合、
+        # 零命中（run 40885045347），达到门槛后才合并进阻断步骤。
+        # 且阻断接线做过阳性对照：临时把 m11 的 R_TXT 退回旧值 140，--sweep 立刻
+        # 报 step=100 端点叠印并 exit 1；恢复后回绿。一条没被证明能红的检查等于没有。
+        run: node scripts/gates.js --sweep
