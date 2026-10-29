@@ -1,0 +1,35 @@
+{
+  "_comment": [
+    "延伸阅读/关键论断的外链【白名单】。selfcheck.js §外链闸门据此核对：正文里任何",
+    "<a href=\"http…\"> 的 URL 必须出现在本表，否则直接 FAIL。",
+    "为什么用白名单而不是让作者自由填：本会话反复出现『凭记忆写 DOI/arXiv ID』导致假引用",
+    "（如 10.1038/354097a0 实际落地是 ESA 社论、2309.04184 实际是纪录片论文而非涌现幻觉）。",
+    "每条 URL 的 title 字段都是 curl 抓取页面里 citation_title/<title> 的【真实】内容，",
+    "不是我对该论文的记忆。要新增链接：先 curl 验证、把抓到的真实标题抄进来，再引用。",
+    "publisher 付费墙那几条（LSTM/Shannon）：curl 拿到 403/202 但 url_effective 已重定向到",
+    "正确文章落地页（页码/文档号吻合），对人类读者点击有效；注明以免被当成失效链接误删。"
+  ],
+  "verifiedAt": "2026-10-29",
+  "sources": {
+    "https://arxiv.org/abs/1706.03762": { "title": "Attention Is All You Need", "use": "Transformer 原始论文（M05/M06/M07/M08/M11）" },
+    "https://arxiv.org/abs/2001.08361": { "title": "Scaling Laws for Neural Language Models", "use": "规模定律 Kaplan 2020（M08）" },
+    "https://arxiv.org/abs/2203.15556": { "title": "Training Compute-Optimal Large Language Models", "use": "Chinchilla / Hoffmann 2022（M08）" },
+    "https://arxiv.org/abs/2005.14165": { "title": "Language Models are Few-Shot Learners", "use": "GPT-3 175B（M03/M04/M08）" },
+    "https://arxiv.org/abs/1301.3781": { "title": "Efficient Estimation of Word Representations in Vector Space", "use": "word2vec 静态词向量（M03）" },
+    "https://arxiv.org/abs/2203.02155": { "title": "Training language models to follow instructions with human feedback", "use": "InstructGPT / RLHF（M09）" },
+    "https://arxiv.org/abs/2305.18290": { "title": "Direct Preference Optimization: Your Language Model is Secretly a Reward Model", "use": "DPO（M09）" },
+    "https://arxiv.org/abs/2103.00020": { "title": "Learning Transferable Visual Models From Natural Language Supervision", "use": "CLIP（M11）" },
+    "https://arxiv.org/abs/2010.11929": { "title": "An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale", "use": "ViT 图像块（M11）" },
+    "https://arxiv.org/abs/1904.09751": { "title": "The Curious Case of Neural Text Degeneration", "use": "top-p / nucleus 采样（M10）" },
+    "https://arxiv.org/abs/2210.03629": { "title": "ReAct: Synergizing Reasoning and Acting in Language Models", "use": "ReAct 循环（M12）" },
+    "https://arxiv.org/abs/2304.15004": { "title": "Are Emergent Abilities of Large Language Models a Mirage?", "use": "涌现幻觉 Schaeffer NeurIPS 2023（M08）" },
+    "https://arxiv.org/abs/2306.14048": { "title": "H2O: Heavy-Hitter Oracle for Efficient Generative Inference of Large Language Models", "use": "KV cache / attention sink（M07/M10）" },
+    "https://arxiv.org/abs/1412.6980": { "title": "Adam: A Method for Stochastic Optimization", "use": "Adam 优化器（M04）" },
+    "https://arxiv.org/abs/2009.03300": { "title": "Measuring Massive Multitask Language Understanding", "use": "MMLU 基准（M13）" },
+    "https://arxiv.org/abs/1905.10650": { "title": "Are Sixteen Heads Really Better than One?", "use": "多头冗余 Michel 2019（M07）" },
+    "https://doi.org/10.1038/323533a0": { "title": "Learning representations by back-propagating errors", "use": "反向传播 Rumelhart 1986 Nature（M05，已有）" },
+    "http://prize.hutter1.net/": { "title": "Hutter Prize", "use": "压缩即智能 enwik9（M01，已有）" },
+    "https://doi.org/10.1162/neco.1997.9.8.1735": { "title": "Long Short-Term Memory (Neural Computation 9(8):1735-1780)", "use": "LSTM Hochreiter 1997（M06）；付费墙 curl 返 403 但 url_effective=neco/article/9/8/1735-1780 页码吻合，人点可达", "paywalled": true },
+    "https://doi.org/10.1002/j.1538-7305.1948.tb01338.x": { "title": "A Mathematical Theory of Communication (Bell System Technical Journal)", "use": "香农 1948（M01/M02）；付费墙 curl 返 202 但 url_effective=ieeexplore/document/6773024，人点可达", "paywalled": true }
+  }
+}

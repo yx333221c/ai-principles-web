@@ -311,6 +311,43 @@ else {
   const ext = [...new Set([...h.matchAll(/(?:<script|<link)[^>]*(?:src|href)="(https?:)?\/\/[^"]+"/g)].map(x => x[0]))];
   ext.length ? bad('存在外部资源（应零依赖）: ' + ext.join(' ')) : ok('无外部资源引用（零依赖成立）');
   const cites = [...new Set([...h.matchAll(/<a[^>]+href="(https?:\/\/[^"]+)"/g)].map(x => x[1]))];
+  /* 外链白名单核验。为什么必须有这条：本会话反复出现「凭记忆写 DOI / arXiv ID」造出
+     假引用——实测 10.1038/354097a0 落地是「Deciding ESA's future」而非反向传播论文，
+     2309.04184 是讲纪录片推荐的论文而非「涌现能力是幻觉」。这类链接看着格式正确、
+     数字也像模像样，人和大多数检查都发现不了，只有真的 curl 才知道。
+     规则：正文里每个 http(s) 外链都必须出现在 docs/cited-sources.json，那份表里每条
+     的 title 都是 curl 抓回页面的真实标题（不是任何人的记忆）。要加新链接就得先去
+     核验并登记，闸门自然挡住「顺手编一个 ID」。 */
+  (function checkCiteWhitelist() {
+    let allow = null;
+    try {
+      allow = Object.keys(JSON.parse(rd('docs/cited-sources.json')).sources);
+    } catch (e) { bad('docs/cited-sources.json 读取/解析失败（外链无从核验）：' + e.message); return; }
+    /* 源文件也查：否则改了内容忘了重建，只查 index.html 会漏掉新加的野链接 */
+    const where = new Map();
+    for (const f of J.modules.map(m => 'content/modules/' + m.id + '.html').filter(has))
+      [...rd(f).matchAll(/<a[^>]+href="(https?:\/\/[^"]+)"/g)].forEach(m => where.set(m[1], (where.get(m[1]) || []).concat(f)));
+    for (const m of h.matchAll(/<a[^>]+href="(https?:\/\/[^"]+)"/g))
+      if (!where.has(m[1])) where.set(m[1], ['index.html']);
+    const norm = u => u.replace(/\/+$/, '');
+    const allowN = new Set(allow.map(norm));
+    const rogue = [...where.keys()].filter(u => !allowN.has(norm(u)));
+    if (rogue.length) {
+      bad('外链不在白名单（疑似凭记忆编造的 DOI/arXiv，必须先 curl 核验并登记进 docs/cited-sources.json）: ' +
+        rogue.map(u => u + ' ←' + [...new Set(where.get(u))].join(',')).join(' | '));
+    } else ok('全部 ' + where.size + ' 条外链均在白名单内（逐条 curl 核验过真实标题）');
+    /* §7 要求 rel="noopener noreferrer"。
+       注意 rel 在正文里排在 href【之后】（<a href="..." rel="...">），所以必须匹配
+       整条 <a> 的属性串再判，不能写成 ([^>]*?)href —— 那样只捕获 href 之前的属性，
+       rel 永远看不见，会把所有合规链接误判成违规（本条闸门第一次跑就是这么假红的，
+       差点让人去"修"本来正确的内容）。 */
+    const noRel = [...h.matchAll(/<a\b([^>]*href="https?:\/\/[^"]+"[^>]*)>/g)]
+      .map(m => m[1])
+      .filter(a => !/rel="[^"]*noopener[^"]*noreferrer[^"]*"/.test(a) && !/rel="[^"]*noreferrer[^"]*noopener[^"]*"/.test(a))
+      .map(a => (a.match(/href="([^"]+)"/) || [])[1] || a);
+    noRel.length ? bad('外链缺 rel="noopener noreferrer": ' + [...new Set(noRel)].join(', ')) :
+      ok('外链均带 rel="noopener noreferrer"');
+  })();
   ok('指向外部的引用链接 ' + cites.length + ' 条（文献出处，允许）');
 }
 
