@@ -107,11 +107,6 @@
     title: '图文对齐的嵌入空间',
     viewBox: [700, 436],   // 底部两行图例，最后一行基线 424 + 降部需留白
     state: { step: 0, query: 0, tau: 0.10, push: true },
-    /* step 是补间进度（网格散点 ↔ 极坐标收敛），不是构型选择：中途两个标签经过
-       彼此是路径交叉的几何必然（实测 step=50 三处 CLASH，最小一处只重叠 5×2px），
-       读者真正停下来读的是两端 —— 0% 的混乱态与 100% 的收敛态，两者都照常全检。
-       声明给闸门 4 的 sweep（见 app.js runSweep 里 sweepTimeKeys 的注释）。 */
-    sweepTimeKeys: ['step'],
 
     controls(holder, api) {
       holder.appendChild(DK.range({
@@ -248,6 +243,18 @@
       imgPos.forEach((p, i) => api.imgEls[i].g.setAttribute('transform', 'translate(' + p.x.toFixed(1) + ',' + p.y.toFixed(1) + ')'));
       txtPos.forEach((p, i) => api.txtEls[i].g.setAttribute('transform', 'translate(' + p.x.toFixed(1) + ',' + p.y.toFixed(1) + ')'));
       disPos.forEach((p, i) => api.disEls[i].g.setAttribute('transform', 'translate(' + p.x.toFixed(1) + ',' + p.y.toFixed(1) + ')'));
+
+      /* 补间途中淡出【节点标签】（点/块本体不淡）：两端才是读者停下来读的构型
+         ——0% 是「图文各乱飞」，100% 是「配对对齐」；中途两个标签经过彼此是任何
+         scatter→cluster 路径的几何必然（实测 step=50 有三处叠印，最大 17×8）。
+       用淡出而不是给闸门开豁免：闸门那条判据【一条都不放松】，读者看到的是标签
+       在运动时自然隐去、到位才浮现。右侧概率条不受影响（那是独立面板，随时可读）。
+       dEnd<=0.05 全显，dEnd>=0.15 全隐，中间线性；step=50 → dEnd=0.5 → alpha=0。 */
+      const dEnd = Math.min(t, 1 - t);
+      const labAlpha = dEnd <= 0.05 ? 1 : dEnd >= 0.15 ? 0 : 1 - (dEnd - 0.05) / 0.10;
+      api.imgEls.forEach(e => e.t.setAttribute('opacity', labAlpha.toFixed(2)));
+      api.txtEls.forEach(e => e.t.setAttribute('opacity', labAlpha.toFixed(2)));
+      api.disEls.forEach(e => e.lab.setAttribute('opacity', labAlpha.toFixed(2)));
 
       LABELS.forEach((p, i) => {
         const a = imgPos[i], b = txtPos[i], l = api.linkEls[i];

@@ -841,7 +841,7 @@
   }
 
   function runSweep() {
-    let tested = 0; const bad = []; let suppressed = 0;
+    let tested = 0; const bad = [];
     doc.querySelectorAll('.demo[data-demo]').forEach(host => {
       const key = host.dataset.demo;
       const inst = AIP.registry[key];
@@ -856,7 +856,6 @@
         if (el._dkKey && Object.prototype.hasOwnProperty.call(base, el._dkKey)) controls.push(el);
       });
       const byKey = {};
-      const rangeOf = {};   // k -> [min,max]，用来区分端点与中间帧
       controls.forEach(w => {
         const k = w._dkKey;
         const rng = w.matches && w.matches('input[type=range]') ? w : w.querySelector && w.querySelector('input[type=range]');
@@ -867,9 +866,9 @@
           const mn = Number(rng.min), mx = Number(rng.max);
           const st = Number(rng.step) || 1;
           if (isFinite(mn) && isFinite(mx) && mx > mn) {
-            rangeOf[k] = [mn, mx];
             /* min / 中 / max 三点。只要 min 与 max 会漏掉【中间态】——实测加中值后
-               立刻抓出 5 处端点扫不到的真问题（见下 sweepTimeKeys 的例外）。
+               立刻抓出 3 处端点扫不到的真问题（m03 catA=180 把标签裁出 viewBox、
+               m03 c=0、m09 beta=1）。
                必须【落到控件真实格点】：step=1 的滑块造 179.5 是用户拖不出的假状态
                （m07 的 HEADS[1.5] 越界崩溃就是这么来的）。 */
             const snap = (v) => DKround(mn + Math.round((v - mn) / st) * st, st);
@@ -911,30 +910,19 @@
           try { api.spec.draw(api); }
           catch (e) { drew = false; bad.push(key + ':' + k + '=' + String(v).replace(/[^\w.一-鿿-]/g, '') + '@DRAWERR'); }
           if (drew) {
-            /* 时间轴键（demo 用 sweepTimeKeys 显式声明，不按键名猜）的【严格中间帧】
-               不查叠印与压色块：收敛动画的两端才是读者会停下来读的构型，途中两个标签
-               经过彼此、色带半透明都是路径的几何必然（m11：雪山往下走、干扰句往右上走，
-               step=50 必然撞 3 处），不是布局缺陷。
-               端点（min/max）照常全检——step=100 正是先前抓出「沙滩×一片海滩的照片」
-               真叠印的那一态。OVER 即使在中间帧也算：读者停在中途看到被裁半的标签仍然坏。
-               ⚠️ 被放过的每一处都计入 suppressed 并打印出来：放宽判据 = 亲手制造假绿的
-               高危动作，绝不能静默。若哪天 suppressed 突然变大，说明有人在滥用这个豁免。 */
-            const rg = rangeOf[k];
-            const isMid = rg && Number(v) > rg[0] && Number(v) < rg[1];
-            const timeMid = isMid && (api.spec.sweepTimeKeys || []).indexOf(k) >= 0;
+            /* 判据一条不放松：中间帧也不豁免。m11 的补间叠印是用「运动时淡出标签」
+               真修掉的（见该 demo），而不是让扫描闭眼——留一个 sweepTimeKeys 豁免口，
+               等于给以后任何人「往数组里塞个键名就能躲判据」的通道，那正是本项目反复
+               警惕的假绿来源。中值探测保留（它抓出过 3 个端点看不到的真缺陷）。 */
             const flags = geomFlags(svg).filter(x => /^OVER|^CLASH|^LOWFILL|^NOVB|^NOCtm/.test(x));
-            for (const x of flags) {
-              if (timeMid && /^CLASH|^LOWFILL/.test(x)) { suppressed++; continue; }
-              bad.push(key + ':' + k + '=' + String(v).replace(/[^\w.一-鿿-]/g, '') + '@' + x.replace(/[ ,;]/g, '/').slice(0, 46));
-              break;
-            }
+            if (flags.length) bad.push(key + ':' + k + '=' + String(v).replace(/[^\w.一-鿿-]/g, '') + '@' + flags[0].replace(/[ ,;]/g, '/').slice(0, 46));
           }
           restoreNow();   // 无论成败都恢复，保证下一键仍从初值出发（一次只动一个键）
         });
       });
       api.resume();
     });
-    return { tested, bad, suppressed };
+    return { tested, bad };
   }
 
   function runProbe(sweepOn) {
@@ -1005,8 +993,8 @@
        测完恢复），放在最后就不扰动上面那些基于初始态的判定。
        必须报告扫了多少组：只报「有没有命中」分不清「扫过且干净」与「根本没扫到控件」。
        tested 由控件的 min/max/options 推出来，控件缺失或键没绑上就会是 0 → 空跑可见。
-       SUP 是被时间轴豁免放过的叠印数（见 runSweep）：放宽判据就是亲手造假绿的高危动作，
-       静默的豁免等于既没有豁免也没有缺陷，所以它必须出现在令牌里。
+        中间帧【不豁免任何判据】：m11 补间的标签叠印改用「运动时淡出标签」真修掉了；
+        曾加过 sweepTimeKeys 豁免口随后删除——留着它等于给以后的人「塞个键名就能躲判据」。
        ⚠️ 已知覆盖边界：sweep 每次只动【一个】键、其余保持初值，是 O(Σ 键) 而非 O(∏ 键)，
        扫不到【多键组合】才出现的叠印（例如 m09 要「mc=开」且「β 使 κ* 落到某侧」同时成立）。
        这不是本次引入的（URL 单态注入同样一次一组），但写在这：别把「sweep 全绿」读成
@@ -1014,13 +1002,11 @@
     if (sweepOn) {
       const sw = runSweep();
       const toks = sw.bad.slice(0, 8).map(b => b.replace(/[ ,;]/g, '/'));
-      pg.push('SWEEP=' + sw.tested + (sw.suppressed ? '/SUP' + sw.suppressed : '') +
-        (toks.length ? '/BAD' + sw.bad.length + ':' + toks.join('&') : ''));
+      pg.push('SWEEP=' + sw.tested + (toks.length ? '/BAD' + sw.bad.length + ':' + toks.join('&') : ''));
       /* title 里的 token 要截断（属性长度有限），但命中一条都不该被藏起来：
          完整清单走 console.error，--enable-logging=stderr 会收到，验证脚本逐行读。 */
       if (typeof console !== 'undefined' && console.error) {
         sw.bad.slice(0, 40).forEach(b => console.error('[SWEEP-BAD] ' + b));
-        if (sw.suppressed) console.error('[SWEEP-SUP] 时间轴豁免放过 ' + sw.suppressed + ' 处中间帧叠印');
       }
     }
 
