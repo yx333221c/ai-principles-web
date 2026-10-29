@@ -49,7 +49,13 @@ function findChrome() {
 }
 const CHROME = findChrome();
 const BASE = process.env.BASE || 'http://127.0.0.1:8765/index.html';
-const TMP = path.join(os.tmpdir(), 'aip-verify');
+/* 临时目录：headless Chrome 会在这里写 profile 与缓存。默认 os.tmpdir()（Windows
+   上是 C 盘）。本轮闸门 4 曾两次假失败「没拿到 DOM」，根因是 C 盘只剩 0.36 GB、
+   Chrome 建不了缓存（stderr 全是 "Unable to create cache"）。非默认状态 sweep 会把
+   Chrome 启动次数乘以状态组合数，缓存需求更大，靠人「记得先查磁盘」不可靠。
+   故加 AIP_TMP 环境变量把临时目录指到空间充足的盘；不设则维持原行为，CI（Linux，
+   runner 盘空间充足）不受影响。 */
+const TMP = path.join(process.env.AIP_TMP || os.tmpdir(), 'aip-verify');
 fs.mkdirSync(TMP, { recursive: true });
 
 const DATA = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets/data/modules.json'), 'utf8'));
