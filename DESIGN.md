@@ -517,7 +517,7 @@ ai-principles-web/
 | CLS | <0.05 | 图解容器预留宽高比（`aspect-ratio`）；字体 `size-adjust` 兜底 |
 | 首屏 JS | <30KB | 零框架，KaTeX 按需 |
 | 单页总量 | <300KB（不含 KaTeX 字体） | SVG 优先于位图；attn 数据 gzip |
-| Lighthouse | 全项 ≥95，A11y ≥98 | CI 跑（v0.3） |
+| Lighthouse | 全项 ≥95，A11y ≥98 | ⬜ 设计目标，尚未实测：CI 现在只跑 `gates.js` 四道，不含 Lighthouse（见 §17.2） |
 
 ### 12.2 SEO 与传播
 
@@ -573,7 +573,7 @@ ai-principles-web/
 |---|---|---|---|
 | **v0.1 骨架** | 设计与结构落地 | 本设计文档；结构骨架；三套 CSS 令牌与布局；JS 主题/导航/scroll-spy/进度；`modules.json` 全 13 模块元数据；仓库上线 | ✅ |
 | **v0.2 全站内容** | 13 个模块可发布 | 全部 13 个模块的六段式正文 + 13 个交互演示；构建器 `build.js`；演示工具箱 `demo-kit.js`；搜索/术语卡/自测题/步骤联动/lightbox；`selfcheck.js` + `verify-demos.js` 两道验证；三视口渲染验证通过 | ✅ **本次交付** |
-| v0.3 复核与部署 | 可信度 | **专家复核已完成**：AI 领域专家分组逐行精读 13 模块 + 全站外壳，修完全部 P1（含 m05 手算表自相矛盾、m08 两张主图方向反、m12 纠错开关现场演示了它要破除的误区、m07 死键、m11 hint 与代码相反等）；报告与逐项验算见仓库同级 `ai-principles-review/`。**GitHub Pages 已开启**。<br>**矩阵/分段函数排版已完成**：`.mat` / `.cases`，括号由 CSS 边框拼出并随内容增高，m03/m05/m07 已迁移，selfcheck 守护格子数与列数。<br>**闸门加固**：`data-step` 双轨错位、步骤引用越界、`figures` 与正文双向、阅读时长派生值、`verify-math` 溯源元检查、`gates.js` 一条命令 + `serve.js --live-build`。<br>**未完成**：人类领域专家签核（故 `status` 仍为 `reviewed`）；CI 未上——推送凭据无 `workflow` scope，GitHub 拒绝程序写入 `.github/workflows/`，Lighthouse/a11y 自动跑因此缺席，改由本地 `gates.js` 把关 | 🔶 进行中 |
+| v0.3 复核与部署 | 可信度 | **专家复核已完成**：AI 领域专家分组逐行精读 13 模块 + 全站外壳，修完全部 P1（含 m05 手算表自相矛盾、m08 两张主图方向反、m12 纠错开关现场演示了它要破除的误区、m07 死键、m11 hint 与代码相反等）；报告与逐项验算见仓库同级 `ai-principles-review/`。**GitHub Pages 已开启**。<br>**矩阵/分段函数排版已完成**：`.mat` / `.cases`，括号由 CSS 边框拼出并随内容增高，m03/m05/m07 已迁移，selfcheck 守护格子数与列数。<br>**闸门加固**：`data-step` 双轨错位、步骤引用越界、`figures` 与正文双向、阅读时长派生值、`verify-math` 溯源元检查、`gates.js` 一条命令 + `serve.js --live-build`。<br>**未完成**：人类领域专家签核（故 `status` 仍为 `reviewed`）。**四道闸门已进 CI**（`.github/workflows/ci.yml`，workflow scope 到位后入库，Linux runner 实测全过，含真实 headless Chrome）——但 Lighthouse/a11y/链接检查是独立工具、`gates.js` 本就不含，仍未上 | 🔶 进行中 |
 | v1.0 发布 | 对外 | 首页「学习地图」重写为交互式 DAG 图；英文版数据骨架；分享用 OG 图 | ⬜ |
 
 **开发顺序的理由（已验证成立）**：v0.2 先做 **M07（Transformer）而不是 M01**。原因：M07 是全站技术难度峰值（attn 热力图 + 数据管线 + 公式密度），先啃峰值可以一次性把六段式模板、demo 注册机制、图解换色体系、数据管线全部**证伪或证实**；若反过来先做简单的 M01，架构缺陷会等到 M07 才暴露，届时返工成本更高。
@@ -639,7 +639,8 @@ ai-principles-web/
 **未做（不声称已完成）**：
 
 - [ ] **人类**领域专家签核 → `status` 停在 `reviewed`，未到 `published`。本轮复核由 AI 专家分组完成，其结论已逐条验算，但不等于人类签核
-- [ ] CI（Lighthouse + a11y + 链接检查）：推送凭据无 `workflow` scope，GitHub 拒绝程序写入 `.github/workflows/`；改由本地 `gates.js` 把关，代价是失去「在别人机器上也绿」这一保障
+- [x] **四道闸门已进 CI**（`.github/workflows/ci.yml`）：推送凭据具备 `workflow` scope 后可入库，Linux runner 实测四道全过（含闸门 4 真实 headless Chrome，三视口 13/13）。「在别人机器上也绿」这一独立保障已拿到——它抓到过本地永远抓不到的类别（缺系统库、Chrome 路径写死）。为此 `verify-demos.js` 的 Chrome 改为跨平台探测（见该文件 `findChrome`）。
+- [ ] CI 目前只跑 `gates.js` 那四道；**独立的 Lighthouse 分数实测、axe-core 全量 a11y、外链可达性检查仍未上 CI，也仍未做**（gates.js 本身不含这些，见下条性能预算与外链条目）。
 - [ ] 演示的**非默认状态未被闸门扫过**：`?demo=<key>&<参数>` 现已可注入状态（§6.3 的承诺本轮才实现），但闸门 4 仍只加载初始状态。本轮用该机制手工扫过 m01 的 3 种序列类型 × 3 种长度共 9 个组合，均无叠印/越界（并确认注入确实改变了画面，不是空跑）；其余 12 个演示的非默认状态**未逐个扫过**。要补成机器可验，需让 verify-demos 按每个演示的 state 键做一轮组合扫描——代价是 Chrome 启动次数翻若干倍，需先量过再决定默认开启还是 `--sweep` 可选
 - [ ] 真实屏幕阅读器走查（NVDA/VoiceOver）；目前只保证语义标签、`aria-*`、`aria-live` 与焦点可见
 - [ ] 13 个演示的完整键盘操作走查（控件本身用原生元素，理论可达，但未逐个实测）
