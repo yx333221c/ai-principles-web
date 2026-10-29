@@ -93,6 +93,13 @@ if (code !== 200) {
 
 const pad = (s, n) => String(s).padEnd(n);
 let problems = 0;
+/* 非默认状态扫描：--sweep 开启。一次页面加载内遍历每个演示各控件的边界值
+   （页内循环，不额外启动 Chrome，实测约 2.4s）。命中单独计数、醒目标出，
+   但【暂不并进 problems】：这样闸门 4 仍绿，同时把缺陷如实暴露出来排队修；
+   全部修完后再把 sweep 提成阻断项。 */
+const SWEEP = process.argv.includes('--sweep');
+const sweepHits = [];
+const sweep = { tested: 0, seen: {} };
 
 for (const cs of CASES) {
   const domF = path.join(TMP, cs.name + '.dom.html'), conF = path.join(TMP, cs.name + '.con.txt');
@@ -104,11 +111,14 @@ for (const cs of CASES) {
      教训：0 字节 DOM + stderr 有 ERROR 时先查磁盘，别急着归因给锁。
      下面的 hint 输出就是为此而加——把 stderr 摘出来，省得下次再猜。 */
   const udd = path.join(TMP, 'profile-' + cs.name);
+  const sweepQ = SWEEP ? '&sweep=1' : '';
+  /* sweep 会驱动每个演示遍历各控件边界值，留足虚拟时间预算 */
+  const budget = SWEEP ? 24000 : 15000;
   sh(`"${CHROME}" --headless=new --disable-gpu --no-sandbox ` +
      `--user-data-dir="${udd}" --disable-extensions --disable-background-networking ` +
      `--window-size=${cs.w},${cs.h} ` +
-     `--virtual-time-budget=15000 --enable-logging=stderr --level=0 ` +
-     `--dump-dom "${BASE}?mountall=1&probe=1${cs.q}" > "${domF}" 2> "${conF}"`);
+     `--virtual-time-budget=${budget} --enable-logging=stderr --level=0 ` +
+     `--dump-dom "${BASE}?mountall=1&probe=1${cs.q}${sweepQ}" > "${domF}" 2> "${conF}"`);
   const dom = fs.existsSync(domF) ? fs.readFileSync(domF, 'utf8') : '';
   const con = fs.existsSync(conF) ? fs.readFileSync(conF, 'utf8') : '';
   if (!dom) {
@@ -144,17 +154,40 @@ for (const cs of CASES) {
   });
 
   const page = probe.PAGE || '';
-  const pageBad = /HSCROLL|FIGLOW|LOWFILL|CONTRAST/.test(page);
+  /* 判 pageBad 前必须剔掉 SWEEP= 令牌：它的命中文本里含 LOWFILL/CLASH 等旗名，
+     否则非默认扫描的命中会污染【阻断项】——实测把闸门 4 从绿顶成「3 项需要处理」。
+     阻断项只该反映初始态与页面级检查，sweep 命中另走非阻断的排队路径。 */
+  const pageCore = page.split(',').filter(t => !t.startsWith('SWEEP=')).join(',');
+  const pageBad = /HSCROLL|FIGLOW|LOWFILL|CONTRAST/.test(pageCore);
   if (pageBad) problems++;
   const errs = con.split(/\r?\n/).filter(l => /Uncaught|TypeError|ReferenceError|挂载失败|\[demo /.test(l));
   if (errs.length) problems += errs.length;
+
+  /* sweep 命中：单独收集，不并进 problems（--sweep 是排队修用的，不该让默认闸门变红）。
+     tested 数来自 PAGE 的 SWEEP= 令牌——它 >0 就证明扫描真跑过（不是空读控件），
+     命中明细从 stderr 的 [SWEEP-BAD] 行取（title 会截断，stderr 才是全量）。 */
+  if (SWEEP) {
+    const swTok = (page.split(',').find(t => t.startsWith('SWEEP=')) || '').replace(/&amp;/g, '&');
+    const tested = Number((swTok.match(/^SWEEP=(\d+)/) || [])[1] || 0);
+    sweep.tested = Math.max(sweep.tested || 0, tested);
+    const bad = con.split(/\r?\n/).filter(l => l.includes('[SWEEP-BAD]'))
+      .map(l => l.replace(/^.*?\[SWEEP-BAD\] /, '').replace(/",\s*source:.*$/, '').trim());
+    bad.forEach(b => { const k = b.split('@')[0]; if (!sweep.seen[k]) { sweep.seen[k] = true; sweepHits.push(cs.name.slice(0, 6) + ' ' + b); } });
+    if (!tested) { console.log(`  [${cs.name}] ⚠ sweep 跑了但 tested=0 —— 控件没被识别，是真没扫到`); }
+  }
 
   console.log(`\n=== ${cs.name}  (${cs.w}px) ===`);
   console.log('  页面 ' + (page || '无数据') + (pageBad ? '   <<< 有问题' : '   ok'));
   console.log('  演示 ' + (rows.length ? '\n  ' + rows.join('\n  ') : '13/13 全部通过'));
   errs.slice(0, 4).forEach(l => console.log('  console: ' + l.replace(/^.*?CONSOLE.*?\]\s*/, '').trim().slice(0, 150)));
 }
-console.log('\n' + (problems ? problems + ' 项需要处理' : '三种视口/主题下全部通过（含图解对比度扫描）'));
+if (SWEEP) {
+  console.log('\n──── 非默认状态扫描 (--sweep) ────');
+  console.log('  扫描组合数(单视口峰值): ' + (sweep.tested || 0));
+  if (sweepHits.length) console.log('  命中 ' + Object.keys(sweep.seen).length + ' 类（叠印/压色块，滑杆拨到边界即可复现）:\n  ' + sweepHits.join('\n  '));
+  else console.log('  无命中');
+}
+console.log('\n' + (problems ? problems + ' 项需要处理' : '三种视口/主题下全部通过（含图解对比度扫描）' + (SWEEP ? ' + 非默认状态扫描' : '')));
 /* 清临时目录失败不该把结论盖掉：Windows 上 Chrome 偶尔还攥着 profile 句柄，
    rmSync 抛 EPERM 会崩在这里，人看到的只剩堆栈、看不到上面刚打印的判定。 */
 try { fs.rmSync(TMP, { recursive: true, force: true }); }

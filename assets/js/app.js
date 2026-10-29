@@ -748,7 +748,152 @@
     return { low: low, worst: worst };
   }
 
-  function runProbe() {
+  /* 一个演示 svg 在【当前状态】下的几何故障：越界 / 叠印 / 文字压色块对比度不足。
+     runProbe（初始状态）与 runSweep（非默认状态）共用这一份实现——绝不允许两处各写
+     一套判据，否则 sweep 用弱判据会得到「扫了其实没扫」的假绿。 */
+  function geomFlags(svg) {
+    const f = [];
+    const vb = (svg.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
+    if (vb.length !== 4) { f.push('NOVB'); return f; }
+    const [vx, vy, vw, vh] = vb, eps = 2;
+    const svgCTM = svg.getScreenCTM();
+    if (!svgCTM) { f.push('NOCtm'); return f; }
+    const inv = svgCTM.inverse();
+    let over = 0, worst = '';
+    const boxes = [];
+    svg.querySelectorAll('text').forEach(t => {
+      if (!t.textContent.trim()) return;
+      /* 隐藏的刻度/标签（opacity:0 或 visibility:hidden）读者看不见，不该计入
+         越界或叠印——否则一个「切换状态后只设 opacity=0、没清 textContent」的
+         残留文字会被判成与可见标签重叠（实测 m08 双对数开关切换后就是这样，
+         而纯 URL 单态加载复现不出，反证这是检测器盲区而非内容缺陷）。 */
+      const st = getComputedStyle(t);
+      if (st.visibility === 'hidden' || st.display === 'none' || parseFloat(st.opacity) < 0.05) return;
+      let b, ctm;
+      try { b = t.getBBox(); ctm = t.getScreenCTM(); } catch (e) { return; }
+      if (!ctm) return;
+      /* getBBox 是元素【局部】坐标；被 transform 的组里的文字必须映射回
+         svg 用户坐标，否则会被误判成越界。m = inv(svg)·elem 变换四角。 */
+      const m = inv.multiply(ctm);
+      /* 手写仿射变换：DOMMatrix.transformPoint 在部分上下文里不可用，
+         而 a/b/c/d/e/f 是规范保证有的属性。
+         (x,y) -> (a·x + c·y + e, b·x + d·y + f) */
+      const A = m.a, B = m.b, C = m.c, D = m.d, E = m.e, F = m.f;
+      const pts = [[b.x, b.y], [b.x + b.width, b.y], [b.x, b.y + b.height], [b.x + b.width, b.y + b.height]];
+      let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+      pts.forEach(([px, py]) => {
+        const qx = A * px + C * py + E, qy = B * px + D * py + F;
+        x0 = Math.min(x0, qx); y0 = Math.min(y0, qy);
+        x1 = Math.max(x1, qx); y1 = Math.max(y1, qy);
+      });
+      if (x1 > vx + vw + eps || y1 > vy + vh + eps || x0 < vx - eps || y0 < vy - eps) {
+        over++;
+        if (!worst) worst = t.textContent.trim().replace(/[\s,，]+/g, '').slice(0, 12) +
+          '@' + Math.round(x0) + ',' + Math.round(y0) + '~' + Math.round(x1) + ',' + Math.round(y1);
+      }
+      /* 样本串必须既无空格也无逗号：验证器按空白切分 key{...}、再按逗号切分 flag */
+      boxes.push({ x0, y0, x1, y1, s: t.textContent.trim().replace(/[\s,，]+/g, '').slice(0, 10) });
+    });
+    if (over) f.push('OVER' + over + '|' + worst);
+
+    /* 文字互相重叠：越界检测看不见「两段文字叠在一起」，
+       而这在手工排坐标的 SVG 里是最常见的故障（m01/m03 就是这么发现的）。 */
+    let clash = 0; const pairs = [];
+    for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+      const a = boxes[i], c = boxes[j];
+      /* 两个方向都要有实质重叠（>2px），避免把紧贴的标签误判成重叠 */
+      const iw = Math.min(a.x1, c.x1) - Math.max(a.x0, c.x0);
+      const ih = Math.min(a.y1, c.y1) - Math.max(a.y0, c.y0);
+      if (iw > 2 && ih > 2) {
+        clash++;
+        /* 分隔符不能含空格：验证器按空白切分 key{...} 令牌 */
+        if (pairs.length < 6) pairs.push(a.s + '×' + c.s + '@' + Math.round(iw) + 'x' + Math.round(ih));
+      }
+    }
+    if (clash) f.push('CLASH' + clash + '|' + pairs.join(';'));
+
+    /* SVG 文字压在色块上的对比度。HTML 侧的 contrastSweep 只看
+       background-color，看不见这种情形——m01 的条内标签就是这么溜过去的
+       （黑字压 heat-3 深蓝 = 1.96:1）。算法与图解共用一份实现。 */
+    const fc = svgFillContrast(svg);
+    if (fc && fc.low) f.push('LOWFILL' + fc.low + '|' + fc.worst);
+    return f;
+  }
+
+  /* 非默认状态扫描：一次页面加载内驱动所有演示遍历各自控件的边界值。
+     §6.3「状态入 URL」实现了，但闸门只验初始态；标签叠印/越界常常只在某个
+     非默认值才出现（m01 切到「语言式」并加长说明文字后才暴露，正是这一类）。
+
+     不按 URL 组合启动 Chrome：全站 83 个 state 键、单演示最多 13 键，全笛卡尔积
+     会爆炸，而起浏览器的开销正是记录在案要避免的。改为【页内循环】：
+     - 每个键单独取边界值、其余键保持初值（一次只动一个，测完即恢复）；
+     - 取值不靠正则猜，读控件本身：mark() 把 _dkKey 标在控件上，原生 range 自带
+       min/max、select 自带 options、checkbox/toggle 就是两态；没有控件的键
+       （seed/idx/sample 这类派生或播种值）不影响布局，跳过；
+     - 驱动前先 pause() 停掉 rAF 循环——否则动画会在检查间隙把我们设的值覆盖掉，
+       得到「扫了但没真扫」的假绿；绘制直接调 spec.draw(api)，绕过 api.draw()
+       的 paused 守卫（就是要暂停状态下也能强制重绘）。 */
+  function runSweep() {
+    let tested = 0; const bad = [];
+    doc.querySelectorAll('.demo[data-demo]').forEach(host => {
+      const key = host.dataset.demo;
+      const inst = AIP.registry[key];
+      if (!inst || !host.classList.contains('is-live')) return;
+      const svg = host.querySelector('.demo-svg');
+      const api = inst.api;
+      if (!svg || !api || !api.spec || typeof api.spec.draw !== 'function') return;
+      api.pause();
+      const base = Object.assign({}, api.state);
+      const controls = [];
+      host.querySelectorAll('*').forEach(el => {
+        if (el._dkKey && Object.prototype.hasOwnProperty.call(base, el._dkKey)) controls.push(el);
+      });
+      const byKey = {};
+      controls.forEach(w => {
+        const k = w._dkKey;
+        const rng = w.matches && w.matches('input[type=range]') ? w : w.querySelector && w.querySelector('input[type=range]');
+        const sel = w.matches && w.matches('select') ? w : w.querySelector && w.querySelector('select');
+        const chk = w.matches && w.matches('input[type=checkbox]') ? w : w.querySelector && w.querySelector('input[type=checkbox]');
+        let vals = byKey[k] || [];
+        if (rng) {
+          const mn = Number(rng.min), mx = Number(rng.max);
+          if (isFinite(mn) && isFinite(mx) && mx > mn) vals = vals.concat([mn, mx]);
+        } else if (sel) {
+          Array.prototype.forEach.call(sel.options, o => vals.push(o.value));
+        } else if (chk || (w.classList && w.classList.contains('dk-toggle'))) {
+          vals = vals.concat([true, false]);
+        }
+        if (vals.length) byKey[k] = vals;
+      });
+      Object.keys(byKey).forEach(k => {
+        byKey[k].forEach(raw => {
+          let v = raw;
+          if (typeof base[k] === 'number') v = Number(raw);
+          if (typeof base[k] === 'boolean') v = (raw === true || raw === 'true');
+          api.state[k] = v;
+          controls.forEach(w => { if (w._dkKey === k && w._dkRestore) w._dkRestore(api.state); });
+          tested++;
+          const restoreNow = () => {
+            api.state[k] = base[k];
+            controls.forEach(w => { if (w._dkKey === k && w._dkRestore) w._dkRestore(api.state); });
+            try { api.spec.draw(api); } catch (e) { /* 恢复失败不掩盖已记录的判定 */ }
+          };
+          let drew = true;
+          try { api.spec.draw(api); }
+          catch (e) { drew = false; bad.push(key + ':' + k + '=' + String(v).replace(/[^\w.一-鿿-]/g, '') + '@DRAWERR'); }
+          if (drew) {
+            const flags = geomFlags(svg).filter(x => /^OVER|^CLASH|^LOWFILL|^NOVB|^NOCtm/.test(x));
+            if (flags.length) bad.push(key + ':' + k + '=' + String(v).replace(/[^\w.一-鿿-]/g, '') + '@' + flags[0].replace(/[ ,;]/g, '/').slice(0, 46));
+          }
+          restoreNow();   // 无论成败都恢复，保证下一键仍从初值出发（一次只动一个键）
+        });
+      });
+      api.resume();
+    });
+    return { tested, bad };
+  }
+
+  function runProbe(sweepOn) {
     const out = [];
     doc.querySelectorAll('.demo[data-demo]').forEach(host => {
       const key = host.dataset.demo;
@@ -760,66 +905,8 @@
       if (!host.querySelector('.demo__legend')) f.push('NOHINT');
       if (!/重置/.test(host.textContent || '')) f.push('NORESET');
       if (/尚未实现|演示加载失败/.test(host.textContent || '')) f.push('PLACEHOLDER');
-
-      const vb = (svg.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
-      if (vb.length !== 4) { f.push('NOVB'); out.push(key + '{' + f.join(',') + '}'); return; }
-      const [vx, vy, vw, vh] = vb, eps = 2;
-      const svgCTM = svg.getScreenCTM();
-      if (!svgCTM) { f.push('NOCtm'); out.push(key + '{' + f.join(',') + '}'); return; }
-      const inv = svgCTM.inverse();
-      let over = 0, worst = '';
-      const boxes = [];
-      svg.querySelectorAll('text').forEach(t => {
-        if (!t.textContent.trim()) return;
-        let b, ctm;
-        try { b = t.getBBox(); ctm = t.getScreenCTM(); } catch (e) { return; }
-        if (!ctm) return;
-        /* getBBox 是元素【局部】坐标；被 transform 的组里的文字必须映射回
-           svg 用户坐标，否则会被误判成越界。m = inv(svg)·elem 变换四角。 */
-        const m = inv.multiply(ctm);
-        /* 手写仿射变换：DOMMatrix.transformPoint 在部分上下文里不可用，
-           而 a/b/c/d/e/f 是规范保证有的属性。
-           (x,y) -> (a·x + c·y + e, b·x + d·y + f) */
-        const A = m.a, B = m.b, C = m.c, D = m.d, E = m.e, F = m.f;
-        const pts = [[b.x, b.y], [b.x + b.width, b.y], [b.x, b.y + b.height], [b.x + b.width, b.y + b.height]];
-        let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
-        pts.forEach(([px, py]) => {
-          const qx = A * px + C * py + E, qy = B * px + D * py + F;
-          x0 = Math.min(x0, qx); y0 = Math.min(y0, qy);
-          x1 = Math.max(x1, qx); y1 = Math.max(y1, qy);
-        });
-        if (x1 > vx + vw + eps || y1 > vy + vh + eps || x0 < vx - eps || y0 < vy - eps) {
-          over++;
-          if (!worst) worst = t.textContent.trim().replace(/\s+/g, '').slice(0, 12) +
-            '@' + Math.round(x0) + ',' + Math.round(y0) + '~' + Math.round(x1) + ',' + Math.round(y1);
-        }
-        /* 样本串必须既无空格也无逗号：验证器按空白切分 key{...}、再按逗号切分
-           flag，标签文本里的逗号（如刻度 "0.00, 0.25"）会把一个 flag 劈成两半 */
-        boxes.push({ x0, y0, x1, y1, s: t.textContent.trim().replace(/[\s,，]+/g, '').slice(0, 10) });
-      });
-      if (over) f.push('OVER' + over + '|' + worst);
-
-      /* 文字互相重叠：越界检测看不见「两段文字叠在一起」，
-         而这在手工排坐标的 SVG 里是最常见的故障（m01/m03 就是这么发现的）。 */
-      let clash = 0; const pairs = [];
-      for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
-        const a = boxes[i], c = boxes[j];
-        /* 两个方向都要有实质重叠（>2px），避免把紧贴的标签误判成重叠 */
-        const iw = Math.min(a.x1, c.x1) - Math.max(a.x0, c.x0);
-        const ih = Math.min(a.y1, c.y1) - Math.max(a.y0, c.y0);
-        if (iw > 2 && ih > 2) {
-          clash++;
-          /* 分隔符不能含空格：验证器按空白切分 key{...} 令牌 */
-          if (pairs.length < 6) pairs.push(a.s + '×' + c.s + '@' + Math.round(iw) + 'x' + Math.round(ih));
-        }
-      }
-      if (clash) f.push('CLASH' + clash + '|' + pairs.join(';'));
-
-      /* SVG 文字压在色块上的对比度。HTML 侧的 contrastSweep 只看
-         background-color，看不见这种情形——m01 的条内标签就是这么溜过去的
-         （黑字压 heat-3 深蓝 = 1.96:1）。算法与图解共用一份实现。 */
-      const fc = svgFillContrast(svg);
-      if (fc && fc.low) f.push('LOWFILL' + fc.low + '|' + fc.worst);
+      // 几何故障（越界/叠印/压色块）与 sweep 共用 geomFlags 同一份判据
+      f.push.apply(f, geomFlags(svg));
       out.push(key + '{' + f.join(',') + '}');
     });
 
@@ -870,6 +957,23 @@
     pg.push('FIGSCAN=' + dScanned);
     if (dLow) pg.push('FIGLOW' + dLow + '|' + dWorst);
 
+    /* 非默认状态扫描放在页面级检查【之后】：sweep 会驱动演示状态（一次只动一个键、
+       测完恢复），放在最后就不扰动上面那些基于初始态的判定。
+       必须报告扫了多少组：只报「有没有命中」分不清「扫过且干净」与「根本没扫到控件」。
+       tested 由控件的 min/max/options 推出来，控件缺失或键没绑上就会是 0 → 空跑可见。 */
+    if (sweepOn) {
+      const sw = runSweep();
+      /* 必须报告扫了多少组：只报「有没有命中」分不清「扫过且干净」与「根本没扫到控件」。
+         tested 由控件的 min/max/options 推出来，控件缺失或键没绑上就会是 0 → 空跑可见。 */
+      const toks = sw.bad.slice(0, 8).map(b => b.replace(/[ ,;]/g, '/'));
+      pg.push('SWEEP=' + sw.tested + (toks.length ? '/BAD' + sw.bad.length + ':' + toks.join('&') : ''));
+      /* title 里的 token 要截断（属性长度有限），但命中一条都不该被藏起来：
+         完整清单走 console.error，--enable-logging=stderr 会收到，验证脚本逐行读。 */
+      if (typeof console !== 'undefined' && console.error) {
+        sw.bad.slice(0, 40).forEach(b => console.error('[SWEEP-BAD] ' + b));
+      }
+    }
+
     out.push('PAGE{' + pg.join(',') + '}');
 
     root.setAttribute('data-probe', out.join(' '));
@@ -885,7 +989,10 @@
     const th = q.get('theme');
     if (th === 'dark' || th === 'light' || th === 'auto') applyTheme(th);
     /* 探针要等一帧，让刚插入的 SVG 完成布局后 getBBox 才有真实尺寸 */
-    if (q.has('probe')) requestAnimationFrame(() => setTimeout(runProbe, 80));
+    if (q.has('probe')) {
+      const doSweep = q.has('sweep');
+      requestAnimationFrame(() => setTimeout(() => runProbe(doSweep), 80));
+    }
     const only = q.get('only');
     if (!only) return;
     const t = doc.getElementById(only);

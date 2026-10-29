@@ -25,6 +25,9 @@ const ROOT = path.resolve(__dirname, '..');
 const only = (process.argv.find(a => a.startsWith('--only=')) || '').slice(7)
   .split(',').filter(Boolean).map(Number);
 const want = (n) => !only.length || only.includes(n);
+/* --sweep 透传给闸门 4：非默认状态扫描（页内遍历各控件边界值）。默认不开，
+   因为它是排队修用的暴露手段，不该让常规闸门变红；修完后再考虑提为阻断项。 */
+const SWEEP = process.argv.includes('--sweep');
 
 /* 探测一律用 node 自己的 http，不用 shell 调 curl：
    实测同 URL 在父进程 node 探测是 200，经 `curl ... > file 2>nul` 却写出空文件，
@@ -114,9 +117,11 @@ const step = async (n, name, fn) => {
       }
       return 0;
     });
-    await step(4, '真实浏览器渲染验证（三视口 / 双主题）', () => {
+    await step(4, '真实浏览器渲染验证（三视口 / 双主题）' + (SWEEP ? ' + 非默认状态扫描' : ''), () => {
       console.log('  服务：' + process.env.BASE);
-      return run(['scripts/verify-demos.js'], { BASE: process.env.BASE });
+      const args = ['scripts/verify-demos.js'];
+      if (SWEEP) args.push('--sweep');
+      return run(args, { BASE: process.env.BASE });
     });
   } catch (e) {
     console.error('闸门没能跑起来：' + e.message);
