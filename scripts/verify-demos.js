@@ -19,7 +19,35 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
-const CHROME = process.env.CHROME || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+/* Chrome 可执行文件：CI/跨平台不能写死 Windows 路径（原来是 C:\Program Files\...，
+   在 Linux runner 上必然找不到 → 闸门 4 假失败）。优先级：
+   1) 环境变量 CHROME（CI 用 setup-chrome 输出的路径显式传入，最可靠）
+   2) 各平台常见安装位置
+   3) PATH 里的 google-chrome / chromium / chrome
+   找不到就在 CI 里装（见 .github/workflows/ci.yml），本地一般命中第 2 步。 */
+function findChrome() {
+  if (process.env.CHROME) return process.env.CHROME;
+  const plat = process.platform;
+  const cand = plat === 'win32'
+    ? ['C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+       'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+       (process.env.LOCALAPPDATA || '') + '\\Google\\Chrome\\Application\\chrome.exe']
+    : plat === 'darwin'
+      ? ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+         '/Applications/Chromium.app/Contents/MacOS/Chromium']
+      : ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable',
+         '/usr/bin/chromium', '/usr/bin/chromium-browser', '/snap/bin/chromium'];
+  for (const c of cand) { try { if (fs.existsSync(c)) return c; } catch { /* ignore */ } }
+  const which = plat === 'win32' ? 'where' : 'which';
+  for (const bin of ['google-chrome', 'chromium', 'chrome']) {
+    try {
+      const r = spawnSync(which, [bin], { encoding: 'utf8' });
+      if (r.status === 0) { const p = (r.stdout || '').split(/\r?\n/)[0].trim(); if (p) return p; }
+    } catch { /* ignore */ }
+  }
+  return cand[0]; /* 兜底：让下面的 stderr 输出说明找不到谁，而不是静默失败 */
+}
+const CHROME = findChrome();
 const BASE = process.env.BASE || 'http://127.0.0.1:8765/index.html';
 const TMP = path.join(os.tmpdir(), 'aip-verify');
 fs.mkdirSync(TMP, { recursive: true });

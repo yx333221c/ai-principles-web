@@ -1,0 +1,47 @@
+name: CI
+
+# 为什么有这个 workflow：四道闸门此前只在作者的 Windows 机器上跑过（见 DESIGN
+# §15 v0.3 行、§17.2「未做」）。它带来的是「在别人机器上也是绿的」这一独立保障
+# ——本地能过不代表 clone 出来能过（换行符、路径、字体、缺 Chrome 都只在此暴露）。
+# 推送凭据已具备 workflow scope（2026-10 追加），故可入库。
+#
+# 为什么敢在这里跑闸门 3（构建产物字节比对）：build.js 是确定性的——遍历固定的
+# DATA.modules 数组，不读目录、不取时间、无随机（grep 过 readdirSync/Date.now/
+# Math.random 均无匹配）。故 Linux 重建的 index.html 与提交的逐字节一致。换行符由
+# .gitattributes（* text=auto eol=lf）钉死为 LF，两侧 checkout 与写盘都是 LF。
+#
+# 不装 npm 依赖：本仓库零依赖（纯静态站 + node 内置模块），没有 install 步骤，
+# 也就没有 node_modules 漂移风险。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 显式装一个已知版本并拿到它的路径传给 CHROME，而不是赌 runner 预装的 chrome
+      # 恰好落在 findChrome 的候选里——预装版本会随镜像漂移，正是要消除的不确定性。
+      # install-dependencies 拉齐 Linux 上跑 headless 需要的系统库。
+      - name: Install Chrome
+        id: chrome
+        uses: browser-actions/setup-chrome@v2
+        with:
+          chrome-version: stable
+          install-dependencies: true
+
+      - name: Run all four gates
+        env:
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        # gates.js 自带静态服务（serve.js --live-build），跑完自关；四道闸门不
+        # fail-fast，一次跑全再汇总。任一道红则非零退出，本步即失败。
+        run: node scripts/gates.js
