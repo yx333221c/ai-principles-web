@@ -833,8 +833,15 @@
      - 驱动前先 pause() 停掉 rAF 循环——否则动画会在检查间隙把我们设的值覆盖掉，
        得到「扫了但没真扫」的假绿；绘制直接调 spec.draw(api)，绕过 api.draw()
        的 paused 守卫（就是要暂停状态下也能强制重绘）。 */
+  /** 把 v 归到 step 隐含的精度上（step=0.1 → 一位小数），避免浮点尾巴既脏又让去重失效 */
+  function DKround(v, st) {
+    const dec = st >= 1 ? 0 : Math.min(6, Math.ceil(-Math.log10(st)));
+    const p = Math.pow(10, dec);
+    return Math.round(v * p) / p;
+  }
+
   function runSweep() {
-    let tested = 0; const bad = [];
+    let tested = 0; const bad = []; let suppressed = 0;
     doc.querySelectorAll('.demo[data-demo]').forEach(host => {
       const key = host.dataset.demo;
       const inst = AIP.registry[key];
@@ -849,6 +856,7 @@
         if (el._dkKey && Object.prototype.hasOwnProperty.call(base, el._dkKey)) controls.push(el);
       });
       const byKey = {};
+      const rangeOf = {};   // k -> [min,max]，用来区分端点与中间帧
       controls.forEach(w => {
         const k = w._dkKey;
         const rng = w.matches && w.matches('input[type=range]') ? w : w.querySelector && w.querySelector('input[type=range]');
@@ -857,7 +865,16 @@
         let vals = byKey[k] || [];
         if (rng) {
           const mn = Number(rng.min), mx = Number(rng.max);
-          if (isFinite(mn) && isFinite(mx) && mx > mn) vals = vals.concat([mn, mx]);
+          const st = Number(rng.step) || 1;
+          if (isFinite(mn) && isFinite(mx) && mx > mn) {
+            rangeOf[k] = [mn, mx];
+            /* min / 中 / max 三点。只要 min 与 max 会漏掉【中间态】——实测加中值后
+               立刻抓出 5 处端点扫不到的真问题（见下 sweepTimeKeys 的例外）。
+               必须【落到控件真实格点】：step=1 的滑块造 179.5 是用户拖不出的假状态
+               （m07 的 HEADS[1.5] 越界崩溃就是这么来的）。 */
+            const snap = (v) => DKround(mn + Math.round((v - mn) / st) * st, st);
+            vals = vals.concat([mn, snap(mn + (mx - mn) / 2), mx].filter(v => v >= mn && v <= mx));
+          }
         } else if (sel) {
           Array.prototype.forEach.call(sel.options, o => vals.push(o.value));
         } else if (chk || (w.classList && w.classList.contains('dk-toggle'))) {
@@ -866,7 +883,19 @@
         if (vals.length) byKey[k] = vals;
       });
       Object.keys(byKey).forEach(k => {
-        byKey[k].forEach(raw => {
+        /* 去重 + 剔除等于初值的那个：初值已由【初始态】runProbe 覆盖，重复扫它会让
+           tested 虚高、把「扫了几个真正不同的状态」这个信号稀释掉。
+           对称滑块（如 m04 的 −2..2、初值 0）的中值恰好就是初值，正是要剔的。 */
+        const seen = {};
+        const vals = byKey[k].filter(v => {
+          const key = typeof v === 'boolean' ? ('b' + v) : ('n' + Number(v) + '|' + v);
+          if (seen[key]) return false; seen[key] = 1;
+          if (typeof base[k] === 'number' && Number(v) === base[k]) return false;
+          if (typeof base[k] === 'boolean' && (v === true || v === 'true') === base[k]) return false;
+          if (typeof base[k] === 'string' && String(v) === base[k]) return false;
+          return true;
+        });
+        vals.forEach(raw => {
           let v = raw;
           if (typeof base[k] === 'number') v = Number(raw);
           if (typeof base[k] === 'boolean') v = (raw === true || raw === 'true');
@@ -882,15 +911,30 @@
           try { api.spec.draw(api); }
           catch (e) { drew = false; bad.push(key + ':' + k + '=' + String(v).replace(/[^\w.一-鿿-]/g, '') + '@DRAWERR'); }
           if (drew) {
+            /* 时间轴键（demo 用 sweepTimeKeys 显式声明，不按键名猜）的【严格中间帧】
+               不查叠印与压色块：收敛动画的两端才是读者会停下来读的构型，途中两个标签
+               经过彼此、色带半透明都是路径的几何必然（m11：雪山往下走、干扰句往右上走，
+               step=50 必然撞 3 处），不是布局缺陷。
+               端点（min/max）照常全检——step=100 正是先前抓出「沙滩×一片海滩的照片」
+               真叠印的那一态。OVER 即使在中间帧也算：读者停在中途看到被裁半的标签仍然坏。
+               ⚠️ 被放过的每一处都计入 suppressed 并打印出来：放宽判据 = 亲手制造假绿的
+               高危动作，绝不能静默。若哪天 suppressed 突然变大，说明有人在滥用这个豁免。 */
+            const rg = rangeOf[k];
+            const isMid = rg && Number(v) > rg[0] && Number(v) < rg[1];
+            const timeMid = isMid && (api.spec.sweepTimeKeys || []).indexOf(k) >= 0;
             const flags = geomFlags(svg).filter(x => /^OVER|^CLASH|^LOWFILL|^NOVB|^NOCtm/.test(x));
-            if (flags.length) bad.push(key + ':' + k + '=' + String(v).replace(/[^\w.一-鿿-]/g, '') + '@' + flags[0].replace(/[ ,;]/g, '/').slice(0, 46));
+            for (const x of flags) {
+              if (timeMid && /^CLASH|^LOWFILL/.test(x)) { suppressed++; continue; }
+              bad.push(key + ':' + k + '=' + String(v).replace(/[^\w.一-鿿-]/g, '') + '@' + x.replace(/[ ,;]/g, '/').slice(0, 46));
+              break;
+            }
           }
           restoreNow();   // 无论成败都恢复，保证下一键仍从初值出发（一次只动一个键）
         });
       });
       api.resume();
     });
-    return { tested, bad };
+    return { tested, bad, suppressed };
   }
 
   function runProbe(sweepOn) {
@@ -960,17 +1004,23 @@
     /* 非默认状态扫描放在页面级检查【之后】：sweep 会驱动演示状态（一次只动一个键、
        测完恢复），放在最后就不扰动上面那些基于初始态的判定。
        必须报告扫了多少组：只报「有没有命中」分不清「扫过且干净」与「根本没扫到控件」。
-       tested 由控件的 min/max/options 推出来，控件缺失或键没绑上就会是 0 → 空跑可见。 */
+       tested 由控件的 min/max/options 推出来，控件缺失或键没绑上就会是 0 → 空跑可见。
+       SUP 是被时间轴豁免放过的叠印数（见 runSweep）：放宽判据就是亲手造假绿的高危动作，
+       静默的豁免等于既没有豁免也没有缺陷，所以它必须出现在令牌里。
+       ⚠️ 已知覆盖边界：sweep 每次只动【一个】键、其余保持初值，是 O(Σ 键) 而非 O(∏ 键)，
+       扫不到【多键组合】才出现的叠印（例如 m09 要「mc=开」且「β 使 κ* 落到某侧」同时成立）。
+       这不是本次引入的（URL 单态注入同样一次一组），但写在这：别把「sweep 全绿」读成
+       「所有状态都验过」。 */
     if (sweepOn) {
       const sw = runSweep();
-      /* 必须报告扫了多少组：只报「有没有命中」分不清「扫过且干净」与「根本没扫到控件」。
-         tested 由控件的 min/max/options 推出来，控件缺失或键没绑上就会是 0 → 空跑可见。 */
       const toks = sw.bad.slice(0, 8).map(b => b.replace(/[ ,;]/g, '/'));
-      pg.push('SWEEP=' + sw.tested + (toks.length ? '/BAD' + sw.bad.length + ':' + toks.join('&') : ''));
+      pg.push('SWEEP=' + sw.tested + (sw.suppressed ? '/SUP' + sw.suppressed : '') +
+        (toks.length ? '/BAD' + sw.bad.length + ':' + toks.join('&') : ''));
       /* title 里的 token 要截断（属性长度有限），但命中一条都不该被藏起来：
          完整清单走 console.error，--enable-logging=stderr 会收到，验证脚本逐行读。 */
       if (typeof console !== 'undefined' && console.error) {
         sw.bad.slice(0, 40).forEach(b => console.error('[SWEEP-BAD] ' + b));
+        if (sw.suppressed) console.error('[SWEEP-SUP] 时间轴豁免放过 ' + sw.suppressed + ' 处中间帧叠印');
       }
     }
 

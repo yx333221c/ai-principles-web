@@ -230,16 +230,21 @@
           class: 'grid grid--dash', x1: sc.px(COLLAPSE_K), y1: sc.py(YMAX), x2: sc.px(COLLAPSE_K), y2: sc.py(0)
         }));
         const cx = (sc.px(COLLAPSE_K) + sc.px(KMAX)) / 2;
+        /* 这三行落在塌缩区的半透明色块【上面】，必须用随底色换的前景墨，不能用 warm/faint：
+           warm(#925927) 压在 heat-1 半透明底(#d6d9f5) 上实测只有 4.10:1（<4.5），
+           faint 带透明度更不够——正是 demo-kit.heatInk 注释记过的同一类坑（m01 黑字压
+           heat-3 深蓝 1.96:1）。层级改用是否加粗表达，不牺牲对比度。默认 t-xs 用 --c-fg，
+           对浅底 #d6d9f5 是深色近黑、对比 >7:1。 */
         g.appendChild(DK.el('text', {
-          x: cx, y: sc.py(YMAX) + 26, class: 't-xs warm', 'text-anchor': 'middle',
+          x: cx, y: sc.py(YMAX) + 26, class: 't-xs', 'text-anchor': 'middle', 'font-weight': '700',
           text: '塌缩区 mode collapse'
         }));
         g.appendChild(DK.el('text', {
-          x: cx, y: sc.py(YMAX) + 38, class: 't-xs faint', 'text-anchor': 'middle',
+          x: cx, y: sc.py(YMAX) + 38, class: 't-xs', 'text-anchor': 'middle',
           text: 'q 跌破峰值的 60%（κ>' + DK.fmt(COLLAPSE_K, 2) + '）'
         }));
         g.appendChild(DK.el('text', {
-          x: cx, y: sc.py(YMAX) + 50, class: 't-xs faint', 'text-anchor': 'middle',
+          x: cx, y: sc.py(YMAX) + 50, class: 't-xs', 'text-anchor': 'middle',
           text: '策略挤到少数几种高分写法上'
         }));
       }
@@ -254,10 +259,17 @@
         class: 't-xs faint', 'text-anchor': 'end', text: 'r 峰值 κ=' + DK.fmt(peak.k, 2)
       }));
 
-      /* 工作点标签：靠近右边界时改成右锚点，避免画出图外 */
+      /* 工作点标签：靠近右边界时改成右锚点，避免画出图外。
+         κ* 与下方 r−q 两个标签原先 y 各算各的（max(py(YMAX)+12, by−15) 与
+         py((rStar+qStar)/2)+3），实测 β=1 时落在 187.0 与 189.3 —— 同 x、垂直只差
+         2.3px，而 t-xs 字高约 11，于是叠印 74×11。修法只动一处：κ* 的 y 提出来叫 kY，
+         r−q 钉在 kY+15（> 字高），二者垂直必然分离，同侧同 x 不动 flip。
+         （上一轮我曾把 κ* 整块挪到顶部带，结果撞上「优化 = 沿 J」且【初始态也撞】——
+         挪标签前没先算清那一行已经放了什么，是自己造了回归，故回退重做。） */
       const flip = best.k > 1.25;
+      const kY = Math.max(sc.py(YMAX) + 12, by - 15);
       g.appendChild(DK.el('text', {
-        x: flip ? bx - 9 : bx + 10, y: Math.max(sc.py(YMAX) + 12, by - 15),
+        x: flip ? bx - 9 : bx + 10, y: kY,
         class: 't-xs accent', 'text-anchor': flip ? 'end' : 'start',
         text: 'κ*=' + DK.fmt(best.k, 2) + ' · J*=' + DK.fmt(best.v, 2)
       }));
@@ -268,7 +280,7 @@
           stroke: 'var(--c-warn)', 'stroke-width': 2, 'stroke-dasharray': '3 2'
         }));
         g.appendChild(DK.el('text', {
-          x: flip ? bx - 9 : bx + 10, y: sc.py((rStar + qStar) / 2) + 3,
+          x: flip ? bx - 9 : bx + 10, y: kY + 15,
           'text-anchor': flip ? 'end' : 'start', class: 't-xs', fill: 'var(--c-warn)',
           text: 'r−q=' + DK.fmt(gap, 2)
         }));

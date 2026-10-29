@@ -213,6 +213,12 @@
       api.line1.setAttribute('y1', y1p); api.line1.setAttribute('y2', y1p);
       api.line1.setAttribute('visibility', y1p > T - 1 && y1p < B + 1 ? 'visible' : 'hidden');
       api.line1T.setAttribute('y', y1p - 3);
+      /* 标签必须放参考线【左端】。右端放不下的实测证据：n=100 且 λ=1 时 1% 线落到
+         y=307，而曲线末端标签 t=100 |g|=… 的 x 被 clamp 到 556、y=304 —— 两个标签
+         水平重叠 114px、垂直只差 3.4px，糊成一团。左端 x=L+4 起、约到 200，与右侧
+         曲线标签（556 起）天然不相交；y 轴刻度在 x<L 一侧，也不相碰。 */
+      api.line1T.setAttribute('x', L + 4);
+      api.line1T.setAttribute('text-anchor', 'start');
       api.line1T.textContent = s.logAxis ? '只剩 1% 的那条线'
         : '1% 就在这里（离 0 只差 ' + DK.fmt(0.01 / LIN_TOP * PH, 1) + ' 像素）';
 

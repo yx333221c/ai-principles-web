@@ -147,7 +147,11 @@
       gR0.appendChild(DK.el('line', { x1: Rx - 128, y1: Ry, x2: Rx + 128, y2: Ry, class: 'grid' }));
       gR0.appendChild(DK.el('line', { x1: Rx, y1: Ry - 122, x2: Rx, y2: Ry + 122, class: 'grid' }));
       gR0.appendChild(DK.el('circle', { cx: Rx, cy: Ry, r: R.s, class: 'grid grid--dash', fill: 'none' }));
-      gR0.appendChild(DK.el('text', { x: Rx + R.s + 4, y: Ry - 4, class: 't-xs faint', text: '单位圆' }));
+      /* 「单位圆」原先钉在圆的【右侧】(Rx+R.s+4)，而那里正是基向量 e₁ 的落点区：
+         c=0 时 e₁→(a,c) 标签落在 (572,196)，两者水平重叠、垂直只差 10px 而叠印
+         （实测 7×10）。改挂到圆顶（anchor middle），离横轴上的落点整整一个半径；
+         特征方向线最长只到 1.8×R.s，竖向时端点在 y=131 仍在此标签之下，不新增碰撞。 */
+      gR0.appendChild(DK.el('text', { x: Rx, y: Ry - R.s - 6, class: 't-xs faint', 'text-anchor': 'middle', text: '单位圆' }));
       gR0.appendChild(DK.el('text', { x: 366, y: 386, class: 't-xs faint',
         text: '橙虚线 = 特征方向（搬完仍落在自己那条直线上）' }));
       svg.appendChild(gR0);
@@ -221,8 +225,16 @@
         arrow(g, L.ox, L.oy, p[0], p[1], COL[k], on ? 3 : 1.8);
         if (k === 'car') g.appendChild(DK.el('circle', { cx: r2(p[0]), cy: r2(p[1]), r: 4,
           fill: 'none', stroke: COL.car, 'stroke-width': 2 }));
-        g.appendChild(DK.el('text', { x: r2(p[0] + (v[0] >= 0 ? 8 : -8)), y: r2(p[1] - 8),
-          class: on ? 't-sm' : 't-sm faint', 'text-anchor': v[0] >= 0 ? 'start' : 'end',
+        /* 朝左的向量（v[0]<0）原先用 end 锚、让标签从端点向左铺——可是端点本身已经
+           靠近左边界，标签一定被裁掉（实测 catA=180、长 2.2 时端点 x≈34，向左铺 9 字
+           直接 OVER 出界，读者看到半截「猫 · 长 2.2」）。改为放在端点【正下方居中】，
+           并把 x 夹进左半可用的 62..258：既不出界，也不与夹角弧（半径 30，紧贴原点）
+           或「长 1」「长 2」刻度（x=191/239，另一高度）相撞。朝右仍用 start 锚。 */
+        const lblL = v[0] < 0
+          ? { x: DK.clamp(p[0], 62, 258), y: p[1] + 15, a: 'middle' }
+          : { x: p[0] + 8, y: p[1] - 8, a: 'start' };
+        g.appendChild(DK.el('text', { x: r2(lblL.x), y: r2(lblL.y),
+          class: on ? 't-sm' : 't-sm faint', 'text-anchor': lblL.a,
           text: NAMES[k] + ' · 长 ' + DK.fmt(Math.hypot(v[0], v[1]), 1) }));
       });
 
@@ -251,16 +263,18 @@
         d: 'M' + r2(L.ox + rr * Math.cos(rad(a0))) + ',' + r2(L.oy - rr * Math.sin(rad(a0))) +
           ' A' + rr + ',' + rr + ' 0 0 0 ' + r2(L.ox + rr * Math.cos(rad(a1))) + ',' + r2(L.oy - rr * Math.sin(rad(a1))),
         fill: 'none', stroke: 'var(--c-accent)', 'stroke-width': 1.6 }));
-      g.appendChild(DK.el('text', { x: r2(L.ox + 40 * Math.cos(rad(a0 + delta / 2))),
-        y: r2(L.oy - 40 * Math.sin(rad(a0 + delta / 2)) + 3), class: 't-xs accent',
-        text: DK.fmt(ang, 0) + '°' }));
+      /* 夹角数值【不再】浮在弧旁：它贴着角平分线，而平分线正是两支向量的中间——
+         向量一短（0.4 单位 = 19 像素），端点标签「猫 · 长 0.4」就压到同一个位置
+         （实测 14×9 叠印）。本文件上面第 134 行作者自己写过这条原则：「端点、垂足、
+         中点会随拖拽靠近，浮标式标签必然互相叠印」，投影数值就是这么挪进 _geo 的。
+         弧线本身保留（它是几何的一部分），数值进 _geo 固定行 + 底部读数「夹角」。 */
 
       // 端点连线 = 欧氏距离（数值写进底部读数行，不浮在连线中点）
       g.appendChild(DK.el('line', { x1: r2(pa[0]), y1: r2(pa[1]), x2: r2(pb[0]), y2: r2(pb[1]),
         stroke: 'var(--c-fg-faint)', 'stroke-width': 1.2, 'stroke-dasharray': '2 4' }));
       if (api._geo) {
         api._geo.textContent = '绿色粗段 = 投影 ' + DK.fmt(proj, 2) + '（= 点积 ÷ 长 ' + DK.fmt(nb, 1) + '）' +
-          '　虚线 = 两末端距离 ' + DK.fmt(dist, 2);
+          '　夹角 ' + DK.fmt(ang, 0) + '°　虚线 = 两末端距离 ' + DK.fmt(dist, 2);
       }
 
       api._handles.cat.setAttribute('cx', r2(P('cat')[0]));
@@ -335,9 +349,15 @@
               x1: r2(R.ox - dd[0] * k), y1: r2(R.oy + dd[1] * k),
               x2: r2(R.ox + dd[0] * k), y2: r2(R.oy - dd[1] * k),
               stroke: 'var(--c-warn)', 'stroke-width': 1.6, 'stroke-dasharray': '6 4', opacity: .9 }));
-            gr.appendChild(DK.el('text', { x: r2(R.ox + dd[0] * k * 0.8) + 3, y: r2(R.oy - dd[1] * k * 0.8) - 4,
-              class: 't-xs warm', text: 'λ' + (i + 1) + '=' + DK.fmt(e.lam[i], 2) }));
           });
+          /* λ 数值走固定说明列（x=366，与「无实特征方向」「纯各向缩放」同一互斥位），
+             不浮在方向线末端：极值下特征方向会与基向量标签 e₁→(a,c) 或「单位圆」撞在
+             同一点（实测 a=2 叠印 6×10、b=2 撞 32×7、d=−2 撞单位圆 9×7）。虚线本身已
+             画出方向，数值在固定列 + 底部 eig 读数各给一份，读者仍知道哪条是哪个 λ。 */
+          const lamTxt = e.dirs.map((dd, i) => dd ? ('λ' + (i + 1) + '=' + DK.fmt(e.lam[i], 2)) : null)
+            .filter(Boolean).join('　');
+          gr.appendChild(DK.el('text', { x: 366, y: 352, class: 't-xs warm',
+            text: lamTxt + '（橙色虚线为特征方向）' }));
         }
       }
 
