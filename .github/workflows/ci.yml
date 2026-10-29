@@ -45,3 +45,14 @@ jobs:
         # gates.js 自带静态服务（serve.js --live-build），跑完自关；四道闸门不
         # fail-fast，一次跑全再汇总。任一道红则非零退出，本步即失败。
         run: node scripts/gates.js
+
+      # 非默认状态扫描：先【不阻断】，目的是拿到 Linux 字体下的数据。
+      # 为什么要单独量：叠印判据比较的是文字的实测排版宽度，而排版宽度取决于字体
+      # 度量。本地（Windows）161 组合零命中，不能直接推定 runner（Debian 字体）也零
+      # 命中——这正是「本地能过不代表异机能过」的那个类别，必须实测。
+      # 数据到手、确认异机同样干净后，再把 --sweep 提为阻断项。
+      - name: Sweep non-default states (informational, not blocking yet)
+        env:
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        continue-on-error: true
+        run: node scripts/gates.js --only=4 --sweep
