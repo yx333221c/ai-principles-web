@@ -351,6 +351,65 @@ else {
   ok('指向外部的引用链接 ' + cites.length + ' 条（文献出处，允许）');
 }
 
+/* == 4b. 英文版骨架与中文真相源的同步（v1.0）==
+   i18n-en.json 有意【不复制结构】：它只按 id 存文案，part/prereq/figures/demo.id
+   仍单源于 modules.json。于是这里唯一需要守的是「id 对得上」+「文案真是英文」。
+   为什么值得单独一条闸门：翻译工程最典型的烂尾是结构漂移（中文改了英文没跟）与
+   占位文案长期挂着假称已译。前者由「只存文案」在构造上消除，后者由下面的汉字检查
+   与 status 断言拦住。 */
+(function checkI18nEn() {
+  const F = 'assets/data/i18n-en.json';
+  if (!has(F)) { warn(F + ' 不存在（英文版骨架未建）'); return; }
+  let en = null;
+  try { en = JSON.parse(rd(F)); }
+  catch (e) { bad(F + ' 解析失败：' + e.message); return; }
+
+  const modIds = J.modules.map(m => m.id);
+  const partIds = J.parts.map(p => p.id);
+  const enModIds = Object.keys(en.modules || {});
+  const enPartIds = Object.keys(en.parts || {});
+  const miss = (a, b) => a.filter(x => b.indexOf(x) < 0);
+  const dMod = [...miss(modIds, enModIds), ...miss(enModIds, modIds)];
+  const dPart = [...miss(partIds, enPartIds), ...miss(enPartIds, partIds)];
+  dMod.length ? bad('i18n-en 与 modules.json 的模块 id 集合不一致: ' + dMod.join(',')) :
+    ok('英文骨架模块 id 与真相源一致（' + enModIds.length + ' 个）');
+  dPart.length ? bad('i18n-en 与 modules.json 的 part 集合不一致: ' + dPart.join(',')) :
+    ok('英文骨架 part 与真相源一致（' + enPartIds.length + ' 个）');
+
+  const segMiss = [...miss(J.site.segEnum, Object.keys((en.site || {}).segLabels || {})),
+    ...miss(Object.keys((en.site || {}).segLabels || {}), J.site.segEnum)];
+  segMiss.length ? bad('英文 segLabels 与 segEnum 不一致: ' + segMiss.join(',')) :
+    ok('英文六段标签与 segEnum 一致');
+
+  /* 文案必须是真英文：混进汉字（或中文标点）说明是复制粘贴的占位 */
+  const CJK = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u3000-\u303f\uff01-\uff5e\u300c\u300d\u300e\u300f]/;
+  const need = ['title', 'tagline', 'demoTitle', 'acceptance'];
+  const dirty = [], empty = [];
+  enModIds.forEach(id => {
+    const t = en.modules[id] || {};
+    need.forEach(k => {
+      if (typeof t[k] !== 'string' || !t[k].trim()) { empty.push(id + '.' + k); return; }
+      if (CJK.test(t[k])) dirty.push(id + '.' + k);
+    });
+  });
+  Object.keys(en.parts || {}).forEach(id => {
+    ['title', 'note'].forEach(k => {
+      if (typeof en.parts[id][k] !== 'string' || !en.parts[id][k].trim()) empty.push('part:' + id + '.' + k);
+      else if (CJK.test(en.parts[id][k])) dirty.push('part:' + id + '.' + k);
+    });
+  });
+  empty.length ? bad('英文骨架缺文案项: ' + empty.join(', ')) :
+    ok('英文骨架 ' + enModIds.length + ' 模块 × ' + need.length + ' 项 + part 文案齐全');
+  dirty.length ? bad('英文骨架混入中文（占位未译）: ' + dirty.join(', ')) :
+    ok('英文骨架无汉字/中文标点混入');
+
+  /* 诚实性：英文正文不存在时，骨架不许被当成内容。这里反向核对——
+     若将来有人补了 content/en/ 正文却没同时更新这条断言，检查会提醒。 */
+  const hasEnBody = has('content/en') || J.modules.some(m => has('content/en/modules/' + m.id + '.html'));
+  hasEnBody ? warn('检测到英文正文目录：请确认骨架 status 与 DESIGN §17.2 已同步更新') :
+    ok('尚无英文正文（骨架 status=skeleton 与实际相符）');
+})();
+
 console.log('== 5. 共享文件与文档 ==');
 ['DESIGN.md', 'README.md', 'LICENSE', '.gitignore', '.gitattributes', '.nojekyll', 'build.js',
  'templates/shell.html', 'docs/writing-guide.md', 'docs/glossary.md', 'docs/authoring-contract.md',

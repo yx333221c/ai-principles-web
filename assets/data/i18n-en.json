@@ -1,0 +1,45 @@
+{
+  "_comment": [
+    "英文版数据骨架（v1.0，DESIGN §15）。只存【文案】，不复制结构：",
+    "id/part/prereq/figures/demo.id 等结构字段的唯一真相源仍是 modules.json，",
+    "这里按 id 引用。结构复制必然漂移（本项目在 figures 清单上已经烧穿过一次），",
+    "而『只存文案 + selfcheck 核对 id 集合相等』让漂移在构造上不可能。",
+    "status 一律 skeleton：英文正文（content/en/modules/*.html）尚不存在，不许谎称有内容。",
+    "闸门同时要求这里的英文文案不得混入汉字——粘贴中文占位是翻译工程最典型的烂尾方式。"
+  ],
+  "lang": "en",
+  "site": {
+    "name": "Explainable AI Primer",
+    "segLabels": {
+      "hook": "Hook",
+      "intuition": "Intuition & analogy",
+      "mechanism": "How it works",
+      "demo": "Interactive demo",
+      "misconception": "Common misconceptions",
+      "takeaway": "One thing to remember"
+    }
+  },
+  "parts": {
+    "intuition": { "title": "Foundations of Intuition", "note": "Middle-school maths only. These four are the ground everything else stands on: prediction, surprise, coordinates, descent." },
+    "learning": { "title": "How Machines Learn", "note": "The first time the numbers adjust themselves. Backpropagation is what makes the word 'learning' mean anything here." },
+    "transformer": { "title": "The Transformer", "note": "The shared skeleton of every current large model. The hardest stretch of the site." },
+    "training": { "title": "Training & Emergence", "note": "From 'can continue text' to 'can help': what scale buys, and how human preference shapes behaviour." },
+    "inference": { "title": "Inference & Applications", "note": "What happens once the model runs: how one generation picks a token, reads an image, calls a tool." },
+    "safety": { "title": "Capability & Risk", "note": "The stronger it gets, the more we must ask: how do we know how good it is, and where does it fail?" }
+  },
+  "modules": {
+    "m01": { "title": "Patterns and Compression", "tagline": "AI is not 'understanding' - it is predicting the next token", "demoTitle": "Guess the next symbol", "acceptance": "Say in your own words why 'model capability ≈ compression quality of the data', and explain why random noise cannot be compressed." },
+    "m02": { "title": "Probability, Entropy and Loss", "tagline": "All learning begins with a wrong guess", "demoTitle": "Surprise and entropy", "acceptance": "Hand-compute cross-entropy for three setups; explain what perplexity = 8 actually means." },
+    "m03": { "title": "Linear Algebra as Geometry", "tagline": "Vectors are coordinates of meaning", "demoTitle": "Vector field and similarity", "acceptance": "Use a 2-D sketch to explain dot product = similarity, matrix = spatial transform, eigenvector = unchanged direction." },
+    "m04": { "title": "Calculus and Optimisation", "tagline": "Descent: how the gradient points the way", "demoTitle": "Ball on the gradient terrain", "acceptance": "Explain what problem SGD, momentum and Adam each solve, rather than reciting formulas." },
+    "m05": { "title": "Neural Networks and Backpropagation", "tagline": "A stack of linear transforms plus a non-linear switch", "demoTitle": "Build a tiny net, backprop by hand", "acceptance": "Assemble and train a 2-layer network in the browser to fit a circle; explain how gradients flow back through the computation graph." },
+    "m06": { "title": "CNNs, RNNs and the Sequence Bottleneck", "tagline": "The world before the Transformer", "demoTitle": "Gradients decay with distance", "acceptance": "Contrast CNN receptive fields and RNN unrolled memory for VRAM and serial bottlenecks; say why path length decides gradient decay." },
+    "m07": { "title": "Attention and the Transformer", "tagline": "AI learns to read its context on demand", "demoTitle": "The attention matrix: where is it actually looking", "acceptance": "Draw the Transformer data flow on a whiteboard; explain where the O(n²) cost comes from; state how RoPE differs from absolute position encodings." },
+    "m08": { "title": "Pretraining and Scaling Laws", "tagline": "Loss falls as a power law in scale", "demoTitle": "Scaling-law fitter", "acceptance": "Restate the Chinchilla result (data and parameters should grow together); explain why 'bigger is not always better' looks true and is not." },
+    "m09": { "title": "Post-training and Alignment", "tagline": "Being able to continue text is not being helpful", "demoTitle": "Reward versus drift: the tug-of-war", "acceptance": "Say why a pretrained model cannot be shipped as-is; explain the SFT → RM → PPO loop; compare the DPO and RLHF trade-offs." },
+    "m10": { "title": "Decoding, Sampling and Context", "tagline": "A model's personality lives in its sampler", "demoTitle": "Temperature lab", "acceptance": "Explain why code wants temp = 0 while creative writing wants a high temp; name the two reasons long-context 'needle in a haystack' fails." },
+    "m11": { "title": "Multimodal Models", "tagline": "Translating images into tokens the model can read", "demoTitle": "The joint image-text embedding space", "acceptance": "Explain how image-text alignment is trained; name typical failure modes of multimodal models (fine-grained counting, OCR)." },
+    "m12": { "title": "Agents, Tools and Retrieval", "tagline": "From saying to doing", "demoTitle": "Agent loop replay", "acceptance": "Draw the plan → act → observe loop; compare where RAG beats fine-tuning and where it does not; explain why long tasks drift." },
+    "m13": { "title": "Safety, Alignment and Evaluation", "tagline": "How do we know how good it is", "demoTitle": "Benchmark saturation and eval failure", "acceptance": "Name three evaluation failure modes; explain why capability and alignment are orthogonal axes; read a red-team report's structure." }
+  }
+}
