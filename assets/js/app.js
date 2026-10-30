@@ -635,7 +635,7 @@
     }
     const hexOf = (c) => '#' + c.slice(0, 3).map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
     const hits = [];
-    doc.querySelectorAll('.fig__cell, .fig__pill, .fig__box, .fig__tok, .badge, .demo__stat b, .todo, .callout, .myth__body p, .takeaway__line, .quiz__opt, .modcard__tag, .demo__legend').forEach(el => {
+    doc.querySelectorAll('.fig__cell, .fig__pill, .fig__box, .fig__tok, .badge, .demo__stat b, .todo, .callout, .myth__body p, .takeaway__line, .quiz__opt, .modcard__tag, .demo__legend, .moddag__pre, .moddag__cap, .moddag__lane').forEach(el => {
       const own = [...el.childNodes].filter(n => n.nodeType === 3 && n.textContent.trim());
       if (!own.length) return;
       const cs = getComputedStyle(el);
@@ -1054,6 +1054,165 @@
   }
 
   /* ---------------- 启动 ---------------- */
+  /* ========================================================================
+     12b. 交互式依赖图（v1.0 DESIGN §15）
+     边按节点【实测位置】绘制，所以任何视口下换行都不会错位；这也意味着必须
+     等布局稳定再画（字体加载、图片撑高都会改变位置），故 load + ResizeObserver
+     都挂上，而不是只在 DOMContentLoaded 画一次。
+     无 JS 时节点里的前置文字本身就是完整依赖表（图仍可读），边只是视觉增强。
+     探针模式（?probe=1）不画边：无头浏览器的 virtual-time 下布局时序不稳定，
+     画出来的边不能代表真实读者所见，与其产出一个测不准的图形，不如明确跳过。
+     ======================================================================== */
+  function initDag() {
+    const root = doc.getElementById('modmap-dag');
+    if (!root) return;
+    const svg = root.querySelector('.moddag__edges');
+    if (!svg) return;
+    const NODES = [...root.querySelectorAll('[data-dagmod]')];
+    if (!NODES.length) return;
+    const byKey = {};
+    NODES.forEach(n => { byKey[n.dataset.dagmod] = n; });
+    /* 邻接表从 modules.json 生成的 data 属性推不出来，这里从 DOM 读：
+       节点上的 <a data-pre> 就是「我依赖谁」，与正文显示的前置同源，不会漂移。 */
+    const edges = [];
+    NODES.forEach(n => {
+      const to = n.dataset.dagmod;
+      n.querySelectorAll('[data-pre]').forEach(a => {
+        const from = a.dataset.pre;
+        if (byKey[from]) edges.push([from, to]);
+      });
+    });
+    const NS = 'http://www.w3.org/2000/svg';
+    let litId = null;          // 当前悬停/聚焦的节点，resize 重画后要重放
+    function draw() {
+      const rb = root.getBoundingClientRect();
+      if (!rb.width || !rb.height) return;
+      svg.setAttribute('viewBox', '0 0 ' + Math.round(rb.width) + ' ' + Math.round(rb.height));
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      const def = doc.createElementNS(NS, 'defs');
+      const mk = doc.createElementNS(NS, 'marker');
+      mk.setAttribute('id', 'dag-arrow'); mk.setAttribute('viewBox', '0 0 8 8');
+      mk.setAttribute('refX', '7'); mk.setAttribute('refY', '4');
+      mk.setAttribute('markerWidth', '7'); mk.setAttribute('markerHeight', '7');
+      mk.setAttribute('orient', 'auto-start-reverse');
+      const tip = doc.createElementNS(NS, 'path');
+      tip.setAttribute('d', 'M0,0 L8,4 L0,8 Z');
+      tip.setAttribute('fill', 'var(--c-line-strong)');
+      mk.appendChild(tip); def.appendChild(mk); svg.appendChild(def);
+      const rel = (el) => {
+        const r = el.getBoundingClientRect();
+        return { x0: r.left - rb.left, y0: r.top - rb.top, x1: r.right - rb.left, y1: r.bottom - rb.top,
+          cx: r.left - rb.left + r.width / 2, cy: r.top - rb.top + r.height / 2, w: r.width, h: r.height };
+      };
+      edges.forEach(([a, b]) => {
+        const p = rel(byKey[a]), t = rel(byKey[b]);
+        const sameRow = Math.abs(p.cy - t.cy) <= 4;
+        let d;
+        if (sameRow) {
+          /* 同一泳道：横向走，起点取右侧边缘（若源在右则取左边缘），终点贴目标节点 */
+          const x1 = t.x0 > p.x1 ? p.x1 : p.x0, x2 = t.x0 > p.x1 ? t.x0 : t.x1;
+          d = 'M' + x1.toFixed(1) + ',' + p.cy.toFixed(1) + ' C' + ((x1 + x2) / 2).toFixed(1) + ',' + p.cy.toFixed(1) +
+              ' ' + ((x1 + x2) / 2).toFixed(1) + ',' + t.cy.toFixed(1) + ' ' + x2.toFixed(1) + ',' + t.cy.toFixed(1);
+        } else {
+          const x1 = p.cx, y1 = p.y1, x2 = t.cx, y2 = t.y0;
+          const dy = y2 - y1;
+          if (dy < 18) {
+            /* 间距太小（移动端同泳道被压成竖排时会遇到）：控制点按 k=dy/2 会算出
+               越过端点的值，曲线打结。这时直接画直线，别硬凑贝塞尔。 */
+            d = 'M' + x1.toFixed(1) + ',' + y1.toFixed(1) + ' L' + x2.toFixed(1) + ',' + y2.toFixed(1);
+          } else {
+            /* k 必须夹在 (0, dy/2] 内，否则控制点会越过端点：实测移动端 m01→m02 只隔
+               12px，原先写死的 max(14, …) 造出 y=230 / y=214 这种越过 216→228 区间的
+               控制点，边在节点之间绕成一个结。 */
+            const k = Math.min(Math.max(8, dy / 3), dy / 2);
+            d = 'M' + x1.toFixed(1) + ',' + y1.toFixed(1) + ' C' + x1.toFixed(1) + ',' + (y1 + k).toFixed(1) +
+                ' ' + x2.toFixed(1) + ',' + (y2 - k).toFixed(1) + ' ' + x2.toFixed(1) + ',' + y2.toFixed(1);
+          }
+        }
+        const path = doc.createElementNS(NS, 'path');
+        path.setAttribute('d', d);
+        path.setAttribute('class', 'moddag__edge');
+        path.dataset.from = a; path.dataset.to = b;
+        path.setAttribute('marker-end', 'url(#dag-arrow)');
+        svg.appendChild(path);
+      });
+      paintState();
+      /* path 是刚重建的，旧的高亮类名随节点一起没了；这里按记住的目标重放一次，
+         否则读者正悬停时窗口一改尺寸，连线就悄悄脱亮。 */
+      if (litId) highlight(litId);
+    }
+    /* 已读 → 绿框；还有没读的前置 → 红框。两者都只改描边（CSS），不动文字颜色。 */
+    function paintState() {
+      const done = readDone();
+      NODES.forEach(n => {
+        const id = n.dataset.dagmod;
+        const pre = [...n.querySelectorAll('[data-pre]')].map(a => a.dataset.pre);
+        const undone = pre.filter(p => done.indexOf(p) < 0);
+        n.classList.toggle('is-done', done.indexOf(id) >= 0);
+        n.classList.toggle('is-blocked', !done.length ? false : undone.length > 0);
+      });
+    }
+    /* 悬停/聚焦某个节点：把它的整条祖先链（含间接前置）亮起来，其余淡掉。
+       做传递闭包而不是只看一层：读者问的是「我要先读哪些」，M07 的前置是 M05，
+       而 M05 又吃 M01-M04 —— 只亮一层等于把答案说漏一半。 */
+    function ancestorsOf(id, seen) {
+      seen = seen || new Set();
+      edges.forEach(([a, b]) => { if (b === id && !seen.has(a)) { seen.add(a); ancestorsOf(a, seen); } });
+      return seen;
+    }
+    function highlight(id) {
+      /* 记住当前目标：draw() 每次都重建全部 path，resize 时若不重放，读者正悬停的
+         边就会失去高亮（节点还亮着、连线不亮，看着像坏了）。 */
+      litId = id || null;
+      if (!id) { root.classList.remove('is-dimmed'); NODES.forEach(n => n.classList.remove('is-lit')); return; }
+      const set = ancestorsOf(id); set.add(id);
+      root.classList.add('is-dimmed');
+      NODES.forEach(n => n.classList.toggle('is-lit', set.has(n.dataset.dagmod)));
+      [...svg.querySelectorAll('.moddag__edge')].forEach(p =>
+        p.classList.toggle('is-lit', set.has(p.dataset.from) && set.has(p.dataset.to)));
+    }
+    NODES.forEach(n => {
+      const id = n.dataset.dagmod;
+      n.addEventListener('mouseenter', () => highlight(id));
+      n.addEventListener('mouseleave', () => highlight(null));
+      n.addEventListener('focusin', () => highlight(id));
+      n.addEventListener('focusout', () => highlight(null));
+    });
+    draw();
+    /* 自动化验证出口（与 ?probe / ?mountall 同族）：?dagstate=<id> 把该节点当作
+       悬停目标执行一次高亮，?dagdone=<a,b> 预置已读，结果类名写进 data-probe-dag，
+       于是 --dump-dom 能断言「祖先链真是传递闭包、描红真发生」。
+       为什么必须有：figcaption 向读者承诺了 hover 与勾选两件事，而截图只能拍到
+       默认态——承诺不可验证就等于没兑现（本项目对检查的一贯要求）。 */
+    try {
+      const q = new URLSearchParams(location.search);
+      const target = q.get('dagstate');
+      if (target && byKey[target]) {
+        if (q.has('dagdone')) {
+          try { localStorage.setItem(STORE.done, JSON.stringify(q.get('dagdone').split(',').filter(Boolean))); } catch (e) { /* 无痕模式：状态用不上就算了 */ }
+          paintState();
+        }
+        highlight(target);
+        root.setAttribute('data-probe-dag',
+          'lit=' + NODES.filter(n => n.classList.contains('is-lit')).map(n => n.dataset.dagmod).sort().join(',') +
+          ';edges=' + svg.querySelectorAll('.moddag__edge.is-lit').length +
+          ';blocked=' + NODES.filter(n => n.classList.contains('is-blocked')).map(n => n.dataset.dagmod).sort().join(',') +
+          ';done=' + NODES.filter(n => n.classList.contains('is-done')).map(n => n.dataset.dagmod).sort().join(','));
+      }
+    } catch (e) { /* 调试钩子出错不该影响正常渲染 */ }
+    addEventListener('load', draw, { once: true });
+    if (window.ResizeObserver) new ResizeObserver(() => draw()).observe(root);
+    else addEventListener('resize', draw);
+    doc.querySelectorAll('.modcard__done input').forEach(cb =>
+      cb.addEventListener('change', () => setTimeout(paintState, 0)));
+  }
+
+  function initDagGuard() {
+    /* 探针/无头模式跳过：见 initDag 注释 */
+    try { if (new URLSearchParams(location.search).has('probe')) return; } catch (e) { /* 忽略 */ }
+    initDag();
+  }
+
   function boot() {
     try { initTheme(); } catch (e) { console.error('[AIP theme]', e); }
     try { initNav(); } catch (e) { console.error('[AIP nav]', e); }
@@ -1067,6 +1226,7 @@
     try { initSearch(); } catch (e) { console.error('[AIP search]', e); }
     try { initKeys(); } catch (e) { console.error('[AIP keys]', e); }
     try { initPrereqHint(); } catch (e) { console.error('[AIP prereq]', e); }
+    try { initDagGuard(); } catch (e) { console.error('[AIP dag]', e); }
     try { initHash(); } catch (e) { console.error('[AIP hash]', e); }
     try { mountDemos(); } catch (e) { console.error('[AIP demos]', e); }
     try { initDebugQuery(); } catch (e) { console.error('[AIP debug]', e); }

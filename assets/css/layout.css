@@ -89,6 +89,52 @@
   gap:var(--s-4); list-style:none; margin:var(--s-4) 0 0; padding:0 }
 .modgrid > li { display:flex }
 
+/* ---------- 交互式依赖图（v1.0，DESIGN §15）----------
+   HTML 节点 + 一层由 app.js 按实测位置绘制的 SVG 边。边层 pointer-events:none、
+   aria-hidden：它不承载信息（前置文字就在节点里），所以不能拦住点击、不该被读屏
+   念一遍。泳道自上而下 = 依赖方向，因此箭头一律向下，视觉上就能看出「没有环」。 */
+.moddag { position:relative; margin:var(--s-5) 0 0; padding:var(--s-4);
+  border:1px solid var(--c-line); border-radius:var(--r-md); background:var(--c-bg-elev) }
+.moddag__edges { position:absolute; inset:0; width:100%; height:100%;
+  pointer-events:none; z-index:0; overflow:visible }
+.moddag__rows { list-style:none; margin:0; padding:0; position:relative; z-index:1 }
+.moddag__row { display:flex; gap:var(--s-3); align-items:flex-start;
+  padding:var(--s-3) 0; border-top:1px dashed var(--c-line) }
+.moddag__row:first-child { border-top:0; padding-top:0 }
+.moddag__lane { flex:0 0 112px; font:600 var(--t--2)/1.35 var(--f-mono);
+  color:var(--c-fg-muted); padding-top:var(--s-2) }
+.moddag__nodes { display:flex; flex-wrap:wrap; gap:var(--s-3); flex:1 1 auto }
+.moddag__node { font-weight:400; border:1px solid var(--c-line-strong);
+  border-radius:var(--r-sm); padding:var(--s-2) var(--s-3); background:var(--c-bg-elev);
+  min-width:0; max-width:100% }
+.moddag__node > a { font-weight:600 }
+.moddag__pre { display:block; font-size:var(--t--2); color:var(--c-fg-muted);
+  margin-top:2px; line-height:1.4 }
+.moddag__pre a { color:var(--c-fg-muted); text-decoration:underline dotted }
+.moddag__pre a:hover { color:var(--c-accent) }
+/* 状态用描边表达（不用文字色，暗色下描边不参与对比度判定也不会糊字） */
+.moddag__node.is-done { border-color:var(--c-ok) }
+.moddag__node.is-blocked { border-color:var(--c-err) }
+/* 边线本体 */
+.moddag__edge { fill:none; stroke:var(--c-line-strong); stroke-width:1.4; opacity:.55;
+  transition:opacity var(--dur-micro) var(--ease), stroke var(--dur-micro) var(--ease) }
+/* 悬停/聚焦某节点：祖先链亮起，其余淡出。is-dimmed 只降非 lit 的可见度，
+   lit 项描边转 accent——同样不用改文字色，暗色下也不会糊。 */
+.moddag.is-dimmed .moddag__node { opacity:.4 }
+.moddag.is-dimmed .moddag__node.is-lit { opacity:1; border-color:var(--c-accent) }
+.moddag.is-dimmed .moddag__edge { opacity:.12 }
+.moddag__edge.is-lit { opacity:1; stroke:var(--c-accent) }
+@media (prefers-reduced-motion:reduce) { .moddag__edge { transition:none } }
+.moddag__cap { display:block; margin:0 0 var(--s-4); font-size:var(--t--1);
+  color:var(--c-fg-muted); max-width:var(--measure) }
+@media (max-width:640px) {
+  .moddag { padding:var(--s-3) }
+  .moddag__row { flex-direction:column; gap:var(--s-2) }
+  .moddag__lane { flex:none; padding-top:0 }
+  .moddag__nodes { width:100% }
+  .moddag__node { flex:1 1 100% }
+}
+
 /* ---------- 模块区 ---------- */
 .modules { padding-top:var(--s-7) }
 .module { padding:var(--s-6) 0 var(--s-7); border-top:1px solid var(--c-line) }

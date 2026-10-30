@@ -170,6 +170,55 @@
       <p class="modmap__lede prose">顺序不是按主题美观排的，而是按依赖排的：前四个模块只用到初中数学，
         之后每一块都建立在前一块之上。你可以顺序通读（约 5.5–6 小时），也可以直接跳进任何一个模块——
         每个模块顶部会告诉你它需要先读懂哪几个。</p>
+      <figure class="moddag" id="modmap-dag" aria-labelledby="moddag-title">
+        <svg class="moddag__edges" data-fig="shell-modmap-dag" aria-hidden="true" focusable="false"></svg>
+        <figcaption id="moddag-title" class="moddag__cap"><strong>怎么看：每行是一条泳道（同一个部分），箭头从「先读」指向「后读」。</strong>点模块名跳到该模块，点前置名跳到前置模块；勾选卡片上的「已读」后，图会把还缺的前置描红。跨行的长线才是真依赖——比如 M08/M10 都直接吃 M02，而 M02 在最早那行。</figcaption>
+        <ul class="moddag__rows">
+        <li class="moddag__row" data-part="intuition">
+          <span class="moddag__lane">01 直觉地基</span>
+          <span class="moddag__nodes">
+            <b class="moddag__node" data-dagmod="m01" id="dag-m01"><a href="#m01">M01 模式与压缩</a><span class="moddag__pre">← 起点，无需前置</span></b>
+            <b class="moddag__node" data-dagmod="m02" id="dag-m02"><a href="#m02">M02 概率、信息熵与损失</a><span class="moddag__pre">← <a href="#m01" data-pre="m01">模式与压缩</a></span></b>
+            <b class="moddag__node" data-dagmod="m03" id="dag-m03"><a href="#m03">M03 线性代数即几何</a><span class="moddag__pre">← <a href="#m01" data-pre="m01">模式与压缩</a></span></b>
+            <b class="moddag__node" data-dagmod="m04" id="dag-m04"><a href="#m04">M04 微积分与优化</a><span class="moddag__pre">← <a href="#m02" data-pre="m02">概率、信息熵与损失</a>、<a href="#m03" data-pre="m03">线性代数即几何</a></span></b>
+          </span>
+        </li>
+        <li class="moddag__row" data-part="learning">
+          <span class="moddag__lane">02 学习机制</span>
+          <span class="moddag__nodes">
+            <b class="moddag__node" data-dagmod="m05" id="dag-m05"><a href="#m05">M05 神经网络与反向传播</a><span class="moddag__pre">← <a href="#m01" data-pre="m01">模式与压缩</a>、<a href="#m02" data-pre="m02">概率、信息熵与损失</a>、<a href="#m03" data-pre="m03">线性代数即几何</a>、<a href="#m04" data-pre="m04">微积分与优化</a></span></b>
+            <b class="moddag__node" data-dagmod="m06" id="dag-m06"><a href="#m06">M06 CNN、RNN 与序列建模的瓶颈</a><span class="moddag__pre">← <a href="#m05" data-pre="m05">神经网络与反向传播</a></span></b>
+          </span>
+        </li>
+        <li class="moddag__row" data-part="transformer">
+          <span class="moddag__lane">03 Transformer</span>
+          <span class="moddag__nodes">
+            <b class="moddag__node" data-dagmod="m07" id="dag-m07"><a href="#m07">M07 注意力与 Transformer</a><span class="moddag__pre">← <a href="#m03" data-pre="m03">线性代数即几何</a>、<a href="#m05" data-pre="m05">神经网络与反向传播</a>、<a href="#m06" data-pre="m06">CNN、RNN 与序列建模的瓶颈</a></span></b>
+          </span>
+        </li>
+        <li class="moddag__row" data-part="training">
+          <span class="moddag__lane">04 训练与涌现</span>
+          <span class="moddag__nodes">
+            <b class="moddag__node" data-dagmod="m08" id="dag-m08"><a href="#m08">M08 预训练与 Scaling Law</a><span class="moddag__pre">← <a href="#m02" data-pre="m02">概率、信息熵与损失</a>、<a href="#m07" data-pre="m07">注意力与 Transformer</a></span></b>
+            <b class="moddag__node" data-dagmod="m09" id="dag-m09"><a href="#m09">M09 后训练与对齐</a><span class="moddag__pre">← <a href="#m08" data-pre="m08">预训练与 Scaling Law</a></span></b>
+          </span>
+        </li>
+        <li class="moddag__row" data-part="inference">
+          <span class="moddag__lane">05 推理与应用</span>
+          <span class="moddag__nodes">
+            <b class="moddag__node" data-dagmod="m10" id="dag-m10"><a href="#m10">M10 解码、采样与上下文</a><span class="moddag__pre">← <a href="#m02" data-pre="m02">概率、信息熵与损失</a>、<a href="#m07" data-pre="m07">注意力与 Transformer</a></span></b>
+            <b class="moddag__node" data-dagmod="m11" id="dag-m11"><a href="#m11">M11 多模态</a><span class="moddag__pre">← <a href="#m07" data-pre="m07">注意力与 Transformer</a></span></b>
+            <b class="moddag__node" data-dagmod="m12" id="dag-m12"><a href="#m12">M12 智能体、工具与检索增强</a><span class="moddag__pre">← <a href="#m10" data-pre="m10">解码、采样与上下文</a></span></b>
+          </span>
+        </li>
+        <li class="moddag__row" data-part="safety">
+          <span class="moddag__lane">06 能力与风险</span>
+          <span class="moddag__nodes">
+            <b class="moddag__node" data-dagmod="m13" id="dag-m13"><a href="#m13">M13 安全、对齐与评测</a><span class="moddag__pre">← <a href="#m09" data-pre="m09">后训练与对齐</a>、<a href="#m10" data-pre="m10">解码、采样与上下文</a>、<a href="#m12" data-pre="m12">智能体、工具与检索增强</a></span></b>
+          </span>
+        </li>
+        </ul>
+      </figure>
       <div class="modmap__group" id="intuition" data-part="intuition">
         <h3><span class="modmap__groupno">01</span> 直觉地基</h3>
         <p class="modmap__groupnote">只用初中数学。这四块是后面所有内容的地基：预测、意外、坐标、下山。</p>

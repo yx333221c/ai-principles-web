@@ -52,6 +52,37 @@ function prereqLabel(m) {
   return m.prereq.map((p) => p.toUpperCase().slice(1)).join(' ');
 }
 
+/* ---------------- 1b. 交互式依赖图（v1.0，DESIGN §15） ----------------
+   为什么是 HTML 节点 + JS 画边，而不是一张纯 SVG 图：
+   ① 站点契约 §1.4 明文允许 fig__* 式 HTML 图，理由正是「中文无法在 SVG 内自动换行」；
+      纯 SVG 的文字在 390px 视口会被 viewBox 等比缩到 5px 级，不可读。
+   ② .figure 被 initLightbox 绑定（点击=放大），会跟「点击节点跳到该模块」抢交互。
+   ③ 节点内直接把前置写成可点链接，于是【没有 JS 也读得出完整依赖关系】——
+      边只是视觉增强，不是唯一信息载体（自审清单「无 JS 时文字仍完整可读」）。
+   边由 app.js 按节点实测位置绘制，因此布局换行时不会错位。 */
+function buildDag() {
+  const byId = {};
+  DATA.modules.forEach(m => { byId[m.id] = m; });
+  const rows = DATA.parts.map((p) => {
+    const mods = DATA.modules.filter(m => m.part === p.id);
+    return `        <li class="moddag__row" data-part="${p.id}">
+          <span class="moddag__lane">${String(p.order).padStart(2, '0')} ${esc(p.title)}</span>
+          <span class="moddag__nodes">
+${mods.map(m => `            <b class="moddag__node" data-dagmod="${m.id}" id="dag-${m.id}"><a href="#${m.id}">M${String(m.num).padStart(2, '0')} ${esc(m.title)}</a>${m.prereq.length
+              ? `<span class="moddag__pre">← ${m.prereq.map(q => `<a href="#${q}" data-pre="${q}">${esc(byId[q].title)}</a>`).join('、')}</span>`
+              : '<span class="moddag__pre">← 起点，无需前置</span>'}</b>`).join('\n')}
+          </span>
+        </li>`;
+  }).join('\n');
+  return `      <figure class="moddag" id="modmap-dag" aria-labelledby="moddag-title">
+        <svg class="moddag__edges" data-fig="shell-modmap-dag" aria-hidden="true" focusable="false"></svg>
+        <figcaption id="moddag-title" class="moddag__cap"><strong>怎么看：每行是一条泳道（同一个部分），箭头从「先读」指向「后读」。</strong>点模块名跳到该模块，点前置名跳到前置模块；勾选卡片上的「已读」后，图会把还缺的前置描红。跨行的长线才是真依赖——比如 M08/M10 都直接吃 M02，而 M02 在最早那行。</figcaption>
+        <ul class="moddag__rows">
+${rows}
+        </ul>
+      </figure>`;
+}
+
 function buildModmap() {
   return DATA.parts.map((p) => {
     const mods = DATA.modules.filter((m) => m.part === p.id);
@@ -201,6 +232,7 @@ const shell = fs.readFileSync(path.join(ROOT, 'templates/shell.html'), 'utf8');
 const out = shell
   .replace('<!-- @SITE_NOTE -->', SITE_NOTE)
   .replace('<!-- @SIDEBAR -->', buildSidebar())
+  .replace('<!-- @MODMAP_DAG -->', buildDag())
   .replace('<!-- @MODMAP -->', buildModmap())
   .replace('<!-- @MODULES -->', buildModules())
   .replace('<!-- @DEMO_SCRIPTS -->', buildDemoScripts())

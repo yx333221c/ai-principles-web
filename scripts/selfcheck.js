@@ -550,7 +550,7 @@ console.log('== 8. 类名闭合（引用了但 CSS 未定义 = 静默失效）==
     const re3 = /classList\.(?:add|toggle|remove|contains)\(\s*'([^']+)'/g; while ((m = re3.exec(s))) add(m[1]);
     const re4 = /className\s*=\s*'([^']+)'/g; while ((m = re4.exec(s))) m[1].split(/\s+/).forEach(add);
   }
-  const OWN = /^(fig|figure|badge|demo|quiz|callout|myth|modcard|maptree|seg|module|searchdlg|term|math|steps|hero|toc|btn|iconbtn|themeswitch|prereq|readbar|dgm|lightbox|todo|skip|noscript|legend|tbl|nextlinks|takeaway)/;
+  const OWN = /^(fig|figure|badge|demo|quiz|callout|myth|modcard|modmap|moddag|maptree|seg|module|searchdlg|term|math|steps|hero|toc|btn|iconbtn|themeswitch|prereq|readbar|dgm|lightbox|todo|skip|noscript|legend|tbl|nextlinks|takeaway)/;
   /* 排除模板字符串截出的噪声：真实类名只含字母数字与 -_，
      带引号/反引号/大括号/$ 的一定是拼接残片 */
   const NOISE = /["'`$(){}\\\/]/;
