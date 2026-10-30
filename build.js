@@ -199,6 +199,75 @@ function buildDemoScripts() {
   return kit.concat(list.map((m) => `  <script src="./assets/js/demos/${m.demo.id}.js" defer></script>`)).join('\n');
 }
 
+/* ---------------- 4b. 模块分享页（v1.0 OG 图，DESIGN §12.2） ----------------
+   为什么需要这些薄页面：OG 爬虫【不解析 URL fragment】。本站是单页，
+   index.html#m07 在爬虫眼里就是 index.html，于是「每模块一张分享图」在纯单页
+   架构下永远不可能生效——不管 og:image 写得多对，爬虫只会读到站点级那一份。
+   解法不是重构整站（§12.2 设想的 /m07/ 全量静态页要动正文拆分、锚点、搜索索引，
+   风险与体量都大得多），而是每个模块一个【只带 meta 的薄页面】：
+     · 爬虫读到本模块的 og:title/description/image，卡片正确；
+     · 人打开它，JS 立刻 replace 到 ../index.html#m07（无 JS 则看到可见链接），
+       所以内容仍单源、不会出现两份正文互相漂移；
+     · robots noindex：它是跳转桩，不是该被检索的页面。
+   刻意不用 <meta http-equiv="refresh">：那会让部分爬虫跟随跳转、转而去读
+   index.html 的站点级 OG，等于白做。
+   URL 形如 /m07/（GitHub Pages 会返回目录索引），与 §12.2 的设想一致。 */
+function buildSharePages() {
+  const base = (DATA.site && DATA.site.baseUrl) || '';
+  if (!base) {
+    warn('modules.json 缺 site.baseUrl：分享页的 og:image 必须是绝对 URL，无法生成');
+    return {};
+  }
+  const pages = {};
+  DATA.modules.forEach((m) => {
+    const part = DATA.parts.find((p) => p.id === m.part);
+    const url = base + m.id + '/';
+    const img = base + 'assets/og/' + m.id + '.png';
+    const desc = m.tagline + ' · ' + (part ? part.title : m.part) +
+      ' · 约 ' + m.estMinutes + ' 分钟 · 全站 13 模块 + 13 个可交互演示';
+    pages[m.id + '/index.html'] = `<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(m.title)} · AI 原理图解</title>
+<meta name="description" content="${esc(desc)}">
+<meta name="robots" content="noindex">
+<meta property="og:title" content="${esc(m.title)}">
+<meta property="og:description" content="${esc(desc)}">
+<meta property="og:type" content="article">
+<meta property="og:url" content="${esc(url)}">
+<meta property="og:image" content="${esc(img)}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:site_name" content="${esc(DATA.site.name)}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="${esc(img)}">
+<link rel="canonical" href="../index.html">
+<style>
+ body{margin:0;min-height:100vh;display:grid;place-items:center;background:#fbfaf7;
+   color:#0d1117;font:16px/1.6 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+ .c{max-width:34rem;padding:2rem;text-align:center}
+ h1{font-size:1.5rem;margin:0 0 .5rem}
+ p{color:#3a4556;margin:.4rem 0 1.2rem}
+ a{color:#3b4cca}
+</style>
+</head>
+<body>
+<div class="c">
+  <h1>${esc(m.title)}</h1>
+  <p>${esc(m.tagline)}</p>
+  <p>正在跳转到正文…… 若没有反应，请
+     <a href="../index.html#${m.id}">点此打开 M${String(m.num).padStart(2, '0')}</a>。</p>
+</div>
+<script>location.replace('../index.html#${m.id}');</script>
+</body>
+</html>
+`;
+  });
+  return pages;
+}
+
 /* ---------------- 5. 组装 ---------------- */
 /* 站点说明只由数据推导，不含构建时钟：
    带日期的戳会让每次构建都弄脏工作树（不可复现），而且「构建于今天」
@@ -229,7 +298,13 @@ const SITE_NOTE = `${DATA.modules.length} 个模块 · 约 ${Math.round(totalMin
   `<br>设计文档见 <a href="./DESIGN.md">DESIGN.md</a>`;
 
 const shell = fs.readFileSync(path.join(ROOT, 'templates/shell.html'), 'utf8');
+/* 必须用 /g：模板里 @OG_BASE 出现 3 次（og:url / og:image / twitter:image），
+   而 String.replace 传字符串只换第一处 —— 那样会留下两处未替换的占位符，
+   下面的 /<!-- @/ 检测虽然会报，但产物已经错了。用函数形式避免替换值里的 $ 被解释。 */
+const OG_BASE = (DATA.site && DATA.site.baseUrl) || '';
+if (!OG_BASE) warn('modules.json 缺 site.baseUrl：og:image 需要绝对 URL');
 const out = shell
+  .replace(/<!-- @OG_BASE -->/g, () => OG_BASE)
   .replace('<!-- @SITE_NOTE -->', SITE_NOTE)
   .replace('<!-- @SIDEBAR -->', buildSidebar())
   .replace('<!-- @MODMAP_DAG -->', buildDag())
@@ -249,7 +324,22 @@ if (QUIET) {
   process.stdout.write(out);
 } else {
   fs.writeFileSync(path.join(ROOT, 'index.html'), out);
-  console.log(`built index.html  (${(out.length / 1024).toFixed(1)} KB, ${DATA.modules.length} modules)`);
+  /* 分享页只在正常构建时写：--stdout 是给 selfcheck 做陈旧比对的只读模式，
+     在比对过程里改动产物会造成「检查本身让工作树变脏」的自指混乱。 */
+  const pages = buildSharePages();
+  let written = 0, same = 0;
+  Object.keys(pages).forEach((rel) => {
+    const abs = path.join(ROOT, rel);
+    const want = pages[rel];
+    /* 内容没变就不写盘：避免每次构建都把 13 个文件的 mtime 弄脏、
+       也让「构建幂等」这条断言在 git 层面可验证（无改动 = 无 diff）。 */
+    if (fs.existsSync(abs) && fs.readFileSync(abs, 'utf8') === want) { same++; return; }
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, want);
+    written++;
+  });
+  console.log(`built index.html  (${(out.length / 1024).toFixed(1)} KB, ${DATA.modules.length} modules)` +
+    (Object.keys(pages).length ? ` · 分享页 ${written} 新写 / ${same} 未变` : ''));
 }
 if (errors.length) {
   console.error('\n构建问题 ' + errors.length + ' 项：');

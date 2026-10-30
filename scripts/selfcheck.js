@@ -410,6 +410,45 @@ else {
     ok('尚无英文正文（骨架 status=skeleton 与实际相符）');
 })();
 
+/* == 4c. 模块分享页与 OG 图（v1.0 DESIGN §12.2）==
+   分享页是 build.js 的产物，但闸门 3 只逐字节比对 index.html —— 改了
+   modules.json 忘了重建，标题/摘要会在分享页里留下旧值而没人发现。这里补上，
+   并且不只看「新不新鲜」，还看语义对不对：og:title 必须等于模块标题、
+   og:image 指向的文件必须真的存在且是 1200×630（爬虫拿不到图就退化成纯文字卡片，
+   而这种退化在页面上完全看不出来）。 */
+(function checkSharePages() {
+  const base = (J.site && J.site.baseUrl) || '';
+  if (!base) { bad('modules.json 缺 site.baseUrl：og:image 必须是绝对 URL'); return; }
+  const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  let missing = [], stale = [], imgBad = [];
+  J.modules.forEach(m => {
+    const rel = m.id + '/index.html';
+    if (!has(rel)) { missing.push(m.id); return; }
+    const s = rd(rel);
+    const wantTitle = 'og:title" content="' + m.title + '"';
+    if (!s.includes(wantTitle)) stale.push(m.id + ' 标题');
+    if (!s.includes('og:image" content="' + base + 'assets/og/' + m.id + '.png"')) stale.push(m.id + ' 图 URL');
+    if (!s.includes('content="' + m.tagline)) stale.push(m.id + ' 摘要');
+    if (!/name="robots" content="noindex"/.test(s)) stale.push(m.id + ' 缺 noindex');
+    if (!/location\.replace\('\.\.\/index\.html#/.test(s)) stale.push(m.id + ' 缺跳转');
+    /* PNG 尺寸直接读文件头（IHDR 的宽高），不靠外部库 */
+    const p = path.join(ROOT, 'assets/og', m.id + '.png');
+    if (!fs.existsSync(p)) { imgBad.push(m.id + ' 图片不存在'); return; }
+    const b = fs.readFileSync(p);
+    if (!b.subarray(0, 8).equals(PNG)) { imgBad.push(m.id + ' 非 PNG'); return; }
+    const w = b.readUInt32BE(16), h = b.readUInt32BE(20);
+    if (w !== 1200 || h !== 630) imgBad.push(m.id + ' ' + w + '×' + h + '（应为 1200×630）');
+  });
+  missing.length ? bad('缺分享页: ' + missing.join(',') + '（跑 node build.js）') :
+    ok('13 个模块分享页均在位（含 noindex 与跳转）');
+  stale.length ? bad('分享页与 modules.json 不一致: ' + stale.join(', ') + '（跑 node build.js 重建）') :
+    ok('分享页的 og:title/image/description 与真相源一致');
+  imgBad.length ? bad('OG 图有问题: ' + imgBad.join(', ')) :
+    ok('OG 图 13 张齐全且为 1200×630 PNG');
+  /* 站点图也要在：首页 og:image 指向它 */
+  has('assets/og/site.png') ? ok('站点级 OG 图在位') : bad('缺 assets/og/site.png');
+})();
+
 console.log('== 5. 共享文件与文档 ==');
 ['DESIGN.md', 'README.md', 'LICENSE', '.gitignore', '.gitattributes', '.nojekyll', 'build.js',
  'templates/shell.html', 'docs/writing-guide.md', 'docs/glossary.md', 'docs/authoring-contract.md',

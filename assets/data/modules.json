@@ -3,6 +3,7 @@
   "site": {
     "name": "AI 原理图解",
     "nameEn": "Explainable AI Primer",
+    "baseUrl": "https://yx333221c.github.io/ai-principles-web/",
     "phase": "v0.2-complete",
     "segEnum": [
       "hook",
