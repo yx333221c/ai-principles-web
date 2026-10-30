@@ -27,6 +27,8 @@
     "https://arxiv.org/abs/1412.6980": { "title": "Adam: A Method for Stochastic Optimization", "use": "Adam 优化器（M04）" },
     "https://arxiv.org/abs/2009.03300": { "title": "Measuring Massive Multitask Language Understanding", "use": "MMLU 基准（M13）" },
     "https://arxiv.org/abs/1905.10650": { "title": "Are Sixteen Heads Really Better than One?", "use": "多头冗余 Michel 2019（M07）" },
+    "https://arxiv.org/abs/2206.07682": { "title": "Emergent Abilities of Large Language Models", "use": "涌现真实派 Wei 2022（M08，与 2304.15004 幻觉派对立）" },
+    "https://arxiv.org/abs/1409.3215": { "title": "Sequence to Sequence Learning with Neural Networks", "use": "seq2seq Sutskever 2014（M06）" },
     "https://doi.org/10.1038/323533a0": { "title": "Learning representations by back-propagating errors", "use": "反向传播 Rumelhart 1986 Nature（M05，已有）" },
     "http://prize.hutter1.net/": { "title": "Hutter Prize", "use": "压缩即智能 enwik9（M01，已有）" },
     "https://doi.org/10.1162/neco.1997.9.8.1735": { "title": "Long Short-Term Memory (Neural Computation 9(8):1735-1780)", "use": "LSTM Hochreiter 1997（M06）；付费墙 curl 返 403 但 url_effective=neco/article/9/8/1735-1780 页码吻合，人点可达", "paywalled": true },
