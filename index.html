@@ -537,6 +537,14 @@
               <p class="quiz__result" aria-live="polite"></p>
             </div>
           
+            <details class="math-detail">
+              <summary>延伸阅读（2 条，标注难度）</summary>
+              <div class="math-detail__body prose">
+                <p><strong>原始论文：</strong>Shannon，<em>A Mathematical Theory of Communication</em>，Bell System Technical Journal（1948）<a href="https://doi.org/10.1002/j.1538-7305.1948.tb01338.x" rel="noopener noreferrer">DOI</a> [2026-10]。信息熵、冗余、信源编码——本页所有结论的源头；付费墙，但标题与卷期页码可核对。</p>
+                <p><strong>进阶：</strong>本站误区段已链的 <a href="http://prize.hutter1.net/" rel="noopener noreferrer">Hutter Prize</a> [2026-10]，把「无损压缩 1 GB 英文维基」当作 AI 能力的公开赌局，是「压缩即智能」最硬核的一次落地。</p>
+              </div>
+            </details>
+          
             <ul class="nextlinks">
               <li><a href="#m02">M02 概率、信息熵与损失：把「平均码长」变成可优化的损失函数</a></li>
               <li><a href="#m08">M08 预训练与规模定律：更多参数和数据换来多少比特</a></li>
@@ -797,6 +805,14 @@
               </div>
               <p class="quiz__result" aria-live="polite"></p>
             </div>
+          
+            <details class="math-detail">
+              <summary>延伸阅读（2 条，标注难度）</summary>
+              <div class="math-detail__body prose">
+                <p><strong>原始论文：</strong>Shannon，<em>A Mathematical Theory of Communication</em>（1948）<a href="https://doi.org/10.1002/j.1538-7305.1948.tb01338.x" rel="noopener noreferrer">DOI</a> [2026-10]。熵与信源编码定理出自这一篇；交叉熵与 KL 散度是在其上形式化的延伸度量（KL 由 Kullback &amp; Leibler 于 1951 定型），困惑度 = 2<sup>H</sup> 则是熵的指数改写。</p>
+                <p><strong>进阶：</strong>本站 <a href="#m08">M08</a> 讲困惑度如何随规模幂律下降——把本页的「平均码长」接到大模型的损失曲线上。</p>
+              </div>
+            </details>
           
             <ul class="nextlinks">
               <li><a href="#m01">M01 模式与压缩：为什么「预测得准」就是「压得动」</a></li>
@@ -1095,6 +1111,14 @@
               <p class="quiz__result" aria-live="polite"></p>
             </div>
           
+            <details class="math-detail">
+              <summary>延伸阅读（2 条，标注难度）</summary>
+              <div class="math-detail__body prose">
+                <p><strong>原始论文：</strong>Mikolov 等，<em>Efficient Estimation of Word Representations in Vector Space</em>（word2vec，2013）<a href="https://arxiv.org/abs/1301.3781" rel="noopener noreferrer">arXiv:1301.3781</a> [2026-10]。「king − man + woman ≈ queen」那组算式的出处。</p>
+                <p><strong>进阶：</strong>Brown 等，<em>Language Models are Few-Shot Learners</em>（GPT-3，2020）<a href="https://arxiv.org/abs/2005.14165" rel="noopener noreferrer">arXiv:2005.14165</a> [2026-10]——本页说的「大模型的词元嵌入」正是这类模型训出来的。</p>
+              </div>
+            </details>
+          
             <ul class="nextlinks">
               <li><a href="#m07">M07 注意力：点积如何变成「该读哪个词」的分数</a></li>
               <li><a href="#m05">M05 反向传播：权重矩阵如何被学着搬正这张地图</a></li>
@@ -1376,6 +1400,14 @@
               </div>
               <p class="quiz__result" aria-live="polite"></p>
             </div>
+          
+            <details class="math-detail">
+              <summary>延伸阅读（2 条，标注难度）</summary>
+              <div class="math-detail__body prose">
+                <p><strong>原始论文：</strong>Kingma &amp; Ba，<em>Adam: A Method for Stochastic Optimization</em>（2015）<a href="https://arxiv.org/abs/1412.6980" rel="noopener noreferrer">arXiv:1412.6980</a> [2026-10]。默认 β₁=0.9、β₂=0.999 那组超参的出处。</p>
+                <p><strong>进阶：</strong>本站 <a href="#m05">M05</a> 与 <a href="#m08">M08</a>：学习率调度如何与反向传播、规模耦合。</p>
+              </div>
+            </details>
           
             <ul class="nextlinks">
               <li><a href="#m05">M05 神经网络与反向传播：这个梯度到底是怎么算出来的</a></li>
@@ -2020,6 +2052,14 @@
               <p class="quiz__result" aria-live="polite"></p>
             </div>
           
+            <details class="math-detail">
+              <summary>延伸阅读（2 条，标注难度）</summary>
+              <div class="math-detail__body prose">
+                <p><strong>原始论文：</strong>Hochreiter &amp; Schmidhuber，<em>Long Short-Term Memory</em>，Neural Computation 9(8)（1997）<a href="https://doi.org/10.1162/neco.1997.9.8.1735" rel="noopener noreferrer">DOI</a> [2026-10]。门控让关键路径连乘「不被乘死」的源头；付费墙，页码 1735–1780 可核对。</p>
+                <p><strong>进阶：</strong>Vaswani 等，<em>Attention Is All You Need</em>（2017）<a href="https://arxiv.org/abs/1706.03762" rel="noopener noreferrer">arXiv:1706.03762</a> [2026-10]——把串行路径换成任意两位置一跳直达。</p>
+              </div>
+            </details>
+          
             <ul class="nextlinks">
               <li><a href="#m07">M07 注意力与 Transformer：把 99 段路压成 1 段的具体做法</a></li>
               <li><a href="#m05">M05 神经网络与反向传播：梯度为什么要沿链连乘</a></li>
@@ -2302,6 +2342,14 @@
               <p class="quiz__result" aria-live="polite"></p>
             </div>
           
+            <details class="math-detail">
+              <summary>延伸阅读（2 条，标注难度）</summary>
+              <div class="math-detail__body prose">
+                <p><strong>原始论文：</strong>Vaswani 等，<em>Attention Is All You Need</em>（2017）<a href="https://arxiv.org/abs/1706.03762" rel="noopener noreferrer">arXiv:1706.03762</a> [2026-10]。本站沿用的 base 配置（8 头 × 64 维）即出自此文。</p>
+                <p><strong>进阶：</strong>Michel 等，<em>Are Sixteen Heads Really Better than One?</em>（2019）<a href="https://arxiv.org/abs/1905.10650" rel="noopener noreferrer">arXiv:1905.10650</a> [2026-10]——本页「多头高度冗余、剪掉许多头几乎不掉分」的实证来源。</p>
+              </div>
+            </details>
+          
             <ul class="nextlinks">
               <li><a href="#m08">M08 预训练与规模定律：这套骨架放大一万倍会发生什么</a></li>
               <li><a href="#m10">M10 解码与采样：算出分布之后，怎么挑下一个词元</a></li>
@@ -2581,6 +2629,14 @@
               <p class="quiz__result" aria-live="polite"></p>
             </div>
           
+            <details class="math-detail">
+              <summary>延伸阅读（2 条，标注难度）</summary>
+              <div class="math-detail__body prose">
+                <p><strong>原始论文：</strong>Kaplan 等，<em>Scaling Laws for Neural Language Models</em>（2020）<a href="https://arxiv.org/abs/2001.08361" rel="noopener noreferrer">arXiv:2001.08361</a> [2026-10]。本页 α_N≈0.076 那组指数的出处。</p>
+                <p><strong>进阶：</strong>Schaeffer 等，<em>Are Emergent Abilities of Large Language Models a Mirage?</em>（NeurIPS 2023）<a href="https://arxiv.org/abs/2304.15004" rel="noopener noreferrer">arXiv:2304.15004</a> [2026-10]——「换把连续尺子，跳变就变平滑」那派。</p>
+              </div>
+            </details>
+          
             <ul class="nextlinks">
               <li><a href="#m09">M09 后训练与对齐：损失最低了，然后呢</a></li>
               <li><a href="#m13">M13 安全、对齐与评测：尺子能造出跳变，也能造出饱和</a></li>
@@ -2855,6 +2911,14 @@
               <p class="quiz__result" aria-live="polite"></p>
             </div>
           
+            <details class="math-detail">
+              <summary>延伸阅读（2 条，标注难度）</summary>
+              <div class="math-detail__body prose">
+                <p><strong>原始论文：</strong>Ouyang 等，<em>Training language models to follow instructions with human feedback</em>（InstructGPT，2022）<a href="https://arxiv.org/abs/2203.02155" rel="noopener noreferrer">arXiv:2203.02155</a> [2026-10]。SFT→奖励模型→策略优化三段流程的出处。</p>
+                <p><strong>进阶：</strong>Rafailov 等，<em>Direct Preference Optimization</em>（DPO，2023）<a href="https://arxiv.org/abs/2305.18290" rel="noopener noreferrer">arXiv:2305.18290</a> [2026-10]——把「训 RM + 强化学习」压成一个损失式。</p>
+              </div>
+            </details>
+          
             <ul class="nextlinks">
               <li><a href="#m10">M10 解码、采样与上下文：对齐之后，它怎么挑下一个词元</a></li>
               <li><a href="#m13">M13 安全、对齐与评测：怎么知道这一步真的更好了</a></li>
@@ -3016,6 +3080,14 @@
               <p class="quiz__result" aria-live="polite"></p>
             </div>
           
+            <details class="math-detail">
+              <summary>延伸阅读（2 条，标注难度）</summary>
+              <div class="math-detail__body prose">
+                <p><strong>原始论文：</strong>Holtzman 等，<em>The Curious Case of Neural Text Degeneration</em>（2020）<a href="https://arxiv.org/abs/1904.09751" rel="noopener noreferrer">arXiv:1904.09751</a> [2026-10]。top-p / nucleus 采样的出处。</p>
+                <p><strong>进阶：</strong>Zhang 等，<em>H2O: Heavy-Hitter Oracle for Efficient Generative Inference</em>（2023）<a href="https://arxiv.org/abs/2306.14048" rel="noopener noreferrer">arXiv:2306.14048</a> [2026-10]——KV cache 与 attention sink 一侧的工程做法。</p>
+              </div>
+            </details>
+          
             <ul class="nextlinks">
               <li><a href="#m12">M12 智能体与检索增强：用外部证据改变下一个词元的概率</a></li>
               <li><a href="#m02">M02 概率与交叉熵：熵、困惑度与这里的读数是什么关系</a></li>
@@ -3170,6 +3242,14 @@
               </div>
               <p class="quiz__result" aria-live="polite"></p>
             </div>
+          
+            <details class="math-detail">
+              <summary>延伸阅读（2 条，标注难度）</summary>
+              <div class="math-detail__body prose">
+                <p><strong>原始论文：</strong>Radford 等，<em>Learning Transferable Visual Models From Natural Language Supervision</em>（CLIP，2021）<a href="https://arxiv.org/abs/2103.00020" rel="noopener noreferrer">arXiv:2103.00020</a> [2026-10]。本页图文对比、τ=0.07 的出处。</p>
+                <p><strong>进阶：</strong>Dosovitskiy 等，<em>An Image is Worth 16x16 Words</em>（ViT，2020）<a href="https://arxiv.org/abs/2010.11929" rel="noopener noreferrer">arXiv:2010.11929</a> [2026-10]——把图像切成「图像块」当序列的那篇。</p>
+              </div>
+            </details>
           
             <ul class="nextlinks">
               <li><a href="#m12">M12 智能体与工具：表示做不到的事，如何交给外部执行</a></li>
@@ -3422,6 +3502,14 @@
               </div>
               <p class="quiz__result" aria-live="polite"></p>
             </div>
+          
+            <details class="math-detail">
+              <summary>延伸阅读（2 条，标注难度）</summary>
+              <div class="math-detail__body prose">
+                <p><strong>原始论文：</strong>Yao 等，<em>ReAct: Synergizing Reasoning and Acting in Language Models</em>（2022）<a href="https://arxiv.org/abs/2210.03629" rel="noopener noreferrer">arXiv:2210.03629</a> [2026-10]。本页 Thought→Action→Observation 循环的出处。</p>
+                <p><strong>进阶：</strong>本站 <a href="#m10">M10</a> 与 <a href="#m13">M13</a>：智能体的每一步仍是同一个采样过程，误差沿连乘累积；评估它要靠带标准误的基准。</p>
+              </div>
+            </details>
           
             <ul class="nextlinks">
               <li><a href="#m13">M13 安全与评测：塞进上下文的话也可能是命令——提示注入</a></li>
@@ -3709,6 +3797,14 @@
               </div>
               <p class="quiz__result" aria-live="polite"></p>
             </div>
+          
+            <details class="math-detail">
+              <summary>延伸阅读（2 条，标注难度）</summary>
+              <div class="math-detail__body prose">
+                <p><strong>原始论文：</strong>Hendrycks 等，<em>Measuring Massive Multitask Language Understanding</em>（MMLU，2021）<a href="https://arxiv.org/abs/2009.03300" rel="noopener noreferrer">arXiv:2009.03300</a> [2026-10]。本页「一个总分盖住一堆分项」那类基准的典型。</p>
+                <p><strong>进阶：</strong>本站 <a href="#m08">M08</a> 与 <a href="#m12">M12</a>：污染与饱和如何同时侵蚀规模曲线和智能体评测——同一把尺子的两个失效面。</p>
+              </div>
+            </details>
           
             <ul class="nextlinks">
               <li><a href="#home">回学习地图：13 个模块的完整路径</a></li>
