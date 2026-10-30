@@ -172,7 +172,7 @@
     <span class="frac"><span class="num">m̂</span><span class="den"><span class="bigg">√</span>û <span class="op">+</span> ε</span></span>
     <span class="reads">「m 记梯度方向的滑动平均，u 记梯度平方的滑动平均；用 √û 一除，梯度一贯很大的参数被压小，一贯很小的被放大——每个参数拿到各自的有效学习率。」</span>
   </div>
-  <p>默认 β₁ = 0.9、β₂ = 0.999、ε = 10⁻⁸（Kingma &amp; Ba，2015）[2026-10]。注意它和动量解决的不是同一个问题：动量放大同号方向，Adam 抹平参数之间的尺度差。在 PyTorch 里，β₂ = 0.999 意味着梯度幅度需要约 1/(1−β₂) = 1000 步才更新一轮 [2026-10]，这也是它起步阶段需要预热的缘故。</p>
+  <p>默认 β₁ = 0.9、β₂ = 0.999、ε = 10⁻⁸（<a href="https://arxiv.org/abs/1412.6980" rel="noopener noreferrer">Kingma &amp; Ba，2015</a>）[2026-10]。注意它和动量解决的不是同一个问题：动量放大同号方向，Adam 抹平参数之间的尺度差。在 PyTorch 里，β₂ = 0.999 意味着梯度幅度需要约 1/(1−β₂) = 1000 步才更新一轮 [2026-10]，这也是它起步阶段需要预热的缘故。</p>
 
   <details class="math-detail">
     <summary>展开：为什么二次碗的学习率上限正好是 2/a（以及 Adam 的 m̂、û 是什么）</summary>

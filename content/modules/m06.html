@@ -172,7 +172,7 @@
     <span class="badge badge--simplify">已简化：省略隐藏状态侧的两个门与候选项的展开</span>
     <span class="reads">细胞状态先被遗忘门按份保留，再加上新写进来的内容——保留是乘法、写入是加法，而不是整条重写。</span>
   </div>
-  <p>关键在 <code>+</code>：<code>∂c<sub>t</sub>/∂c<sub>t−1</sub> = f<sub>t</sub></code>，而 f 由数据算出、可以主动接近 1。连乘因此变成「一串接近 1 的数相乘」，比「一串任意大小的矩阵相乘」体面得多。但这条路仍然是一站一站走，第 t 步仍然等第 t−1 步，长距离的<strong>路径</strong>没有被缩短，只是没被乘死（Hochreiter 与 Schmidhuber，1997 [2026-10]）。</p>
+  <p>关键在 <code>+</code>：<code>∂c<sub>t</sub>/∂c<sub>t−1</sub> = f<sub>t</sub></code>，而 f 由数据算出、可以主动接近 1。连乘因此变成「一串接近 1 的数相乘」，比「一串任意大小的矩阵相乘」体面得多。但这条路仍然是一站一站走，第 t 步仍然等第 t−1 步，长距离的<strong>路径</strong>没有被缩短，只是没被乘死（<a href="https://doi.org/10.1162/neco.1997.9.8.1735" rel="noopener noreferrer">Hochreiter 与 Schmidhuber，1997</a> [2026-10]）。</p>
 
   <table class="tbl tbl--scroll">
     <thead><tr><th>结构</th><th>一次计算里做什么</th><th>位置 1 ↔ n 的路径长度</th><th>并行性</th><th>为反向传播要留的激活</th></tr></thead>
@@ -217,7 +217,7 @@
     <summary>「LSTM 已经解决了长依赖问题，Transformer 不过是算得更快而已。」</summary>
     <div class="myth__body">
       <p><strong>为何会有这个误解：</strong>LSTM 名字里的「长短期记忆」听起来就是这个问题的答案，而它确实把 RNN 从「几乎训不动」带到「能训 300 步」，于是被讲成了终结者。</p>
-      <p class="myth__truth">正确说法：门控把关键路径上的连乘改成了接近 1 的加法，这是<strong>缓解</strong>，不是消除——路径仍然是 n−1 跳，误差仍要一站站传回来；而且第 t 步等第 t−1 步的串行一点没改，代价是参数量与调框难度都上去了。注意力改变的是<strong>拓扑</strong>：任意两位置一跳直达，同时顺带把串行拆掉。两件一起解决，才有 2017 年之后的规模变化（Vaswani 等人，2017 [2026-10]）。</p>
+      <p class="myth__truth">正确说法：门控把关键路径上的连乘改成了接近 1 的加法，这是<strong>缓解</strong>，不是消除——路径仍然是 n−1 跳，误差仍要一站站传回来；而且第 t 步等第 t−1 步的串行一点没改，代价是参数量与调框难度都上去了。注意力改变的是<strong>拓扑</strong>：任意两位置一跳直达，同时顺带把串行拆掉。两件一起解决，才有 2017 年之后的规模变化（<a href="https://arxiv.org/abs/1706.03762" rel="noopener noreferrer">Vaswani 等人，2017</a> [2026-10]）。</p>
     </div>
   </details>
   <details class="myth">

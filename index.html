@@ -403,7 +403,7 @@
             <ol class="steps">
               <li data-step="1"><strong>给下一个符号分配概率。</strong>设字母表只有 4 个符号，我们手里的全部东西就是一个「看历史、给 4 个候选分概率」的函数，四个概率加起来等于 1。分得越偏，说明我们越有把握。</li>
               <li data-step="2"><strong>一个符号该付多少比特，就是它的惊讶度。</strong>把可能性砍一半算一次，所以概率为 1/2 的符号付 1 比特，1/8 的付 3 比特，即定的长度必须是 <code>−log₂ p</code>。原因很硬：两个独立事件同时发生，概率相乘，而我们要「付出的比特相加」——只有对数能把乘法变成加法。</li>
-              <li data-step="3"><strong>平均惊讶度就是信息熵 H。</strong>按概率加权：<code>H = 平均(−log₂ p)</code>。香农信源编码定理（渐近形式）说：把符号<strong>成块</strong>编码、块足够长时，存在可解码的码让平均每符号码长任意接近 H；而对任何能唯一解码的码，平均码长都不低于 H。所以 H 是这套<strong>数据</strong>给出的地板，不由我们选的概率决定。<span class="badge badge--simplify">已简化</span>真实的二进制码长度只能是整数，会有取整损失；「任意接近 H」要靠分块与算术编码把「半个比特」摊到整条序列上才成立，单个符号做不到。</li>
+              <li data-step="3"><strong>平均惊讶度就是信息熵 H。</strong>按概率加权：<code>H = 平均(−log₂ p)</code>。<a href="https://doi.org/10.1002/j.1538-7305.1948.tb01338.x" rel="noopener noreferrer">香农信源编码定理</a>（渐近形式）说：把符号<strong>成块</strong>编码、块足够长时，存在可解码的码让平均每符号码长任意接近 H；而对任何能唯一解码的码，平均码长都不低于 H。所以 H 是这套<strong>数据</strong>给出的地板，不由我们选的概率决定。<span class="badge badge--simplify">已简化</span>真实的二进制码长度只能是整数，会有取整损失；「任意接近 H」要靠分块与算术编码把「半个比特」摊到整条序列上才成立，单个符号做不到。</li>
               <li data-step="4"><strong>于是「压缩器」和「下一符号预测器」是同一台机器。</strong>编码器一边读符号一边按概率把剩下的数值区间切小，解码器手里必须有<strong>同一套概率</strong>才能切回去：双方码表一有出入，区间边界就错位，一开始可能只是局部错字，随后整条流雪崩式还原不出。省下的每一比特都对应一次成功的预测，所以「写一个好的下一词预测器」和「写一个好的无损压缩器」是同一件事的两种写法。直觉段说的「猜得差只是多付一点、不会无法还原」，前提是双方<strong>共用同一套概率</strong>、只是这套猜得不准；这里说的是双方<strong>不一致</strong>的情形。</li>
               <li data-step="5"><strong>压缩率是能力的一个可读分数。</strong>用「定长编码的比特数 ÷ 实际付出的比特数」表示。4 个符号定长要 2 比特/符号，如果概率给得好、平均只花 1.25 比特，压缩率就是 1.6 倍。地板（信息熵）只由数据里的规律决定，不是你说了算。要分清两个同名量：按数据的<strong>真实规律</strong>编，1.00 倍是压不动的地板；拿一套比定长更差的概率去编，实测值会低于 1.00——演示里「纯随机」那条模型线就是这个情形。</li>
               <li data-step="6"><strong>纯随机为什么压不动。</strong>这里的「真随机」指的是<strong>连频率都无从偏向</strong>：我们唯一能说的只有「四个各 1/4」。这时每个符号都付 2 比特，平均码长等于定长，压缩率 1.00 倍——一个比特都省不下来。要压不动需要的是<strong>均匀</strong>，不只是「看不出先后规律」：本文开头那套 0.70/0.20/0.06/0.04 同样没有任何「上一个决定下一个」的规律，却因为频率偏斜而压得动（1.25 比特、1.6 倍）。你把一段随机数据丢给 zip，文件通常还会变大一点点，多出来的是它给自己记的账（块头、表）。<span class="badge badge--simplify">已简化</span>这里说「一个比特都省不下来」指的是无损编码的平均码长下限；实际压缩器还会受块结构、字典大小等额外开销影响。</li>
@@ -932,7 +932,7 @@
               <li data-step="4"><strong>矩阵 = 对整个空间的一次线性变换。</strong>它把每一支箭头搬到新位置，规则只有两条：原点不动，原本平行且等距的网格搬完仍然平行且等距。旋转、拉伸、剪切都是矩阵。</li>
               <li data-step="5"><strong>矩阵乘向量 = 施加这次变换。</strong>最省解的读法是看列：矩阵的第 1 列就是「横轴单位箭头」被搬去的地方，第 2 列是「竖轴单位箭头」的落点。两条基向量落到哪，整个空间就怎么被搬。</li>
               <li data-step="6"><strong>特征向量 = 变换后方向不变的箭头，特征值 = 被拉伸的倍数。</strong>搬动整张地图时，绝大多数箭头的方向都被改掉了；只有少数几条直线上的箭头，搬完仍落在自己原来那条直线上——它们只是被拉长或压短。特征值为负表示方向被翻转成反向。</li>
-              <li data-step="7"><strong>嵌入是学出来的坐标，不是人定的坐标。</strong>我们没有规定「第 37 轴表示动物」。但「靠训练压出坐标」有三种不同的目标，压力来源并不相同。<strong>静态词向量</strong>（word2vec 那一代）的目标里就写着这件事：给共现的词对打高分、给随机凑成的词对打低分——「靠近」就是目标本身。<strong>大模型的词元嵌入</strong>是被下一词预测训出来的：目标只问「下一个词猜得准不准」，「靠近」不在目标里，它只是能互换用法的词元顺带拿到的副产品。<strong>检索用的句向量</strong>才由对比目标同时要求两件事——配对的句子靠近、不配对的拉开。本页开头举的三个模型属于第二类。所以某根轴恰好与「性别」相关是巧合，不是设计；而「距离近」到底承诺了什么，得先问这份坐标是被哪一种目标压出来的 <span class="badge badge--simplify">已简化</span> 这里每类目标只给一句话：下一词预测的损失式在 M02，对比目标的损失式在 M11，静态词向量的负采样目标本站不展开。</li>
+              <li data-step="7"><strong>嵌入是学出来的坐标，不是人定的坐标。</strong>我们没有规定「第 37 轴表示动物」。但「靠训练压出坐标」有三种不同的目标，压力来源并不相同。<strong>静态词向量</strong>（<a href="https://arxiv.org/abs/1301.3781" rel="noopener noreferrer">word2vec</a> 那一代）的目标里就写着这件事：给共现的词对打高分、给随机凑成的词对打低分——「靠近」就是目标本身。<strong>大模型的词元嵌入</strong>是被下一词预测训出来的：目标只问「下一个词猜得准不准」，「靠近」不在目标里，它只是能互换用法的词元顺带拿到的副产品。<strong>检索用的句向量</strong>才由对比目标同时要求两件事——配对的句子靠近、不配对的拉开。本页开头举的三个模型属于第二类。所以某根轴恰好与「性别」相关是巧合，不是设计；而「距离近」到底承诺了什么，得先问这份坐标是被哪一种目标压出来的 <span class="badge badge--simplify">已简化</span> 这里每类目标只给一句话：下一词预测的损失式在 M02，对比目标的损失式在 M11，静态词向量的负采样目标本站不展开。</li>
             </ol>
           
             <div class="figure" data-fig="m03-vector-field-1">
@@ -1378,7 +1378,7 @@
               <span class="frac"><span class="num">m̂</span><span class="den"><span class="bigg">√</span>û <span class="op">+</span> ε</span></span>
               <span class="reads">「m 记梯度方向的滑动平均，u 记梯度平方的滑动平均；用 √û 一除，梯度一贯很大的参数被压小，一贯很小的被放大——每个参数拿到各自的有效学习率。」</span>
             </div>
-            <p>默认 β₁ = 0.9、β₂ = 0.999、ε = 10⁻⁸（Kingma &amp; Ba，2015）[2026-10]。注意它和动量解决的不是同一个问题：动量放大同号方向，Adam 抹平参数之间的尺度差。在 PyTorch 里，β₂ = 0.999 意味着梯度幅度需要约 1/(1−β₂) = 1000 步才更新一轮 [2026-10]，这也是它起步阶段需要预热的缘故。</p>
+            <p>默认 β₁ = 0.9、β₂ = 0.999、ε = 10⁻⁸（<a href="https://arxiv.org/abs/1412.6980" rel="noopener noreferrer">Kingma &amp; Ba，2015</a>）[2026-10]。注意它和动量解决的不是同一个问题：动量放大同号方向，Adam 抹平参数之间的尺度差。在 PyTorch 里，β₂ = 0.999 意味着梯度幅度需要约 1/(1−β₂) = 1000 步才更新一轮 [2026-10]，这也是它起步阶段需要预热的缘故。</p>
           
             <details class="math-detail">
               <summary>展开：为什么二次碗的学习率上限正好是 2/a（以及 Adam 的 m̂、û 是什么）</summary>
@@ -2035,7 +2035,7 @@
               <span class="badge badge--simplify">已简化：省略隐藏状态侧的两个门与候选项的展开</span>
               <span class="reads">细胞状态先被遗忘门按份保留，再加上新写进来的内容——保留是乘法、写入是加法，而不是整条重写。</span>
             </div>
-            <p>关键在 <code>+</code>：<code>∂c<sub>t</sub>/∂c<sub>t−1</sub> = f<sub>t</sub></code>，而 f 由数据算出、可以主动接近 1。连乘因此变成「一串接近 1 的数相乘」，比「一串任意大小的矩阵相乘」体面得多。但这条路仍然是一站一站走，第 t 步仍然等第 t−1 步，长距离的<strong>路径</strong>没有被缩短，只是没被乘死（Hochreiter 与 Schmidhuber，1997 [2026-10]）。</p>
+            <p>关键在 <code>+</code>：<code>∂c<sub>t</sub>/∂c<sub>t−1</sub> = f<sub>t</sub></code>，而 f 由数据算出、可以主动接近 1。连乘因此变成「一串接近 1 的数相乘」，比「一串任意大小的矩阵相乘」体面得多。但这条路仍然是一站一站走，第 t 步仍然等第 t−1 步，长距离的<strong>路径</strong>没有被缩短，只是没被乘死（<a href="https://doi.org/10.1162/neco.1997.9.8.1735" rel="noopener noreferrer">Hochreiter 与 Schmidhuber，1997</a> [2026-10]）。</p>
           
             <table class="tbl tbl--scroll">
               <thead><tr><th>结构</th><th>一次计算里做什么</th><th>位置 1 ↔ n 的路径长度</th><th>并行性</th><th>为反向传播要留的激活</th></tr></thead>
@@ -2084,7 +2084,7 @@
               <summary>「LSTM 已经解决了长依赖问题，Transformer 不过是算得更快而已。」</summary>
               <div class="myth__body">
                 <p><strong>为何会有这个误解：</strong>LSTM 名字里的「长短期记忆」听起来就是这个问题的答案，而它确实把 RNN 从「几乎训不动」带到「能训 300 步」，于是被讲成了终结者。</p>
-                <p class="myth__truth">正确说法：门控把关键路径上的连乘改成了接近 1 的加法，这是<strong>缓解</strong>，不是消除——路径仍然是 n−1 跳，误差仍要一站站传回来；而且第 t 步等第 t−1 步的串行一点没改，代价是参数量与调框难度都上去了。注意力改变的是<strong>拓扑</strong>：任意两位置一跳直达，同时顺带把串行拆掉。两件一起解决，才有 2017 年之后的规模变化（Vaswani 等人，2017 [2026-10]）。</p>
+                <p class="myth__truth">正确说法：门控把关键路径上的连乘改成了接近 1 的加法，这是<strong>缓解</strong>，不是消除——路径仍然是 n−1 跳，误差仍要一站站传回来；而且第 t 步等第 t−1 步的串行一点没改，代价是参数量与调框难度都上去了。注意力改变的是<strong>拓扑</strong>：任意两位置一跳直达，同时顺带把串行拆掉。两件一起解决，才有 2017 年之后的规模变化（<a href="https://arxiv.org/abs/1706.03762" rel="noopener noreferrer">Vaswani 等人，2017</a> [2026-10]）。</p>
               </div>
             </details>
             <details class="myth">
@@ -2190,7 +2190,7 @@
             <div class="callout callout--warn">
               <p><strong>「查询 / 键 / 值」这套说法，对下面几件事不成立：</strong></p>
               <p><strong>一，模型里没有真正的检索。</strong>没有符号匹配，没有命中判定，也没有「j 身上带着 i 要的那个东西」。分数只是 W<sub>Q</sub>、W<sub>K</sub> 投影之后的一次内积，同一对 (i, j) 在不同上下文、不同训练阶段会得到不同分数。</p>
-              <p><strong>二，没有哪个头被指定管哪种关系。</strong>「这个头管指代、那个头管句法主语」几乎都是在模型外面统计出来、再回贴上去的<strong>事后归因</strong>。头之间高度冗余：训练后剪掉许多头，在同一任务的多数评测上几乎不掉分（Michel 等，2019 [2026-10]）——但只留 1–2 个头与一个都不留差别很大，换到别的任务上退化也会显现。</p>
+              <p><strong>二，没有哪个头被指定管哪种关系。</strong>「这个头管指代、那个头管句法主语」几乎都是在模型外面统计出来、再回贴上去的<strong>事后归因</strong>。头之间高度冗余：训练后剪掉许多头，在同一任务的多数评测上几乎不掉分（<a href="https://arxiv.org/abs/1905.10650" rel="noopener noreferrer">Michel 等，2019</a> [2026-10]）——但只留 1–2 个头与一个都不留差别很大，换到别的任务上退化也会显现。</p>
               <p><strong>三，Q、K 不是「只有匹配、没有内容」。</strong>它们同样是同一份输入投影出来的，含语义信息；只是它们的乘积只进入打分，不直接进入输出。</p>
               <p>把它当<strong>读代码时的地图</strong>用，别当<strong>模型里的事实</strong>用。</p>
             </div>
@@ -2466,7 +2466,7 @@
               <li data-step="2"><strong>因为打分标准从头到尾没变，不同规模的模型才能放进同一张图比较。</strong>损失是一个单一数字，规模是另一个数字，剩下要回答的只有一个问题：这两个数字怎么对应。</li>
               <li data-step="3"><strong>经验答案是<span class="term" data-def="y ∝ x^(−α) 型关系：x 乘十，y 乘一个只依赖 α 的固定系数，与 x 的起点无关。" data-en="power law">幂律</span>：L ∝ N^(−α)。</strong>取对数就变成 log L = 常数 − α·log N——<strong>双对数坐标上的一条直线</strong>。直线的意思是「斜率不变」，斜率不变的意思是我们敢沿着它往右画。严格说，只有当地板可忽略、另一项又不成瓶颈时，损失在双对数上才<strong>近似</strong>直线；离地板越近，线越先走平——所以外推越远，「它是直线」这个赌注越贵。</li>
               <li data-step="4"><strong>参数量 N 与数据量 D 各有一条自己的线，不能混为一谈。</strong>参数负责<strong>存</strong>住数据里的规律，数据负责<strong>提供</strong>规律；只放大一项，另一项就成了瓶颈——损失先快降、随后走平，钱花在等待一个填不满的容器上。</li>
-              <li data-step="5"><strong>Chinchilla（Hoffmann 等，2022）把两条线接进同一个算力预算，算出最优配比：给定算力，N 与 D 应近似等比同步放大，约 20 词元配 1 参数。</strong>而当时的主流模型严重「参数过大、数据不足」[2026-10]：1750 亿参数的 GPT-3 只喂了约 3000 亿词元，比值不到 2 [2026-10]。同团队按最优配比重训的 700 亿参数模型，用的是<strong>与 2800 亿参数的 Gopher 相同的预训练算力</strong>——参数少 4 倍、词元多 4 倍——却拿到更低的损失，并因模型小 4 倍而在微调与推理上省下大量算力 [2026-10]。</li>
+              <li data-step="5"><strong>Chinchilla（<a href="https://arxiv.org/abs/2203.15556" rel="noopener noreferrer">Hoffmann 等，2022</a>）把两条线接进同一个算力预算，算出最优配比：给定算力，N 与 D 应近似等比同步放大，约 20 词元配 1 参数。</strong>而当时的主流模型严重「参数过大、数据不足」[2026-10]：1750 亿参数的 GPT-3 只喂了约 3000 亿词元，比值不到 2 [2026-10]。同团队按最优配比重训的 700 亿参数模型，用的是<strong>与 2800 亿参数的 Gopher 相同的预训练算力</strong>——参数少 4 倍、词元多 4 倍——却拿到更低的损失，并因模型小 4 倍而在微调与推理上省下大量算力 [2026-10]。</li>
               <li data-step="6"><strong>这条结论开出两条路：把模型做小、数据喂多，或把数据做大。</strong>训练只花一次钱，推理按词元天天花钱，小模型长期更便宜。后来者普遍越过 20:1 的配比——公开模型里 70 亿参数配约 2 万亿词元是常见量级（比值 2×10¹² ÷ 7×10⁹ ≈ 286，按公式推算；具体型号本站未逐一回溯原始技术报告）——说明把算力预算优先换成数据，在工程上被反复验证。</li>
               <li data-step="7"><strong>可是损失这条线，解释不了所有现象。</strong>某些基准（多位数加法、给了<span class="term" data-def="让模型先写中间步骤再给答案的提示方式。" data-en="chain of thought">思维链</span>提示的推理）在小模型上接近乱猜，跨过某个规模后<strong>突然跳升</strong>。这就是 <span class="term" data-def="规模跨过某阈值后才出现的能力；是否真实存在尚在争议中。" data-en="emergent ability">涌现能力</span>（emergent ability）<span class="badge badge--debate">存在争议</span>。</li>
               <li data-step="8"><strong>两派读的是同一批曲线。</strong>一派（Wei 等，2022）认为跳变是真实的能力相变；另一派（Schaeffer 等，《Are Emergent Abilities of Large Language Models a Mirage?》，NeurIPS 2023 杰出论文）指出：把「整题全对才算对」换成连续的度量（如编辑距离——答案差几个字），同一批模型的曲线就变平滑 [2026-10]。跳变可能不是模型变了，是<strong>尺子</strong>变了。</li>
@@ -2476,7 +2476,7 @@
               L <span class="op">−</span> L<span class="sub">∞</span> <span class="op">∝</span> N<span class="sup"> (−α)</span>
               <span class="reads">把损失减去一个下界，剩下的部分与「参数量的 −α 次方」成正比：N 乘十，这部分损失就乘 10^(−α)，不管你从 10⁸ 起步还是从 10¹⁰ 起步。</span>
             </div>
-            <p>α 取多少？两组公开拟合给出的数字不同，而且<strong>不矛盾</strong>：Kaplan 等（2020）对原始损失拟合，α≈0.076；Hoffmann 等（2022）对「损失减下界」拟合，α≈0.34、β≈0.28 [2026-10]。差在两处：一是<strong>拟合对象</strong>（对 L 还是对 L−L<span class="sub">∞</span>），下界减不减，指数会大变；二是<strong>训练协议</strong>——Kaplan 对所有规模固定词元数与学习率调度，小模型的中途损失因此被高估，这正是它推出「算力主要该买参数」的原因，而 Chinchilla 换成等比放大后结论才翻成「N 与 D 同步」[2026-10]。这提醒我们：引用规模定律数字时，必须连拟合形式与训练协议一起引用。</p>
+            <p>α 取多少？两组公开拟合给出的数字不同，而且<strong>不矛盾</strong>：<a href="https://arxiv.org/abs/2001.08361" rel="noopener noreferrer">Kaplan 等（2020）</a>对原始损失拟合，α≈0.076；Hoffmann 等（2022）对「损失减下界」拟合，α≈0.34、β≈0.28 [2026-10]。差在两处：一是<strong>拟合对象</strong>（对 L 还是对 L−L<span class="sub">∞</span>），下界减不减，指数会大变；二是<strong>训练协议</strong>——Kaplan 对所有规模固定词元数与学习率调度，小模型的中途损失因此被高估，这正是它推出「算力主要该买参数」的原因，而 Chinchilla 换成等比放大后结论才翻成「N 与 D 同步」[2026-10]。这提醒我们：引用规模定律数字时，必须连拟合形式与训练协议一起引用。</p>
           
             <div class="math-block math">
               L(N, D) <span class="op">=</span> L<span class="sub">∞</span> <span class="op">+</span> A<span class="op">·</span><span class="bigg">(</span><span class="frac"><span class="num">N</span><span class="den">N<span class="sub">0</span></span></span><span class="bigg">)</span><span class="sup"> (−α)</span> <span class="op">+</span> B<span class="op">·</span><span class="bigg">(</span><span class="frac"><span class="num">D</span><span class="den">D<span class="sub">0</span></span></span><span class="bigg">)</span><span class="sup"> (−β)</span>
@@ -2750,7 +2750,7 @@
           
             <ol class="steps">
               <li data-step="1"><strong>预训练模型没有「回答」这个行为。</strong>它的训练信号只有一种：在海量无标注<span class="term" data-def="没有人工标签的原始文本；预训练只做下一词元预测。" data-en="unlabeled text">文本</span>上预测下一个词元。语料里没人标过「这才是好回答」，所以一句提问在它眼里只是另一种待续写的文本。</li>
-              <li data-step="2"><strong>第一阶段 SFT：把续写掰成回答。</strong><span class="term" data-def="监督微调：在人工写的示范数据上继续做交叉熵训练。" data-en="supervised fine-tuning">监督微调</span>（SFT）用人工写的<span class="term" data-def="人工撰写的「问题 + 理想回答」配对数据，SFT 的训练材料。" data-en="demonstration pairs">示范问答对</span>继续做<span class="term" data-def="按真实分布取平均、用模型分布计算的惊讶度；即总平均码长 = 熵 + KL。分类任务的损失函数。" data-en="cross-entropy">交叉熵</span>训练。损失与梯度都是 M02、M05 那套，只是换了数据、把学习率调小一到两个数量级。InstructGPT 用了约 1.3 万条示范（2022）[2026-10]。</li>
+              <li data-step="2"><strong>第一阶段 SFT：把续写掰成回答。</strong><span class="term" data-def="监督微调：在人工写的示范数据上继续做交叉熵训练。" data-en="supervised fine-tuning">监督微调</span>（SFT）用人工写的<span class="term" data-def="人工撰写的「问题 + 理想回答」配对数据，SFT 的训练材料。" data-en="demonstration pairs">示范问答对</span>继续做<span class="term" data-def="按真实分布取平均、用模型分布计算的惊讶度；即总平均码长 = 熵 + KL。分类任务的损失函数。" data-en="cross-entropy">交叉熵</span>训练。损失与梯度都是 M02、M05 那套，只是换了数据、把学习率调小一到两个数量级。<a href="https://arxiv.org/abs/2203.02155" rel="noopener noreferrer">InstructGPT</a> 用了约 1.3 万条示范（2022）[2026-10]。</li>
               <li data-step="3"><strong>SFT 立住了规矩，但规矩的上限就是示范。</strong>示范只有万条量级时，模型会把示范的措辞与结构本身当成目标；示范没覆盖的场景（该追问澄清、该拒绝、该承认不知道）它只能猜。于是需要一个能给<strong>任意</strong>回答打分的裁判。</li>
               <li data-step="4"><strong>第二阶段：人类只排序，机器学打分。</strong>对同一个问题让 SFT 模型生成多个回答，标注员<strong>不写评语、不打绝对分数，只排出 A 比 B 好</strong>。把每次比较整理成<span class="term" data-def="偏好三元组：同一问题下「提示 + 更优回答 + 更差回答」。" data-en="preference triplet">偏好三元组</span> <code>(x, y_win, y_lose)</code>，用它们训练上文那位老师傅，即奖励模型，下文记作 RM。同一篇报告的奖励模型数据集是约 <strong>3.3 万条提示</strong>（2022）[2026-10]；注意单位——每条提示让标注员给 4 到 9 个回答排序，一次排序就产出 6 到 36 对「A 比 B 好」，所以提示只有 3.3 万条，<strong>成对比较却有数十万到上百万对</strong>。这正是「只排序」比「写评语」便宜的真正原因。</li>
               <li data-step="5"><strong>第三阶段：最大化分数，但用一根缰绳拴住。</strong>用<span class="term" data-def="近端策略优化：限制每步更新幅度的强化学习算法，RLHF 的常用选择。" data-en="PPO">近端策略优化（PPO）</span>这类<span class="term" data-def="靠交互得到的标量奖励来学习行为策略的机器学习范式。" data-en="reinforcement learning">强化学习</span>算法反复采样新回答、找 RM 要分数、更新策略。同时减去一项 <span class="term" data-def="KL 散度：衡量两个概率分布差多远；此处约束新策略别离参考模型太远。" data-en="KL divergence">KL 散度</span>惩罚，把新策略拴在 SFT 模型附近。目标函数见下方第一个公式，本站写作 <code>J(θ)</code>。</li>
@@ -3199,7 +3199,7 @@
               <li data-step="2"><strong>喂给标准 Transformer。</strong>ViT 的架构就是 M07 那套：自注意力 + 前馈 + 残差 + 归一化，没有任何「视觉专用算子」。卷积的局部性在这里被注意力取代——每个图像块可以直接看所有其他图像块。</li>
               <li data-step="3"><strong>分岔一：连续嵌入路线。</strong>图像编码器输出一串向量，用一个「翻译层」（线性投影或交叉注意力）把它们映射到语言模型的向量空间，然后当作前缀拼进文本。保真度高，但视觉侧是一串连续向量、<strong>没有离散 ID</strong>：图像段自身拿不到「预测下一个词元」的监督，损失只能落在跟随其后的文本上，也没法像离散路线那样自回归生成图像。<strong>这并不妨碍它用下一词预测来训练</strong>——现实里的 LLaVA / BLIP-2 / Flamingo 走的正是这条路，损失仍是 M02 那个交叉熵，只是监督位落在文本而非图像。</li>
               <li data-step="4"><strong>分岔二：离散 tokenizer 路线。</strong>先用向量量化把每个图像块归到一本「视觉词典」里的某个条目（比如 8192 个码字之一），于是图像真的变成了 196 个整数 ID（示意按 196 计，实现里还要加起止符）。好处是<strong>图像和文本共用同一套自回归机制、同一个损失、同一个采样器</strong>；代价是量化必然丢信息，且码本大小是个新的魔法数字（见下方简化声明）。</li>
-              <li data-step="5"><strong><span class="term" data-def="用对比学习把图像与文本嵌入同一空间、可按余弦相似度互检的双编码器模型。" data-en="CLIP">图文对比模型</span>（CLIP）的对比学习：不标注也能对齐。</strong>两个编码器（图像、文本）各自把输入压成一个向量，训练目标是：配对的图文（同一网页上的图片与其标题）向量靠近，不配对的推开。监督信号来自互联网上<strong>天然存在的图文配对</strong>，4 亿对量级 [2026-10]，没有逐条人工标注。</li>
+              <li data-step="5"><strong><span class="term" data-def="用对比学习把图像与文本嵌入同一空间、可按余弦相似度互检的双编码器模型。" data-en="CLIP">图文对比模型</span>（<a href="https://arxiv.org/abs/2103.00020" rel="noopener noreferrer">CLIP</a>）的对比学习：不标注也能对齐。</strong>两个编码器（图像、文本）各自把输入压成一个向量，训练目标是：配对的图文（同一网页上的图片与其标题）向量靠近，不配对的推开。监督信号来自互联网上<strong>天然存在的图文配对</strong>，4 亿对量级 [2026-10]，没有逐条人工标注。</li>
               <li data-step="6"><strong>为什么这带来<span class="term" data-def="不为该任务准备任何标注样本、也不加装分类头，只靠「把类别写成句子 + 图文相似度」完成的分类。零样本指的是零个标注，不是零个该概念的实例。" data-en="zero-shot classification">零样本分类</span>。</strong>没为「猫/狗」训练过任何分类头。做法是把类别名填进模板句子——「一张猫的照片」「一张狗的照片」——编码成向量，再看图像向量与哪句方向最一致（余弦最大）。<strong>分类被降级成了检索</strong>，换一批候选句子不必重新训练。注意「零样本」说的是<strong>这个任务一个标注都没有</strong>，不是「这个概念它从没见过」——它在 4 亿图文对里早就见过「猫」这个字和猫的照片一起出现。也正因为它学的是共现而不是定义，<strong>提示语怎么写很要紧</strong>：同一类别换个说法分数会明显变化，候选集增减免费，措辞却不免费。</li>
               <li data-step="7"><strong>失效模式一：数不清。</strong>图像块的个数是<strong>定长</strong>的：无论图里有 3 只猫还是 30 只猫，都切成同样多的 196 块。数量没有作为一个计数被编码进任何一个图像块，它只弥散在整体模式里。所以在固定切块这套表示下，细粒度计数<strong>结构性</strong>不可靠，而物体越大、占的图像块越多，反而更容易被「数」对。</li>
               <li data-step="8"><strong>失效模式二：看不清小字。</strong>图在进入切块<strong>之前</strong>就要先重采样到固定尺寸（示意里是 224×224）。一行 8 像素的小字在重采样与插值之后就已经混进相邻像素；随后 768→工作维度的投影会再削一次。<strong>切块本身不丢像素（它只是重排），丢的是重采样与降维</strong>——所以这不是「分辨率不够、认真看就行」，而是那份信息在进模型之前就已经不在了。</li>
@@ -3362,7 +3362,7 @@
             <ol class="steps">
               <li data-step="1"><strong>模型本身只有一个动作。</strong>给它一段文本，它输出下一个<span class="term" data-def="模型处理文本的最小单位，既不是词也不是字。" data-en="token">词元</span>的概率分布（M10）。就这一个。它不能执行、不能联网、不能读文件——「不能」不是被限制了，而是<strong>这套数学里压根没有「执行」这个算子</strong>。</li>
               <li data-step="2"><strong>所谓工具调用，是模型输出了一段结构化文本。</strong>程序把这段文本（通常是 JSON）解析出来、真的去执行、再把结果<strong>作为文本</strong>追加到上下文末尾（严格说：按对话模板插入一段带角色标记的词元，物理上通常仍在末尾，但带着「这是工具回来的」这层边界）。整个过程中模型做的仍然只有写字，只是它写的东西<strong>恰好可被机器读</strong>。这就是「会说」变成「会做」的全部机制。</li>
-              <li data-step="3"><strong>把这件事重复若干轮，就是 ReAct 循环。</strong>Thought（要不要查、查什么）→ Action（写出的请求单）→ Observation（执行结果被塞回来的文本）→ 再 Thought……直到模型不再写请求单、而是直接写最终答案（Yao 等人，2022 [2026-10]）。关键点：<strong>每一步的 Observation 都变成新的输入文本</strong>，所以循环深度不是自由的，它被窗口长度约束——第 ⑥ 步会看到这个约束如何反噬。另一类做法是<strong>先把任务写成子任务清单、再逐条执行</strong>（planning，显式规划 <span class="badge badge--simplify">已简化</span>：这里略去了树搜索与回溯）；两者不在「谁更聪明」上不同，而在<strong>错误往哪儿传播</strong>上不同——清单式把误差集中在计划阶段（计划错了，后面每一步都跟着错），ReAct 式把它摊到每一步（每步重新想，也就每步重新掷一次骰子）。<strong>两种结构都跑不出 p<sup>N</sup> 这条连乘。</strong></li>
+              <li data-step="3"><strong>把这件事重复若干轮，就是 ReAct 循环。</strong>Thought（要不要查、查什么）→ Action（写出的请求单）→ Observation（执行结果被塞回来的文本）→ 再 Thought……直到模型不再写请求单、而是直接写最终答案（<a href="https://arxiv.org/abs/2210.03629" rel="noopener noreferrer">Yao 等人，2022</a> [2026-10]）。关键点：<strong>每一步的 Observation 都变成新的输入文本</strong>，所以循环深度不是自由的，它被窗口长度约束——第 ⑥ 步会看到这个约束如何反噬。另一类做法是<strong>先把任务写成子任务清单、再逐条执行</strong>（planning，显式规划 <span class="badge badge--simplify">已简化</span>：这里略去了树搜索与回溯）；两者不在「谁更聪明」上不同，而在<strong>错误往哪儿传播</strong>上不同——清单式把误差集中在计划阶段（计划错了，后面每一步都跟着错），ReAct 式把它摊到每一步（每步重新想，也就每步重新掷一次骰子）。<strong>两种结构都跑不出 p<sup>N</sup> 这条连乘。</strong></li>
               <li data-step="4"><strong>「记忆」分三层，而且存在三个不同的地方。</strong>短期 = 当前上下文窗口（窗口一滑就没了）；长期 = 外部存储加检索（向量库、数据库、文件），本质就是 M11 那套嵌入检索，取回来的仍然是文本；程序性 = 写进提示词（改输入）或者微调进权重（改参数）。三层里<strong>只有最后一层真正改变了模型</strong>。</li>
               <li data-step="5"><strong>RAG 能压幻觉，靠的不是「让它学会」。</strong>它不改任何<span class="term" data-def="模型内部可训练的数值。" data-en="parameter">参数</span>，而是把「该说什么」的证据<strong>直接放进上下文</strong>。证据里的词与答案里的词在训练数据里共现过，于是这些证据词元会抬高相关候选的分数、压低其余候选——下一词分布被证据重新加权 <span class="badge badge--simplify">已简化</span>（这是对「上下文内复制 / 诱导回路」这一机制假说的教学化表述，它在多大范围解释上下文学习仍有争议）。这正是本站那条主线：M10 第 ③ 步说过<strong>温度改不了排序，但改输入可以</strong>。RAG 就是「改输入」的工程化版本：不换菜单，换菜。</li>
               <li data-step="6"><strong>RAG 有三类失效，而且都不在模型这一侧。</strong>检索漏：该找到的没找到，因为相似度不等于相关性，问法和文档写法不一致就取不回来；检索脏：找到了相似但错误或过期的段落，模型会<strong>照着它错</strong>，因为它没有独立的事实通道；上下文挤：证据塞得太多太长，把「问题本身」挤到中段，而 M10 第 ⑦ 步已经说过——能看见不等于会去看。三类失效的共同点：<em>模型的推理一步没错，错在喂进去的文本</em>。</li>
